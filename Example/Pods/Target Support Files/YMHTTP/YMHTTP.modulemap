@@ -1,6 +1,0 @@
-framework module YMHTTP {
-  umbrella header "YMHTTP-umbrella.h"
-
-  export *
-  module * { export * }
-}
