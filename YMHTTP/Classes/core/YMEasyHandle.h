@@ -31,6 +31,8 @@ typedef void * YMURLSessionEasyHandle;
 
 - (instancetype)initWithDelegate:(id<YMEasyHandleDelegate>)delegate;
 
+- (int)urlErrorCodeWithEasyCode:(int)easyCode;
+
 
 @end
 

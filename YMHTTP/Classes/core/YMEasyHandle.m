@@ -62,8 +62,44 @@
     
 }
 
+#pragma mark - Public Methods
+-(int)urlErrorCodeWithEasyCode:(int)easyCode {
+    int failureErrno = (int)[self connectFailureErrno];
+    if (easyCode == CURLE_OK) {
+        return 0;
+    } else if (failureErrno == ECONNREFUSED) {
+        return NSURLErrorCannotConnectToHost;
+    } else if (easyCode == CURLE_UNSUPPORTED_PROTOCOL) {
+        return NSURLErrorUnsupportedURL;
+    } else if (easyCode == CURLE_URL_MALFORMAT) {
+        return NSURLErrorBadURL;
+    } else if (easyCode == CURLE_COULDNT_RESOLVE_HOST) {
+        return NSURLErrorCannotFindHost;
+    } else if (easyCode == CURLE_RECV_ERROR && failureErrno == ECONNRESET) {
+        return NSURLErrorNetworkConnectionLost;
+    } else if (easyCode == CURLE_SEND_ERROR && failureErrno == ECONNRESET) {
+        return NSURLErrorNetworkConnectionLost;
+    } else if (easyCode == CURLE_GOT_NOTHING) {
+        return NSURLErrorBadServerResponse;
+    } else if (easyCode == CURLE_ABORTED_BY_CALLBACK) {
+        return NSURLErrorUnknown;
+    } else if (easyCode == CURLE_COULDNT_CONNECT && failureErrno == ETIMEDOUT) {
+        return NSURLErrorTimedOut;
+    } else if (easyCode == CURLE_OPERATION_TIMEDOUT) {
+        return NSURLErrorTimedOut;
+    } else {
+        return NSURLErrorUnknown;
+    }
+}
 
-# pragma mark - libcurl callback
+- (long)connectFailureErrno {
+    long _errno;
+    // TODO: try catch
+    curl_easy_getinfo( _rawHandle, CURLINFO_OS_ERRNO, &_errno);
+    return _errno;
+}
+
+#pragma mark - libcurl callback
 
 NS_INLINE YMEasyHandle * from(void *userdata) {
     if (!userdata) return nil;
@@ -105,17 +141,6 @@ int __curl_header_function(char *data, size_t size, size_t nmemb, void *userdata
 }
 
 
-/// - SeeAlso: <https://curl.haxx.se/libcurl/c/CURLOPT_HEADERFUNCTION.html>
-- (int)didReceiveWithHeaderData:(void *)data
-                           size:(int)size
-                          nmerb:(int)nmerb
-                  contentLength:(double)contentLength {
-    
-    NSData *buffer = [[NSData alloc] initWithBytes:data
-                                            length:size*nmerb];
-    
-    // TODO: delegate
-    return 0;
-}
+
 
 @end

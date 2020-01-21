@@ -71,11 +71,12 @@
         s = nil;
     }
     if (socketSources) {
+        __weak typeof(self) _wself = self;
         [socketSources createSourcesWithAction:action
                                         socket:socket
                                          queue:_queue
                                        handler:^{
-            // TODO: performaction
+            [_wself performActionForSocket:socket];
         }];
     }
     
@@ -107,7 +108,63 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
     return 0;
 }
 
+# pragma mark - Primate Methods
 
+- (void)performActionForSocket:(int)socket {
+    // TODO: try catch
+    [self readAndWriteAvailableDataOnSocket:socket];
+}
+
+- (void)readAndWriteAvailableDataOnSocket:(int)socket {
+    int runningHandlesCount = 0;
+    curl_multi_socket_action(_rawHandle, socket, 0, &runningHandlesCount);
+    [self readMessages];
+}
+
+/// Check the status of all individual transfers.
+///
+/// libcurl refers to this as “read multi stack informationals”.
+/// Check for transfers that completed.
+- (void)readMessages {
+    while (true) {
+        int count = 0;
+        CURLMsg msg = mutilHandleInfoRead(_rawHandle, &count);
+        if (!msg.easy_handle) break;
+        YMURLSessionEasyHandle easyHandle = msg.easy_handle;
+        int code = msg.data.result;
+        [self completedTransferForEasyHandle:easyHandle
+                                    easyCode:code];
+    }
+}
+
+- (void)completedTransferForEasyHandle:(YMURLSessionEasyHandle)handle easyCode:(int)easyCode {
+    NSUInteger idx = [_easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if (obj.rawHandle == handle) {
+            *stop = YES;
+            return YES;
+        }
+        return NO;
+    }];
+    
+    if (idx == NSNotFound) {
+        // TODO: Transfer completed for easy handle, but it is not in the list of added handles.
+    }
+    YMEasyHandle *easyHandle = _easyHandles[idx];
+    int errCode = [easyHandle urlErrorCodeWithEasyCode:easyCode];
+    if (errCode != 0) {
+        
+    }
+}
+
+CURLMsg mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) {
+    CURLMsg info = {};
+    CURLMsg *msg = curl_multi_info_read(handle, msgs_in_queue);
+    if (msg == NULL) return info;
+    
+    if (msg->msg != CURLMSG_DONE) return info;
+    
+    return *msg;
+}
 
 @end
 
