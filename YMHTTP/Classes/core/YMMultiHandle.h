@@ -6,6 +6,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "YMEasyHandle.h"
 #include "curl.h"
 
 typedef void * YMURLSessionMultiHandle;
@@ -15,8 +16,10 @@ NS_ASSUME_NONNULL_BEGIN
 @interface YMMultiHandle : NSObject
 
 @property (nonatomic, assign) YMURLSessionMultiHandle rawHandle;
-@property (nonatomic, strong) dispatch_queue_t queue;
-@property (nonatomic, strong) dispatch_group_t group;
+
+- (instancetype)initWithWorkQueue:(dispatch_queue_t)workQueque;
+- (void)addHandle:(YMEasyHandle *)handle;
+- (void)removeHandle:(YMEasyHandle *)handle;
 
 @end
 
@@ -32,7 +35,7 @@ typedef NS_ENUM(NSUInteger, YMSocketRegisterActionType) {
 
 @interface YMSocketRegisterAction : NSObject
 
--(instancetype)initWithRawValue:(int)rawValue;
+- (instancetype)initWithRawValue:(int)rawValue;
 
 @property (readonly, nonatomic, assign) YMSocketRegisterActionType type;
 @property (readonly, nonatomic, assign) BOOL needsReadSource;

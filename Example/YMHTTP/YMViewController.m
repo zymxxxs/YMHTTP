@@ -8,8 +8,11 @@
 
 #import "YMViewController.h"
 #import <YMHTTP/YMEasyHandle.h>
+#import <YMHTTP/YMMultiHandle.h>
 
 @interface YMViewController ()
+
+@property (nonatomic, strong) YMMultiHandle *mh;
 
 @end
 
@@ -19,8 +22,14 @@
 {
     [super viewDidLoad];
 	
+    dispatch_queue_t queue = dispatch_queue_create("com.aaa.bbb.ccc", DISPATCH_QUEUE_CONCURRENT);
+    _mh = [[YMMultiHandle alloc] initWithWorkQueue:queue];
     YMEasyHandle *eh = [[YMEasyHandle alloc] initWithDelegate:nil];
+    [_mh addHandle:eh];
     
+    CFNetworkErrors
+    
+    connectionProxyDictionary
 }
 
 - (void)didReceiveMemoryWarning

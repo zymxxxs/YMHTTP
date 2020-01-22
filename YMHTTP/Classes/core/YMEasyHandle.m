@@ -25,9 +25,20 @@
         _delegate = delegate;
         [self setupCallbacks];
         
-        curl_easy_setopt(_rawHandle, CURLOPT_URL, "http://blog.csdn.net/JGood");
-        curl_easy_perform(_rawHandle);
-        NSLog(@"finish");
+        NSURLRequest *reqeust = [[NSURLRequest alloc] initWithURL:[NSURL URLWithString:@"http://www.baidu.com"]];
+        curl_easy_setopt(_rawHandle, CURLOPT_URL, [reqeust.URL.absoluteString cStringUsingEncoding:NSUTF8StringEncoding]);
+//        curl_easy_setopt(_rawHandle, CURLOPT_BUFFERSIZE, INT_MAX);
+        
+        struct curl_slist *headers = NULL;
+        //增加HTTP header
+        headers = curl_slist_append(headers, "Content-Type:application/json");
+        curl_easy_setopt(_rawHandle, CURLOPT_HTTPHEADER, headers);
+//        CURLcode rsp_code = curl_easy_perform(_rawHandle);
+//        if (CURLE_OK == rsp_code) {
+//            NSLog(@"请求返回成功");
+//        } else {
+//            NSLog(@"请求返回失败，返回码是 %i", rsp_code);
+//        }
     }
     return self;
 }
@@ -48,15 +59,15 @@
 
     // write
     curl_easy_setopt(_rawHandle, CURLOPT_WRITEDATA, (__bridge void *)self);
-    curl_easy_setopt(_rawHandle, CURLOPT_WRITEFUNCTION, __curl_write_function);
+    curl_easy_setopt(_rawHandle, CURLOPT_WRITEFUNCTION, _curl_write_function);
     
-    // read
+//    // read
     curl_easy_setopt(_rawHandle, CURLOPT_READDATA, (__bridge void *)self);
-    curl_easy_setopt(_rawHandle, CURLOPT_READFUNCTION, __curl_read_function);
-    
+    curl_easy_setopt(_rawHandle, CURLOPT_READFUNCTION, _curl_read_function);
+//
     // header
     curl_easy_setopt(_rawHandle, CURLOPT_HEADERDATA, (__bridge void *)self);
-    curl_easy_setopt(_rawHandle, CURLOPT_HEADERFUNCTION, __curl_header_function);
+    curl_easy_setopt(_rawHandle, CURLOPT_HEADERFUNCTION, _curl_header_function);
     
     // socket options
     
@@ -106,27 +117,25 @@ NS_INLINE YMEasyHandle * from(void *userdata) {
     return (__bridge YMEasyHandle *)userdata;
 }
 
-int __curl_write_function(char *data, size_t size, size_t nmemb, void *userdata) {
+size_t _curl_write_function(char *data, size_t size, size_t nmemb, void *userdata) {
     NSLog(@"write %p", data);
     NSString *a = [[NSData dataWithBytes:data length:size] base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
     NSLog(@"%@", a);
+//    printf("CURL - Response received:\n%s", data);
+//    printf("CURL - Response handled %lu bytes:\n%s", size*nmemb);
     YMEasyHandle *handle = from(userdata);
     if (!handle) return 0;
     return 0;
 }
 
-int __curl_read_function(char *data, size_t size, size_t nmemb, void *userdata) {
+size_t _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata) {
     NSLog(@"read %p", data);
     NSString *a = [[NSData dataWithBytes:data length:size] base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
     NSLog(@"%@", a);
     return 0;
 }
 
-int __curl_header_function(char *data, size_t size, size_t nmemb, void *userdata) {
-    NSLog(@"header %p", data);
-    NSString *a = [[NSData dataWithBytes:data length:size] base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
-    NSLog(@"%@", a);
-    
+size_t _curl_header_function(char *data, size_t size, size_t nmemb, void *userdata) {
     YMEasyHandle *handle = from(userdata);
     if (!handle) return 0;
     
@@ -137,7 +146,7 @@ int __curl_header_function(char *data, size_t size, size_t nmemb, void *userdata
     double length;
     int r = curl_easy_getinfo(handle.rawHandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &length);
     printf("%d", r);
-    return 0;
+    return size * nmemb;
 }
 
 

@@ -12,17 +12,18 @@
 @interface YMMultiHandle ()
 
 @property (nonatomic, strong) NSMutableArray<YMEasyHandle *> *easyHandles;
+@property (nonatomic, strong) dispatch_queue_t queue;
 @property (nonatomic, strong) YMTimeoutSource *timeoutSource;
-@property (nonatomic, assign) BOOL reentrantInUpdateTimeoutTimer;
 
 @end
 
 @implementation YMMultiHandle
 
--(instancetype)initWithWorkQueue:(dispatch_queue_t)workQueque {
+- (instancetype)initWithWorkQueue:(dispatch_queue_t)workQueque {
     self = [super init];
     if (self) {
         _rawHandle = curl_multi_init();
+        _easyHandles = [[NSMutableArray alloc] init];
         _queue = dispatch_queue_create_with_target("YMMutilHandle.isolation",
                                                    DISPATCH_QUEUE_SERIAL,
                                                    workQueque);
@@ -42,11 +43,11 @@
 - (void)setupCallbacks {
     // socket
     curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETDATA, (__bridge void *)self);
-    curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETFUNCTION, &_curlm_socket_function);
+    curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETFUNCTION, _curlm_socket_function);
     
     // timeout
     curl_multi_setopt(_rawHandle, CURLMOPT_TIMERDATA, (__bridge void *)self);
-    curl_multi_setopt(_rawHandle, CURLMOPT_TIMERFUNCTION, &_curlm_timer_function);
+    curl_multi_setopt(_rawHandle, CURLMOPT_TIMERFUNCTION, _curlm_timer_function);
 }
 
 - (int32_t)registerWithSocket:(curl_socket_t)socket what:(int)what socketSourcePtr:(void *)socketSourcePtr {
@@ -83,6 +84,41 @@
     return 0;
 }
 
+#pragma mark - Public Methods
+
+- (void)addHandle:(YMEasyHandle *)handle {
+    // If this is the first handle being added, we need to `kick` the
+    // underlying multi handle by calling `timeoutTimerFired` as
+    // described in
+    // <https://curl.haxx.se/libcurl/c/curl_multi_socket_action.html>.
+    // That will initiate the registration for timeout timer and socket
+    // readiness.
+    BOOL needsTimeout = false;
+    if ([_easyHandles count] == 0) needsTimeout = YES;
+    [_easyHandles addObject:handle];
+    // TODO: Try catch
+    curl_multi_add_handle(_rawHandle, handle.rawHandle);
+    if (needsTimeout) [self timeoutTimerFired];
+}
+
+- (void)removeHandle:(YMEasyHandle *)handle {
+    NSUInteger idx = [_easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if (obj.rawHandle == handle.rawHandle) {
+            *stop = YES;
+            return YES;
+        }
+        return NO;
+    }];
+    
+    if (idx == NSNotFound) {
+        // TODO: throw error
+    }
+    
+    [_easyHandles removeObjectAtIndex:idx];
+    // TODO: Try catch
+    curl_multi_remove_handle(_rawHandle, handle.rawHandle);
+}
+
 #pragma mark - libcurl callback
 
 NS_INLINE YMMultiHandle *from(void *userdata) {
@@ -96,6 +132,10 @@ int _curlm_socket_function(YMURLSessionEasyHandle easyHandle, curl_socket_t sock
         NSException *e = nil;
         @throw e;
     }
+    
+    [handle registerWithSocket:socket
+                          what:what
+               socketSourcePtr:socketptr];
     return 0;
 }
 
@@ -105,6 +145,7 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
         NSException *e = nil;
         @throw e;
     }
+    [handle updateTimeoutTimerToValue:timeout];
     return 0;
 }
 
@@ -113,6 +154,11 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
 - (void)performActionForSocket:(int)socket {
     // TODO: try catch
     [self readAndWriteAvailableDataOnSocket:socket];
+}
+
+- (void)timeoutTimerFired {
+    // TODO: try catch
+    [self readAndWriteAvailableDataOnSocket:CURL_SOCKET_TIMEOUT];
 }
 
 - (void)readAndWriteAvailableDataOnSocket:(int)socket {
@@ -164,6 +210,26 @@ CURLMsg mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) 
     if (msg->msg != CURLMSG_DONE) return info;
     
     return *msg;
+}
+
+- (void)updateTimeoutTimerToValue:(int)value {
+//    A timeout_ms value of -1 passed to this callback means you should delete the timer. All other values are valid expire times in number of milliseconds.
+    if (value == -1) _timeoutSource = nil;
+    else if (value == 0) {
+        _timeoutSource = nil;
+        dispatch_async(_queue, ^{
+            [self timeoutTimerFired];
+        });
+    } else {
+        if (_timeoutSource == nil || _timeoutSource.milliseconds != value) {
+            __weak typeof(self) _wself = self;
+            _timeoutSource = [[YMTimeoutSource alloc] initWithQueue:_queue
+                                                       milliseconds:value
+                                                            handler:^{
+                [_wself timeoutTimerFired];
+            }];
+        }
+    }
 }
 
 @end
@@ -258,7 +324,7 @@ CURLMsg mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) 
 }
 
 -(void)createReadSourceWithSocket:(curl_socket_t)socket queue:(dispatch_queue_t)queue handler:(dispatch_block_t)handler {
-    if (!_readSource) return;
+    if (_readSource) return;
     
     dispatch_source_t s = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, socket, 0, queue);
     dispatch_source_set_event_handler(s, handler);
@@ -267,7 +333,7 @@ CURLMsg mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) 
 }
 
 -(void)createWriteSourceWithSocket:(curl_socket_t)socket queue:(dispatch_queue_t)queue handler:(dispatch_block_t)handler {
-    if (!_writeSource) return;
+    if (_writeSource) return;
     
     dispatch_source_t s = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, socket, 0, queue);
     dispatch_source_set_event_handler(s, handler);
