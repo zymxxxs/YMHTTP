@@ -16,9 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) dispatch_queue_t queue;
 @property (nonatomic, strong) dispatch_block_t handler;
 
-- (instancetype)initWithQueue:(dispatch_queue_t)queue
-                 milliseconds:(int)milliseconds
-                      handler:(dispatch_block_t)handler;
+- (instancetype)initWithQueue:(dispatch_queue_t)queue milliseconds:(int)milliseconds handler:(dispatch_block_t)handler;
 
 @end
 

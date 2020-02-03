@@ -20,8 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-
-typedef void * YMURLSessionEasyHandle;
+typedef void *YMURLSessionEasyHandle;
 
 @interface YMEasyHandle : NSObject
 
@@ -32,7 +31,6 @@ typedef void * YMURLSessionEasyHandle;
 - (instancetype)initWithDelegate:(id<YMEasyHandleDelegate>)delegate;
 
 - (int)urlErrorCodeWithEasyCode:(int)easyCode;
-
 
 @end
 

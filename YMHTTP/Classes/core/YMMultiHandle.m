@@ -24,17 +24,14 @@
     if (self) {
         _rawHandle = curl_multi_init();
         _easyHandles = [[NSMutableArray alloc] init];
-        _queue = dispatch_queue_create_with_target("YMMutilHandle.isolation",
-                                                   DISPATCH_QUEUE_SERIAL,
-                                                   workQueque);
+        _queue = dispatch_queue_create_with_target("YMMutilHandle.isolation", DISPATCH_QUEUE_SERIAL, workQueque);
         [self setupCallbacks];
-        
     }
     return self;
 }
 
 - (void)dealloc {
-    [_easyHandles enumerateObjectsUsingBlock:^(YMEasyHandle * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+    [_easyHandles enumerateObjectsUsingBlock:^(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
         curl_multi_remove_handle(_rawHandle, obj.rawHandle);
     }];
     curl_multi_cleanup(_rawHandle);
@@ -44,7 +41,7 @@
     // socket
     curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETDATA, (__bridge void *)self);
     curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETFUNCTION, _curlm_socket_function);
-    
+
     // timeout
     curl_multi_setopt(_rawHandle, CURLMOPT_TIMERDATA, (__bridge void *)self);
     curl_multi_setopt(_rawHandle, CURLMOPT_TIMERFUNCTION, _curlm_timer_function);
@@ -58,11 +55,11 @@
     // through libdispatch (DispatchSource) and store the source(s) inside
     // a `SocketSources` which we in turn store inside libcurl's multi handle
     // by means of curl_multi_assign() -- we retain the object fist.
-    
+
     YMSocketRegisterAction *action = [[YMSocketRegisterAction alloc] initWithRawValue:what];
     YMSocketSources *socketSources = [YMSocketSources from:socketSourcePtr];
 
-    if (socketSources==nil && action.needsSource) {
+    if (socketSources == nil && action.needsSource) {
         YMSocketSources *s = [[YMSocketSources alloc] init];
         void *sp = (__bridge_retained void *)s;
         curl_multi_assign(_rawHandle, socket, sp);
@@ -77,10 +74,10 @@
                                         socket:socket
                                          queue:_queue
                                        handler:^{
-            [_wself performActionForSocket:socket];
-        }];
+                                           [_wself performActionForSocket:socket];
+                                       }];
     }
-    
+
     return 0;
 }
 
@@ -102,18 +99,19 @@
 }
 
 - (void)removeHandle:(YMEasyHandle *)handle {
-    NSUInteger idx = [_easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        if (obj.rawHandle == handle.rawHandle) {
-            *stop = YES;
-            return YES;
-        }
-        return NO;
-    }];
-    
+    NSUInteger idx =
+        [_easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+            if (obj.rawHandle == handle.rawHandle) {
+                *stop = YES;
+                return YES;
+            }
+            return NO;
+        }];
+
     if (idx == NSNotFound) {
         // TODO: throw error
     }
-    
+
     [_easyHandles removeObjectAtIndex:idx];
     // TODO: Try catch
     curl_multi_remove_handle(_rawHandle, handle.rawHandle);
@@ -126,16 +124,15 @@ NS_INLINE YMMultiHandle *from(void *userdata) {
     return (__bridge YMMultiHandle *)userdata;
 }
 
-int _curlm_socket_function(YMURLSessionEasyHandle easyHandle, curl_socket_t socket, int what, void *userdata, void *socketptr) {
+int _curlm_socket_function(
+    YMURLSessionEasyHandle easyHandle, curl_socket_t socket, int what, void *userdata, void *socketptr) {
     YMMultiHandle *handle = from(userdata);
     if (!handle) {
         NSException *e = nil;
         @throw e;
     }
-    
-    [handle registerWithSocket:socket
-                          what:what
-               socketSourcePtr:socketptr];
+
+    [handle registerWithSocket:socket what:what socketSourcePtr:socketptr];
     return 0;
 }
 
@@ -149,7 +146,7 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
     return 0;
 }
 
-# pragma mark - Primate Methods
+#pragma mark - Primate Methods
 
 - (void)performActionForSocket:(int)socket {
     // TODO: try catch
@@ -178,27 +175,26 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
         if (!msg.easy_handle) break;
         YMURLSessionEasyHandle easyHandle = msg.easy_handle;
         int code = msg.data.result;
-        [self completedTransferForEasyHandle:easyHandle
-                                    easyCode:code];
+        [self completedTransferForEasyHandle:easyHandle easyCode:code];
     }
 }
 
 - (void)completedTransferForEasyHandle:(YMURLSessionEasyHandle)handle easyCode:(int)easyCode {
-    NSUInteger idx = [_easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        if (obj.rawHandle == handle) {
-            *stop = YES;
-            return YES;
-        }
-        return NO;
-    }];
-    
+    NSUInteger idx =
+        [_easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+            if (obj.rawHandle == handle) {
+                *stop = YES;
+                return YES;
+            }
+            return NO;
+        }];
+
     if (idx == NSNotFound) {
         // TODO: Transfer completed for easy handle, but it is not in the list of added handles.
     }
     YMEasyHandle *easyHandle = _easyHandles[idx];
     int errCode = [easyHandle urlErrorCodeWithEasyCode:easyCode];
     if (errCode != 0) {
-        
     }
 }
 
@@ -206,15 +202,17 @@ CURLMsg mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) 
     CURLMsg info = {};
     CURLMsg *msg = curl_multi_info_read(handle, msgs_in_queue);
     if (msg == NULL) return info;
-    
+
     if (msg->msg != CURLMSG_DONE) return info;
-    
+
     return *msg;
 }
 
 - (void)updateTimeoutTimerToValue:(int)value {
-//    A timeout_ms value of -1 passed to this callback means you should delete the timer. All other values are valid expire times in number of milliseconds.
-    if (value == -1) _timeoutSource = nil;
+    //    A timeout_ms value of -1 passed to this callback means you should delete the timer. All other values are valid
+    //    expire times in number of milliseconds.
+    if (value == -1)
+        _timeoutSource = nil;
     else if (value == 0) {
         _timeoutSource = nil;
         dispatch_async(_queue, ^{
@@ -226,14 +224,13 @@ CURLMsg mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) 
             _timeoutSource = [[YMTimeoutSource alloc] initWithQueue:_queue
                                                        milliseconds:value
                                                             handler:^{
-                [_wself timeoutTimerFired];
-            }];
+                                                                [_wself timeoutTimerFired];
+                                                            }];
         }
     }
 }
 
 @end
-
 
 @implementation YMSocketRegisterAction
 
@@ -257,16 +254,15 @@ CURLMsg mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) 
                 _type = YMSocketRegisterActionTypeUnregister;
                 break;
             default:
-                //TODO: throw a exception
+                // TODO: throw a exception
                 break;
         }
     }
     return self;
 }
 
-
 /// Should a libdispatch source be registered for **read** readiness?
--(BOOL)needsReadSource {
+- (BOOL)needsReadSource {
     switch (_type) {
         case YMSocketRegisterActionTypeNone:
             return false;
@@ -281,9 +277,8 @@ CURLMsg mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) 
     }
 }
 
-
 /// Should a libdispatch source be registered for **write** readiness?
--(BOOL)needsWriteSource {
+- (BOOL)needsWriteSource {
     switch (_type) {
         case YMSocketRegisterActionTypeNone:
             return false;
@@ -306,47 +301,49 @@ CURLMsg mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) 
 
 @end
 
-
 @implementation YMSocketSources
 
-- (void)createSourcesWithAction:(YMSocketRegisterAction *)action socket:(curl_socket_t)socket queue:(dispatch_queue_t)queue handler:(dispatch_block_t)handler {
+- (void)createSourcesWithAction:(YMSocketRegisterAction *)action
+                         socket:(curl_socket_t)socket
+                          queue:(dispatch_queue_t)queue
+                        handler:(dispatch_block_t)handler {
     if (action.needsReadSource) {
-        [self createReadSourceWithSocket:socket
-                                   queue:queue
-                                 handler:handler];
+        [self createReadSourceWithSocket:socket queue:queue handler:handler];
     }
-    
+
     if (action.needsWriteSource) {
-        [self createWriteSourceWithSocket:socket
-                                    queue:queue
-                                  handler:handler];
+        [self createWriteSourceWithSocket:socket queue:queue handler:handler];
     }
 }
 
--(void)createReadSourceWithSocket:(curl_socket_t)socket queue:(dispatch_queue_t)queue handler:(dispatch_block_t)handler {
+- (void)createReadSourceWithSocket:(curl_socket_t)socket
+                             queue:(dispatch_queue_t)queue
+                           handler:(dispatch_block_t)handler {
     if (_readSource) return;
-    
+
     dispatch_source_t s = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, socket, 0, queue);
     dispatch_source_set_event_handler(s, handler);
     _readSource = s;
     dispatch_resume(s);
 }
 
--(void)createWriteSourceWithSocket:(curl_socket_t)socket queue:(dispatch_queue_t)queue handler:(dispatch_block_t)handler {
+- (void)createWriteSourceWithSocket:(curl_socket_t)socket
+                              queue:(dispatch_queue_t)queue
+                            handler:(dispatch_block_t)handler {
     if (_writeSource) return;
-    
+
     dispatch_source_t s = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, socket, 0, queue);
     dispatch_source_set_event_handler(s, handler);
     _writeSource = s;
     dispatch_resume(s);
 }
 
--(void)tearDown {
+- (void)tearDown {
     if (_readSource) {
         dispatch_source_cancel(_readSource);
     }
     _readSource = nil;
-    
+
     if (_writeSource) {
         dispatch_source_cancel(_writeSource);
     }

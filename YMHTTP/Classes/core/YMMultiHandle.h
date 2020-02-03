@@ -9,7 +9,7 @@
 #import "YMEasyHandle.h"
 #include "curl.h"
 
-typedef void * YMURLSessionMultiHandle;
+typedef void *YMURLSessionMultiHandle;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -23,14 +23,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-
 typedef NS_ENUM(NSUInteger, YMSocketRegisterActionType) {
     YMSocketRegisterActionTypeNone = 0,
     YMSocketRegisterActionTypeRegisterRead,
     YMSocketRegisterActionTypeRegisterWrite,
     YMSocketRegisterActionTypeRegisterReadAndWrite,
     YMSocketRegisterActionTypeUnregister
-    
+
 };
 
 @interface YMSocketRegisterAction : NSObject
@@ -44,15 +43,21 @@ typedef NS_ENUM(NSUInteger, YMSocketRegisterActionType) {
 
 @end
 
-
 @interface YMSocketSources : NSObject
 
 @property (nonatomic, strong, nullable) dispatch_source_t readSource;
 @property (nonatomic, strong, nullable) dispatch_source_t writeSource;
 
-- (void)createSourcesWithAction:(YMSocketRegisterAction *)action socket:(curl_socket_t)socket queue:(dispatch_queue_t)queue handler:(dispatch_block_t)handler;
-- (void)createReadSourceWithSocket:(curl_socket_t)socket queue:(dispatch_queue_t)queue handler:(dispatch_block_t)handler;
-- (void)createWriteSourceWithSocket:(curl_socket_t)socket queue:(dispatch_queue_t)queue handler:(dispatch_block_t)handler;
+- (void)createSourcesWithAction:(YMSocketRegisterAction *)action
+                         socket:(curl_socket_t)socket
+                          queue:(dispatch_queue_t)queue
+                        handler:(dispatch_block_t)handler;
+- (void)createReadSourceWithSocket:(curl_socket_t)socket
+                             queue:(dispatch_queue_t)queue
+                           handler:(dispatch_block_t)handler;
+- (void)createWriteSourceWithSocket:(curl_socket_t)socket
+                              queue:(dispatch_queue_t)queue
+                            handler:(dispatch_block_t)handler;
 
 + (instancetype)from:(void *)socketSourcePtr;
 

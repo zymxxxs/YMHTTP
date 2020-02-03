@@ -1,0 +1,14 @@
+---
+BasedOnStyle: Google
+---
+Language: ObjC
+BinPackArguments: false
+BinPackParameters: false
+ColumnLimit: 120
+PointerAlignment: Right
+IndentWidth: 4
+ObjCSpaceAfterProperty: true
+ObjCSpaceBeforeProtocolList: true
+ObjCBlockIndentWidth: 4
+TabWidth: 4
+UseTab: Never
