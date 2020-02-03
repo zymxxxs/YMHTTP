@@ -8,6 +8,8 @@
 #import "YMMultiHandle.h"
 #import "YMEasyHandle.h"
 #import "YMTimeoutSource.h"
+#import "YMURLSessionConfiguration.h"
+#import "curl.h"
 
 @interface YMMultiHandle ()
 
@@ -19,13 +21,15 @@
 
 @implementation YMMultiHandle
 
-- (instancetype)initWithWorkQueue:(dispatch_queue_t)workQueque {
+- (instancetype)initWithConfiguration:(YMURLSessionConfiguration *)configuration
+                            WorkQueue:(dispatch_queue_t)workQueque {
     self = [super init];
     if (self) {
         _rawHandle = curl_multi_init();
         _easyHandles = [[NSMutableArray alloc] init];
         _queue = dispatch_queue_create_with_target("YMMutilHandle.isolation", DISPATCH_QUEUE_SERIAL, workQueque);
         [self setupCallbacks];
+        [self configureWithConfiguration:configuration];
     }
     return self;
 }
@@ -35,6 +39,10 @@
         curl_multi_remove_handle(_rawHandle, obj.rawHandle);
     }];
     curl_multi_cleanup(_rawHandle);
+}
+
+- (void)configureWithConfiguration:(YMURLSessionConfiguration *)configuration {
+    NSLog(@"%lu", (unsigned long)[configuration requestCachePolicy]);
 }
 
 - (void)setupCallbacks {

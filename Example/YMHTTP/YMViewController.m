@@ -9,6 +9,8 @@
 #import "YMViewController.h"
 #import <YMHTTP/YMEasyHandle.h>
 #import <YMHTTP/YMMultiHandle.h>
+#import <YMHTTP/YMURLSessionConfiguration.h>
+#import <YMHTTP/YMURLSession.h>
 
 @interface YMViewController ()
 
@@ -23,13 +25,15 @@
     [super viewDidLoad];
 	
     dispatch_queue_t queue = dispatch_queue_create("com.aaa.bbb.ccc", DISPATCH_QUEUE_CONCURRENT);
-    _mh = [[YMMultiHandle alloc] initWithWorkQueue:queue];
+    _mh = [[YMMultiHandle alloc] initWithConfiguration:nil WorkQueue:queue];
     YMEasyHandle *eh = [[YMEasyHandle alloc] initWithDelegate:nil];
     [_mh addHandle:eh];
     
-    CFNetworkErrors
+    [NSURLSessionConfiguration defaultSessionConfiguration];
+    [[YMURLSessionConfiguration defaultSessionConfiguration] HTTPAdditionalHeaders];
+    [YMURLSession sessionWithConfiguration:nil];
     
-    connectionProxyDictionary
+    NSURLSessionTask
 }
 
 - (void)didReceiveMemoryWarning

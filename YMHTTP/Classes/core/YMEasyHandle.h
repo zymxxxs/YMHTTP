@@ -6,7 +6,6 @@
 //
 
 #import <Foundation/Foundation.h>
-#include "curl.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

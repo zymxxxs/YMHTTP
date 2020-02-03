@@ -8,6 +8,7 @@
 #import "YMEasyHandle.h"
 #import "YMMacro.h"
 #import "YMTimeoutSource.h"
+#import "curl.h"
 
 @interface YMEasyHandle ()
 
@@ -33,6 +34,7 @@
         //增加HTTP header
         headers = curl_slist_append(headers, "Content-Type:application/json");
         curl_easy_setopt(_rawHandle, CURLOPT_HTTPHEADER, headers);
+
         //        CURLcode rsp_code = curl_easy_perform(_rawHandle);
         //        if (CURLE_OK == rsp_code) {
         //            NSLog(@"请求返回成功");

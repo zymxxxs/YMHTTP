@@ -6,6 +6,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "curl.h"
 
 #ifndef YMMacro_h
 #define YMMacro_h
@@ -27,5 +28,10 @@
 typedef void (^ym_deferBlock_t)(void);
 
 NS_INLINE void ym_deferFunc(__strong ym_deferBlock_t *blockRef) { (*blockRef)(); }
+
+NS_INLINE void ym_initializeLibcurl() {
+    // TODO: throws
+    curl_global_init(CURL_GLOBAL_SSL);
+}
 
 #endif /* YMMacro_h */

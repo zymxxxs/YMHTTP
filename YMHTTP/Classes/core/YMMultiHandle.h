@@ -6,8 +6,10 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "YMEasyHandle.h"
-#include "curl.h"
+#import "curl.h"
+
+@class YMURLSessionConfiguration;
+@class YMEasyHandle;
 
 typedef void *YMURLSessionMultiHandle;
 
@@ -17,7 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, assign) YMURLSessionMultiHandle rawHandle;
 
-- (instancetype)initWithWorkQueue:(dispatch_queue_t)workQueque;
+- (instancetype)initWithConfiguration:(YMURLSessionConfiguration *)configuration WorkQueue:(dispatch_queue_t)workQueque;
 - (void)addHandle:(YMEasyHandle *)handle;
 - (void)removeHandle:(YMEasyHandle *)handle;
 
