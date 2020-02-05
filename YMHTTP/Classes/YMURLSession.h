@@ -8,6 +8,7 @@
 #import <Foundation/Foundation.h>
 
 @class YMURLSessionConfiguration;
+@class YMURLSessionTask;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -23,10 +24,26 @@ NS_ASSUME_NONNULL_BEGIN
                                   delegate:(nullable id<NSURLSessionDelegate>)delegate
                              delegateQueue:(nullable NSOperationQueue *)queue;
 
-@property (readonly, retain) NSOperationQueue *delegateQueue;
-@property (nullable, readonly, retain) id<NSURLSessionDelegate> delegate;
+@property (readonly, strong) NSOperationQueue *delegateQueue;
+@property (nullable, readonly, strong) id<NSURLSessionDelegate> delegate;
 @property (readonly, copy) YMURLSessionConfiguration *configuration;
 @property (nullable, copy) NSString *sessionDescription;
+@property (readonly, nonatomic, strong) dispatch_queue_t workQueue;
+
+- (YMURLSessionTask *)dataTaskWithRequest:(NSURLRequest *)request;
+
+- (YMURLSessionTask *)dataTaskWithURL:(NSURL *)url;
+
+// TODO: dataTask
+- (YMURLSessionTask *)dataTaskWithRequest:(NSURLRequest *)request
+                        completionHandler:(void (^)(NSData *_Nullable data,
+                                                    NSURLResponse *_Nullable response,
+                                                    NSError *_Nullable error))completionHandler;
+
+- (YMURLSessionTask *)dataTaskWithURL:(NSURL *)url
+                    completionHandler:(void (^)(NSData *_Nullable data,
+                                                NSURLResponse *_Nullable response,
+                                                NSError *_Nullable error))completionHandler;
 
 - (instancetype)init __attribute__((unavailable(
     "Please use NSURLSessionConfiguration.defaultSessionConfiguration or other class methods to create instances")));

@@ -38,6 +38,27 @@
     return [self defaultSessionConfiguration];
 }
 
+- (NSURLRequest *)configureRequest:(NSURLRequest *)request {
+    return [self setCookiesOnReqeust:request];
+}
+
+- (NSURLRequest *)setCookiesOnReqeust:(NSURLRequest *)request {
+    NSMutableURLRequest *r = [request mutableCopy];
+    if (_HTTPShouldSetCookies) {
+        if (_HTTPCookieStorage && request.URL) {
+            NSArray *cookies = [_HTTPCookieStorage cookiesForURL:request.URL];
+            if (cookies) {
+                NSDictionary *cookiesHeaderFields = [NSHTTPCookie requestHeaderFieldsWithCookies:cookies];
+                NSString *cookieValue = cookiesHeaderFields[@"cookie"];
+                if (cookieValue && cookieValue.length) {
+                    [request setValue:cookieValue forKey:@"cookie"];
+                }
+            }
+        }
+    }
+    return [r copy];
+}
+
 - (id)copyWithZone:(NSZone *)zone {
     return [[self.class alloc] init];
 }

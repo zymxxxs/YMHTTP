@@ -23,7 +23,7 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-	
+
     dispatch_queue_t queue = dispatch_queue_create("com.aaa.bbb.ccc", DISPATCH_QUEUE_CONCURRENT);
     _mh = [[YMMultiHandle alloc] initWithConfiguration:nil WorkQueue:queue];
     YMEasyHandle *eh = [[YMEasyHandle alloc] initWithDelegate:nil];
@@ -33,7 +33,6 @@
     [[YMURLSessionConfiguration defaultSessionConfiguration] HTTPAdditionalHeaders];
     [YMURLSession sessionWithConfiguration:nil];
     
-    NSURLSessionTask
 }
 
 - (void)didReceiveMemoryWarning

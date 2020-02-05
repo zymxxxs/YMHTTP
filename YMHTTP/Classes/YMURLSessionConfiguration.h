@@ -47,13 +47,17 @@ NS_ASSUME_NONNULL_BEGIN
 @property NSInteger HTTPMaximumConnectionsPerHost;
 
 /// The cookie storage object to use, or nil to indicate that no cookies should be handled
-@property (nullable, retain) NSHTTPCookieStorage *HTTPCookieStorage;
+@property (nullable, strong) NSHTTPCookieStorage *HTTPCookieStorage;
 
 /// The credential storage object, or nil to indicate that no credential storage is to be used
-@property (nullable, retain) NSURLCredentialStorage *URLCredentialStorage;
+@property (nullable, strong) NSURLCredentialStorage *URLCredentialStorage;
 
 /// The URL resource cache, or nil to indicate that no caching is to be performed
-@property (nullable, retain) NSURLCache *URLCache;
+@property (nullable, strong) NSURLCache *URLCache;
+
+- (NSURLRequest *)configureRequest:(NSURLRequest *)request;
+
+- (NSURLRequest *)setCookiesOnReqeust:(NSURLRequest *)request;
 
 - (instancetype)init __attribute__((unavailable(
     "Please use NSURLSessionConfiguration.defaultSessionConfiguration or other class methods to create instances")));
