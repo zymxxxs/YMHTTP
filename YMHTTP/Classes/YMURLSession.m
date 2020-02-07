@@ -40,7 +40,7 @@ NS_INLINE int nextSessionIdentifier() {
 #pragma mark - Public Methods
 
 - (instancetype)initWithConfiguration:(YMURLSessionConfiguration *)configuration
-                             delegate:(id<NSURLSessionDelegate>)delegate
+                             delegate:(id<YMURLSessionDelegate>)delegate
                         delegateQueue:(NSOperationQueue *)queue {
     self = [super init];
     if (self) {
@@ -68,7 +68,7 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 + (YMURLSession *)sessionWithConfiguration:(YMURLSessionConfiguration *)configuration
-                                  delegate:(id<NSURLSessionDelegate>)delegate
+                                  delegate:(id<YMURLSessionDelegate>)delegate
                              delegateQueue:(NSOperationQueue *)queue {
     return [[YMURLSession alloc] initWithConfiguration:configuration delegate:delegate delegateQueue:queue];
 }
@@ -79,6 +79,10 @@ NS_INLINE int nextSessionIdentifier() {
 
 - (YMURLSessionTask *)dataTaskWithURL:(NSURL *)url {
     return [self dataTaskWithRequest:url behaviour:nil];
+}
+
+- (YMURLSessionTask *)dataTaskWithRequest:(NSURLRequest *)request {
+    return [self dataTaskWithRequest:request behaviour:nil];
 }
 
 #pragma mark - Private Methods

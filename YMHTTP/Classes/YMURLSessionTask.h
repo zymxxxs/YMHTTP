@@ -8,6 +8,7 @@
 #import <Foundation/Foundation.h>
 
 @class YMURLSession;
+@class YMURLSessionTaskBody;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -33,7 +34,7 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
 - (instancetype)initWithSession:(YMURLSession *)session
                         reqeust:(NSURLRequest *)request
                  taskIdentifier:(NSUInteger)taskIdentifier
-                           body:(NSString *)body;
+                           body:(nullable YMURLSessionTaskBody *)body;
 
 - (void)suspend;
 - (void)resume;
