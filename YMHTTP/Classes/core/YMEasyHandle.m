@@ -62,10 +62,10 @@
     curl_easy_setopt(_rawHandle, CURLOPT_WRITEDATA, (__bridge void *)self);
     curl_easy_setopt(_rawHandle, CURLOPT_WRITEFUNCTION, _curl_write_function);
 
-    //    // read
+    // read
     curl_easy_setopt(_rawHandle, CURLOPT_READDATA, (__bridge void *)self);
     curl_easy_setopt(_rawHandle, CURLOPT_READFUNCTION, _curl_read_function);
-    //
+
     // header
     curl_easy_setopt(_rawHandle, CURLOPT_HEADERDATA, (__bridge void *)self);
     curl_easy_setopt(_rawHandle, CURLOPT_HEADERFUNCTION, _curl_header_function);

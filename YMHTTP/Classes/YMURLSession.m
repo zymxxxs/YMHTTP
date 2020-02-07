@@ -8,6 +8,7 @@
 #import "YMURLSession.h"
 #import "YMMacro.h"
 #import "YMMultiHandle.h"
+#import "YMTaskRegistry.h"
 #import "YMURLSessionConfiguration.h"
 #import "YMURLSessionTask.h"
 
@@ -30,6 +31,7 @@ NS_INLINE int nextSessionIdentifier() {
 @property (nonatomic, assign) int identifier;
 @property (nonatomic, assign) BOOL invalidated;
 @property (nonatomic, assign) NSUInteger nextTaskIdentifier;
+@property (nonatomic, strong) YMTaskRegistry *taskRegistry;
 
 @end
 
@@ -42,6 +44,7 @@ NS_INLINE int nextSessionIdentifier() {
                         delegateQueue:(NSOperationQueue *)queue {
     self = [super init];
     if (self) {
+        _taskRegistry = [[YMTaskRegistry alloc] init];
         ym_initializeLibcurl();
         _identifier = nextSessionIdentifier();
         _workQueue = dispatch_queue_create("", DISPATCH_QUEUE_SERIAL);
@@ -87,10 +90,9 @@ NS_INLINE int nextSessionIdentifier() {
     NSURLRequest *r = [self createConfiguredRequestFrom:request];
     NSUInteger i = [self createNextTaskIdentifier];
     YMURLSessionTask *task = [[YMURLSessionTask alloc] initWithSession:self reqeust:r taskIdentifier:i];
-    dispatch_async(_workQueue,
-                   ^{
-
-                   });
+    dispatch_async(_workQueue, ^{
+        [self.taskRegistry addWithTask:task];
+    });
     return task;
 }
 
