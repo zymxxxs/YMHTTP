@@ -23,15 +23,13 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readonly, nonatomic, strong) NSURL *fileURL;
 @property (readonly, nonatomic, strong) NSInputStream *inputStream;
 
-
 - (instancetype)init;
 - (instancetype)initWithData:(NSData *)data;
 - (instancetype)initWithFileURL:(NSURL *)fileURL;
 - (instancetype)initWithInputStream:(NSInputStream *)InputStream;
 
-
 /// - Returns: The body length, or `nil` for no body (e.g. `GET` request).
--(NSNumber *)getBodyLengthWithError:(NSError **)error;
+- (NSNumber *)getBodyLengthWithError:(NSError **)error;
 
 @end
 

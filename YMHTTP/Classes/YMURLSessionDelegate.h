@@ -18,11 +18,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol YMURLSessionTaskDelegate <NSURLSessionDelegate>
 
-
 @optional
-- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task
-needNewBodyStream:(void (^)(NSInputStream * _Nullable bodyStream))completionHandler;
-
+- (void)YMURLSession:(YMURLSession *)session
+                 task:(YMURLSessionTask *)task
+    needNewBodyStream:(void (^)(NSInputStream *_Nullable bodyStream))completionHandler;
 
 @end
 

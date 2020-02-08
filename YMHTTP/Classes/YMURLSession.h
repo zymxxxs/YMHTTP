@@ -9,6 +9,7 @@
 #import "YMURLSessionDelegate.h"
 
 @class YMURLSessionConfiguration;
+@class YMURLSessionTaskBehaviour;
 @class YMURLSessionTask;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -45,6 +46,8 @@ NS_ASSUME_NONNULL_BEGIN
 //                    completionHandler:(void (^)(NSData *_Nullable data,
 //                                                NSURLResponse *_Nullable response,
 //                                                NSError *_Nullable error))completionHandler;
+
+- (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task;
 
 - (instancetype)init __attribute__((unavailable(
     "Please use NSURLSessionConfiguration.defaultSessionConfiguration or other class methods to create instances")));

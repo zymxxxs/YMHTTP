@@ -8,7 +8,6 @@
 #import "NSURLCache+YMCategory.h"
 #import "YMURLSessionTask.h"
 
-
 @implementation NSURLCache (YMCategory)
 
 - (void)ym_removeCachedResponseForDataTask:(YMURLSessionTask *)dataTask {
@@ -21,7 +20,8 @@
     [self storeCachedResponse:cachedResponse forRequest:dataTask.currentRequest];
 }
 
-- (void)ym_getCachedResponseForDataTask:(YMURLSessionTask *)dataTask completionHandler:(void (^)(NSCachedURLResponse * _Nullable))completionHandler {
+- (void)ym_getCachedResponseForDataTask:(YMURLSessionTask *)dataTask
+                      completionHandler:(void (^)(NSCachedURLResponse *_Nullable))completionHandler {
     if (!dataTask.currentRequest) {
         completionHandler(nil);
         return;

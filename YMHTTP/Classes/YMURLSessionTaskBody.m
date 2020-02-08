@@ -17,7 +17,7 @@
     return self;
 }
 
--(instancetype)initWithData:(NSData *)data {
+- (instancetype)initWithData:(NSData *)data {
     self = [super init];
     if (self) {
         _type = YMURLSessionTaskBodyTypeData;
@@ -26,7 +26,7 @@
     return self;
 }
 
--(instancetype)initWithFileURL:(NSURL *)fileURL {
+- (instancetype)initWithFileURL:(NSURL *)fileURL {
     self = [super init];
     if (self) {
         _type = YMURLSessionTaskBodyTypeFile;
@@ -35,7 +35,7 @@
     return self;
 }
 
--(instancetype)initWithInputStream:(NSInputStream *)InputStream {
+- (instancetype)initWithInputStream:(NSInputStream *)InputStream {
     self = [super init];
     if (self) {
         _type = YMURLSessionTaskBodyTypeStream;
@@ -50,9 +50,9 @@
             return @(0);
         case YMURLSessionTaskBodyTypeData:
             return [NSNumber numberWithUnsignedInteger:[_data length]];
-        case YMURLSessionTaskBodyTypeFile:
-        {
-            NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:_fileURL.path error:error];
+        case YMURLSessionTaskBodyTypeFile: {
+            NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:_fileURL.path
+                                                                                        error:error];
             if (!error) {
                 NSNumber *size = attributes[NSFileSize];
                 return size;

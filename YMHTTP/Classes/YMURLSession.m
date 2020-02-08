@@ -11,6 +11,7 @@
 #import "YMTaskRegistry.h"
 #import "YMURLSessionConfiguration.h"
 #import "YMURLSessionTask.h"
+#import "YMURLSessionTaskBehaviour.h"
 
 static dispatch_queue_t _globalVarSyncQ = nil;
 static int sessionCounter = 0;
@@ -85,9 +86,19 @@ NS_INLINE int nextSessionIdentifier() {
     return [self dataTaskWithRequest:request behaviour:nil];
 }
 
+- (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task {
+    YMURLSessionTaskBehaviour *b = [_taskRegistry behaviourForTask:task];
+    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
+        if (!_delegate || [_delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)]) {
+            b.type = YMURLSessionTaskBehaviourTypeNoDelegate;
+        }
+    }
+    return b;
+}
+
 #pragma mark - Private Methods
 
-- (YMURLSessionTask *)dataTaskWithRequest:(id)request behaviour:(NSString *)behaviour {
+- (YMURLSessionTask *)dataTaskWithRequest:(id)request behaviour:(YMURLSessionTaskBehaviour *)behaviour {
     if (_invalidated) {
         // TODO: throw
     }
@@ -95,7 +106,8 @@ NS_INLINE int nextSessionIdentifier() {
     NSUInteger i = [self createNextTaskIdentifier];
     YMURLSessionTask *task = [[YMURLSessionTask alloc] initWithSession:self reqeust:r taskIdentifier:i];
     dispatch_async(_workQueue, ^{
-        [self.taskRegistry addWithTask:task];
+        YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+        [self.taskRegistry addWithTask:task behaviour:b];
     });
     return task;
 }

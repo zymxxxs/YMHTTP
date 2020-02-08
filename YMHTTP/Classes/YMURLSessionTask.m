@@ -6,11 +6,13 @@
 //
 
 #import "YMURLSessionTask.h"
-#import "YMURLSession.h"
 #import "YMEasyHandle.h"
-#import "YMURLSessionTaskBody.h"
-#import "YMURLSessionDelegate.h"
 #import "YMMacro.h"
+#import "YMTransferState.h"
+#import "YMURLSession.h"
+#import "YMURLSessionDelegate.h"
+#import "YMURLSessionTaskBehaviour.h"
+#import "YMURLSessionTaskBody.h"
 
 typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     /// Task has been created, but nothing has been done, yet
@@ -61,9 +63,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 @property (nonatomic, strong) YMEasyHandle *easyHandle;
 @property (nonatomic, assign) YMURLSessionTaskInternalState internalState;
+@property (nonatomic, strong) YMTransferState *transferState;
 @property (nonatomic, strong) NSCachedURLResponse *cachedResponse;
 @property (nonatomic, strong) YMURLSessionTaskBody *knownBody;
-
 
 @end
 
@@ -83,7 +85,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] init];
         return [self initWithSession:session reqeust:request taskIdentifier:taskIdentifier body:body];
     }
-
 }
 
 - (instancetype)initWithSession:(YMURLSession *)session
@@ -161,14 +162,13 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         if (!_originalRequest) {
             // TODO: error
         }
-        
+
         if (_cachedResponse && [self canRespondFromCacheUsingResponse:_cachedResponse]) {
-            
         } else {
             [self startNewTransferByRequest:_originalRequest];
         }
     }
-    
+
     if (_internalState == YMURLSessionTaskInternalStateTransferReady) {
         _internalState = YMURLSessionTaskInternalStateTransferInProgress;
     }
@@ -183,36 +183,38 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     if (!request.URL) {
         // TODO: error
     }
-    
+
     [self getBodyWithCompletion:^(YMURLSessionTaskBody *body) {
         self.internalState = YMURLSessionTaskInternalStateTransferReady;
+        self.transferState = [self createTransferStateWithURL:request.URL body:body workQueue:_workQueue];
         NSURLRequest *r = self.authRequest ?: request;
         [self configureEasyHandleForRequest:r body:body];
-        if(self.suspendCount < 1) {
+        if (self.suspendCount < 1) {
             [self startLoading];
         }
     }];
 }
 
-- (void)getBodyWithCompletion:(void(^)(YMURLSessionTaskBody *body))completion {
+- (void)getBodyWithCompletion:(void (^)(YMURLSessionTaskBody *body))completion {
     if (_knownBody) {
         completion(_knownBody);
         return;
     };
-    
-    if (_session && _session.delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)] && [_session.delegate respondsToSelector:@selector(YMURLSession:task:needNewBodyStream:)]) {
+
+    if (_session && _session.delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)] &&
+        [_session.delegate respondsToSelector:@selector(YMURLSession:task:needNewBodyStream:)]) {
         id<YMURLSessionTaskDelegate> delegate = (id<YMURLSessionTaskDelegate>)_session.delegate;
         [delegate YMURLSession:_session
                           task:self
-             needNewBodyStream:^(NSInputStream * _Nullable bodyStream) {
-            if (bodyStream) {
-                YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithInputStream:bodyStream];
-                completion(body);
-            } else {
-                YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] init];
-                completion(body);
-            }
-        }];
+             needNewBodyStream:^(NSInputStream *_Nullable bodyStream) {
+                 if (bodyStream) {
+                     YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithInputStream:bodyStream];
+                     completion(body);
+                 } else {
+                     YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] init];
+                     completion(body);
+                 }
+             }];
     } else {
         YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] init];
         completion(body);
@@ -220,7 +222,51 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 }
 
 - (void)configureEasyHandleForRequest:(NSURLRequest *)request body:(YMURLSessionTaskBody *)body {
-    
+}
+
+- (YMTransferState *)createTransferStateWithURL:(NSURL *)url
+                                           body:(YMURLSessionTaskBody *)body
+                                      workQueue:(dispatch_queue_t)workQueue {
+    YMDataDrain *drain = [self createTransferBodyDataDrain];
+    switch (body.type) {
+        case YMURLSessionTaskBodyTypeNone:
+            return [[YMTransferState alloc] initWithURL:url dataDrain:drain];
+            break;
+        case YMURLSessionTaskBodyTypeData:
+            // TODO: fix
+            break;
+        case YMURLSessionTaskBodyTypeFile:
+            // TODO: fix
+            break;
+        case YMURLSessionTaskBodyTypeStream:
+            // TODO: fix
+            break;
+        default:
+            break;
+    }
+    return nil;
+}
+
+- (YMDataDrain *)createTransferBodyDataDrain {
+    YMURLSession *s = _session;
+    YMURLSessionTaskBehaviour *b = [s behaviourForTask:self];
+    YMDataDrain *dd = [[YMDataDrain alloc] init];
+    switch (b.type) {
+        case YMURLSessionTaskBehaviourTypeNoDelegate:
+            dd.type = YMDataDrainTypeIgnore;
+            return dd;
+        case YMURLSessionTaskBehaviourTypeTaskDelegate:
+            dd.type = YMDataDrainTypeIgnore;
+            return dd;
+        case YMURLSessionTaskBehaviourTypeDataHandler:
+            dd.type = YMDYMDataDraineInMemory;
+            dd.data = nil;
+            return dd;
+        case YMURLSessionTaskBehaviourTypeDownloadHandler:
+            // TODO: Download
+            break;
+    }
+    return nil;
 }
 
 @end

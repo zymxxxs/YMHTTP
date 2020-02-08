@@ -8,27 +8,24 @@
 #import <Foundation/Foundation.h>
 
 @class YMURLSessionTask;
+@class YMURLSessionTaskBehaviour;
 
 NS_ASSUME_NONNULL_BEGIN
-
-typedef NS_ENUM(NSUInteger, YMTaskRegistryBehaviour) {
-    YMTaskRegistryBehaviourDelegate,
-    MyEnumValueBYMTaskRegistryBehaviourCompletionHandler,
-};
 
 @interface YMTaskRegistry : NSObject
 
 @property (nonatomic, strong) NSMutableDictionary<NSString *, YMURLSessionTask *> *tasks;
-@property (nonatomic, strong) NSMutableDictionary<NSString *, NSValue *> *behaviours;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, YMURLSessionTaskBehaviour *> *behaviours;
 @property (readonly, nonatomic, strong) NSArray *allTasks;
 @property (readonly, nonatomic, assign) BOOL isEmpty;
-@property (nonatomic, assign) YMTaskRegistryBehaviour behaviour;
 
-- (void)addWithTask:(YMURLSessionTask *)task;
+- (void)addWithTask:(YMURLSessionTask *)task behaviour:(YMURLSessionTaskBehaviour *)behaviour;
 
-- (void)removeWithTask:(YMURLSessionTask *)task;
+- (void)removeWithTask:(YMURLSessionTask *)task behaviour:(YMURLSessionTaskBehaviour *)behaviour;
 
 - (void)notifyOnTasksCompletion:(void (^)(void))tasksCompletion;
+
+- (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task;
 
 @end
 

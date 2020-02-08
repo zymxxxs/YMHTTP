@@ -26,7 +26,6 @@
 {
     [super viewDidLoad];
 
-    
     YMURLSession *s = [YMURLSession sessionWithConfiguration:[YMURLSession sharedSession].configuration
                                                     delegate:self
                                                delegateQueue:nil];
@@ -44,7 +43,7 @@
 //    [[s dataTaskWithURL:[NSURL URLWithString:@"https://www.baidu.com"] completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
 //
 //    }] resume];
-//
+
 
 }
 
