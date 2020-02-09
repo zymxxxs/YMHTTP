@@ -186,7 +186,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     [self getBodyWithCompletion:^(YMURLSessionTaskBody *body) {
         self.internalState = YMURLSessionTaskInternalStateTransferReady;
-        self.transferState = [self createTransferStateWithURL:request.URL body:body workQueue:_workQueue];
+        self.transferState = [self createTransferStateWithURL:request.URL body:body workQueue:self.workQueue];
         NSURLRequest *r = self.authRequest ?: request;
         [self configureEasyHandleForRequest:r body:body];
         if (self.suspendCount < 1) {

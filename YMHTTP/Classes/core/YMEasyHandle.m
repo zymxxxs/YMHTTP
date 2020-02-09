@@ -8,15 +8,20 @@
 #import "YMEasyHandle.h"
 #import "YMMacro.h"
 #import "YMTimeoutSource.h"
+#import "YMURLSessionConfiguration.h"
+#import "YMURLSessionTask.h"
 #import "curl.h"
 
 @interface YMEasyHandle ()
 
 @property (nonatomic, strong) YMTimeoutSource *timeoutTimer;
+@property (nonatomic, strong) YMURLSessionConfiguration *config;
 
 @end
 
-@implementation YMEasyHandle
+@implementation YMEasyHandle {
+    struct curl_slist *_headerList;
+}
 
 - (instancetype)initWithDelegate:(id<YMEasyHandleDelegate>)delegate {
     self = [super init];
@@ -25,28 +30,28 @@
         _delegate = delegate;
         [self setupCallbacks];
 
-        NSURLRequest *reqeust = [[NSURLRequest alloc] initWithURL:[NSURL URLWithString:@"http://www.baidu.com"]];
-        curl_easy_setopt(
-            _rawHandle, CURLOPT_URL, [reqeust.URL.absoluteString cStringUsingEncoding:NSUTF8StringEncoding]);
-        //        curl_easy_setopt(_rawHandle, CURLOPT_BUFFERSIZE, INT_MAX);
-
-        struct curl_slist *headers = NULL;
-        //增加HTTP header
-        headers = curl_slist_append(headers, "Content-Type:application/json");
-        curl_easy_setopt(_rawHandle, CURLOPT_HTTPHEADER, headers);
-
-        //        CURLcode rsp_code = curl_easy_perform(_rawHandle);
-        //        if (CURLE_OK == rsp_code) {
-        //            NSLog(@"请求返回成功");
-        //        } else {
-        //            NSLog(@"请求返回失败，返回码是 %i", rsp_code);
-        //        }
+        //        NSURLRequest *reqeust = [[NSURLRequest alloc] initWithURL:[NSURL
+        //        URLWithString:@"http://www.baidu.com"]]; curl_easy_setopt(
+        //            _rawHandle, CURLOPT_URL, [reqeust.URL.absoluteString cStringUsingEncoding:NSUTF8StringEncoding]);
+        //        //        curl_easy_setopt(_rawHandle, CURLOPT_BUFFERSIZE, INT_MAX);
+        //
+        //        //增加HTTP header
+        //        _headers = curl_slist_append(_headers, "Content-Type:application/json");
+        //        curl_easy_setopt(_rawHandle, CURLOPT_HTTPHEADER, _headers);
+        //
+        //        //        CURLcode rsp_code = curl_easy_perform(_rawHandle);
+        //        //        if (CURLE_OK == rsp_code) {
+        //        //            NSLog(@"请求返回成功");
+        //        //        } else {
+        //        //            NSLog(@"请求返回失败，返回码是 %i", rsp_code);
+        //        //        }
     }
     return self;
 }
 
 - (void)dealloc {
     curl_easy_cleanup(_rawHandle);
+    curl_slist_free_all(_headerList);
 }
 
 - (void)resetTimer {
@@ -59,16 +64,17 @@
 
 - (void)setupCallbacks {
     // write
-    curl_easy_setopt(_rawHandle, CURLOPT_WRITEDATA, (__bridge void *)self);
-    curl_easy_setopt(_rawHandle, CURLOPT_WRITEFUNCTION, _curl_write_function);
+
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_WRITEDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_WRITEFUNCTION, _curl_write_function));
 
     // read
-    curl_easy_setopt(_rawHandle, CURLOPT_READDATA, (__bridge void *)self);
-    curl_easy_setopt(_rawHandle, CURLOPT_READFUNCTION, _curl_read_function);
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_READDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_READFUNCTION, _curl_read_function));
 
     // header
-    curl_easy_setopt(_rawHandle, CURLOPT_HEADERDATA, (__bridge void *)self);
-    curl_easy_setopt(_rawHandle, CURLOPT_HEADERFUNCTION, _curl_header_function);
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HEADERDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HEADERFUNCTION, _curl_header_function));
 
     // socket options
 }
@@ -103,10 +109,106 @@
     }
 }
 
+- (void)setVerboseMode:(BOOL)flag {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_VERBOSE, flag ? 1 : 0));
+}
+
+- (void)setDebugOutput:(BOOL)flag task:(YMURLSessionTask *)task {
+    if (flag) {
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_DEBUGDATA, (__bridge void *)self));
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_DEBUGFUNCTION, _curl_debug_function));
+    }
+}
+
+- (void)setPassHeadersToDataStream:(BOOL)flag {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HEADER, flag ? 1 : 0));
+}
+
+- (void)setFollowLocation:(BOOL)flag {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_FOLLOWLOCATION, flag ? 1 : 0));
+}
+
+- (void)setProgressMeterOff:(BOOL)flag {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_NOPROGRESS, flag ? 1 : 0));
+}
+
+- (void)setSkipAllSignalHandling:(BOOL)flag {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_NOSIGNAL, flag ? 1 : 0));
+}
+
+- (void)setErrorBuffer:(char *)buffer {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_NOPROGRESS, buffer));
+}
+
+- (void)setFailOnHTTPErrorCode:(BOOL)flag {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_FAILONERROR, flag ? 1 : 0));
+}
+- (void)setURL:(NSURL *)URL {
+    if (URL.absoluteString) {
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_URL, [URL.absoluteString UTF8String]));
+    }
+}
+
+- (void)setSessionConfig:(YMURLSessionConfiguration *)config {
+    _config = config;
+}
+
+- (void)setAllowedProtocolsToHTTPAndHTTPS {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS));
+}
+
+- (void)setPreferredReceiveBufferSize:(NSInteger)size {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_REDIR_PROTOCOLS, MIN(size, CURL_MAX_WRITE_SIZE)));
+}
+
+- (void)setCustomHeaders:(NSArray<NSString *> *)headers {
+    for (NSString *header in headers) {
+        _headerList = curl_slist_append(_headerList, [header UTF8String]);
+    }
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HTTPHEADER, _headerList));
+}
+
+- (void)setAutomaticBodyDecompression:(BOOL)flag {
+    if (flag) {
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_ACCEPT_ENCODING, ""));
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HTTP_CONTENT_DECODING, 1));
+    } else {
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_ACCEPT_ENCODING, NULL));
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HTTP_CONTENT_DECODING, 0));
+    }
+}
+
+- (void)setRequestMethod:(NSString *)method {
+    if ([method UTF8String] == NULL) return;
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_CUSTOMREQUEST, [method UTF8String]));
+}
+
+- (void)setNoBody:(BOOL)flag {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_NOBODY, flag ? 1 : 0));
+}
+
+- (void)setUpload:(BOOL)flag {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_UPLOAD, flag ? 1 : 0));
+}
+
+- (void)setRequestBodyLength:(NSInteger)length {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_INFILESIZE_LARGE, length));
+}
+
+- (void)setTimeout:(NSInteger)timeout {
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_TIMEOUT, (long)timeout));
+}
+
+- (double)getTimeoutIntervalSpent {
+    double timeSpent;
+    curl_easy_getinfo(_rawHandle, CURLINFO_TOTAL_TIME, &timeSpent);
+    return timeSpent;
+}
+
 - (long)connectFailureErrno {
     long _errno;
-    // TODO: try catch
-    curl_easy_getinfo(_rawHandle, CURLINFO_OS_ERRNO, &_errno);
+    YM_ECODE(curl_easy_getinfo(_rawHandle, CURLINFO_OS_ERRNO, &_errno));
     return _errno;
 }
 
@@ -146,9 +248,19 @@ size_t _curl_header_function(char *data, size_t size, size_t nmemb, void *userda
     };
 
     double length;
-    int r = curl_easy_getinfo(handle.rawHandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &length);
-    printf("%d", r);
+    YM_ECODE(curl_easy_getinfo(handle.rawHandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &length));
     return size * nmemb;
+}
+
+int _curl_debug_function(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr) {
+    NSString *text = @"";
+    if (data) {
+        text = [NSString stringWithUTF8String:data];
+    }
+    if (!userptr) return 0;
+    YMURLSessionTask *task = (__bridge YMURLSessionTask *)userptr;
+    NSLog(@"%@ %@ %@", @(task.taskIdentifier), @(type), text);
+    return 0;
 }
 
 @end
