@@ -8,8 +8,10 @@
 #import "YMURLSessionTask.h"
 #import "YMEasyHandle.h"
 #import "YMMacro.h"
+#import "YMTimeoutSource.h"
 #import "YMTransferState.h"
 #import "YMURLSession.h"
+#import "YMURLSessionConfiguration.h"
 #import "YMURLSessionDelegate.h"
 #import "YMURLSessionTaskBehaviour.h"
 #import "YMURLSessionTaskBody.h"
@@ -124,7 +126,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
             if (isHTTPScheme) {
                 // TODO: lock protocol
                 _easyHandle = [[YMEasyHandle alloc] initWithDelegate:self];
-                _internalState = YMURLSessionTaskInternalStateInitial;
+                self.internalState = YMURLSessionTaskInternalStateInitial;
                 dispatch_async(_workQueue, ^{
                     [self startLoading];
                 });
@@ -147,6 +149,79 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     });
 }
 
+#pragma mark - Setter Methods
+
+- (void)setInternalState:(YMURLSessionTaskInternalState)internalState {
+    YMURLSessionTaskInternalState newValue = internalState;
+    if (![self isEasyHandlePausedForState:_internalState] && [self isEasyHandlePausedForState:newValue]) {
+        // TODO: Error
+    }
+
+    if ([self isEasyHandleAddedToMultiHandleForState:_internalState] &&
+        ![self isEasyHandleAddedToMultiHandleForState:newValue]) {
+        [_session removeHandle:_easyHandle];
+    }
+
+    // set
+    YMURLSessionTaskInternalState oldValue = _internalState;
+    _internalState = internalState;
+
+    if (![self isEasyHandleAddedToMultiHandleForState:oldValue] &&
+        [self isEasyHandleAddedToMultiHandleForState:_internalState]) {
+        [_session addHandle:_easyHandle];
+    }
+
+    if ([self isEasyHandlePausedForState:oldValue] && ![self isEasyHandlePausedForState:_internalState]) {
+        // TODO: Error Need to solve pausing receive.
+    }
+}
+
+- (BOOL)isEasyHandlePausedForState:(YMURLSessionTaskInternalState)state {
+    switch (state) {
+        case YMURLSessionTaskInternalStateInitial:
+            return false;
+        case YMURLSessionTaskInternalStateFulfillingFromCache:
+            return false;
+        case YMURLSessionTaskInternalStateTransferReady:
+            return false;
+        case YMURLSessionTaskInternalStateTransferInProgress:
+            return false;
+        case YMURLSessionTaskInternalStateTransferCompleted:
+            return false;
+        case YMURLSessionTaskInternalStateTransferFailed:
+            return false;
+        case YMURLSessionTaskInternalStateWaitingForRedirectHandler:
+            return false;
+        case YMURLSessionTaskInternalStateWaitingForResponseHandler:
+            return true;
+        case YMURLSessionTaskInternalStateTaskCompleted:
+            return false;
+    }
+}
+
+- (BOOL)isEasyHandleAddedToMultiHandleForState:(YMURLSessionTaskInternalState)state {
+    switch (state) {
+        case YMURLSessionTaskInternalStateInitial:
+            return false;
+        case YMURLSessionTaskInternalStateFulfillingFromCache:
+            return false;
+        case YMURLSessionTaskInternalStateTransferReady:
+            return false;
+        case YMURLSessionTaskInternalStateTransferInProgress:
+            return true;
+        case YMURLSessionTaskInternalStateTransferCompleted:
+            return false;
+        case YMURLSessionTaskInternalStateTransferFailed:
+            return false;
+        case YMURLSessionTaskInternalStateWaitingForRedirectHandler:
+            return false;
+        case YMURLSessionTaskInternalStateWaitingForResponseHandler:
+            return true;
+        case YMURLSessionTaskInternalStateTaskCompleted:
+            return false;
+    }
+}
+
 #pragma mark - Private Methods
 
 - (void)updateTaskState {
@@ -158,7 +233,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 }
 
 - (void)startLoading {
-    if (_internalState == YMURLSessionTaskInternalStateInitial) {
+    if (self.internalState == YMURLSessionTaskInternalStateInitial) {
         if (!_originalRequest) {
             // TODO: error
         }
@@ -169,8 +244,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         }
     }
 
-    if (_internalState == YMURLSessionTaskInternalStateTransferReady) {
-        _internalState = YMURLSessionTaskInternalStateTransferInProgress;
+    if (self.internalState == YMURLSessionTaskInternalStateTransferReady) {
+        self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
     }
 }
 
@@ -222,6 +297,85 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 }
 
 - (void)configureEasyHandleForRequest:(NSURLRequest *)request body:(YMURLSessionTaskBody *)body {
+    BOOL debugLibcurl = NSProcessInfo.processInfo.environment[@"URLSessionDebugLibcurl"];
+    [_easyHandle setVerboseMode:debugLibcurl];
+    BOOL debugOutput = NSProcessInfo.processInfo.environment[@"URLSessionDebug"];
+    [_easyHandle setDebugOutput:debugOutput task:self];
+    [_easyHandle setPassHeadersToDataStream:false];
+    [_easyHandle setProgressMeterOff:true];
+    [_easyHandle setSkipAllSignalHandling:true];
+
+    // Error Options:
+    [_easyHandle setErrorBuffer:NULL];
+    [_easyHandle setFailOnHTTPErrorCode:false];
+
+    if (!request.URL) {
+        // TODO: error
+    }
+    [_easyHandle setURL:request.URL];
+    [_easyHandle setSessionConfig:_session.configuration];
+    [_easyHandle setAllowedProtocolsToHTTPAndHTTPS];
+    [_easyHandle setPreferredReceiveBufferSize:NSIntegerMax];
+
+    NSError *e = nil;
+    NSNumber *bodySize = [body getBodyLengthWithError:&e];
+    if (e) {
+        self.internalState = YMURLSessionTaskInternalStateTransferFailed;
+        NSInteger errorCode = [self errorCodeFromFileSystemError:e];
+        NSError *error = [NSError errorWithDomain:NSURLErrorDomain
+                                             code:errorCode
+                                         userInfo:@{NSLocalizedDescriptionKey : @"File system error"}];
+        [self failWithError:error request:request];
+        return;
+    }
+    if (body.type == YMURLSessionTaskBodyTypeNone) {
+        [_easyHandle setUpload:false];
+        [_easyHandle setRequestBodyLength:0];
+    } else if (bodySize) {
+        [_easyHandle setUpload:true];
+        [_easyHandle setRequestBodyLength:bodySize.unsignedLongLongValue];
+    } else if (!bodySize) {
+        [_easyHandle setUpload:true];
+        [_easyHandle setRequestBodyLength:-1];
+    }
+
+    [_easyHandle setFollowLocation:true];
+
+    // The httpAdditionalHeaders from session configuration has to be added to the request.
+    // The request.allHTTPHeaders can override the httpAdditionalHeaders elements. Add the
+    // httpAdditionalHeaders from session configuration first and then append/update the
+    // request.allHTTPHeaders so that request.allHTTPHeaders can override httpAdditionalHeaders.
+    NSMutableDictionary *hh = [NSMutableDictionary dictionary];
+    NSDictionary *HTTPAdditionalHeaders = _session.configuration.HTTPAdditionalHeaders ?: @{};
+    NSDictionary *HTTPHeaders = request.allHTTPHeaderFields ?: @{};
+    [hh addEntriesFromDictionary:[self transformLowercaseKeyForHTTPHeaders:HTTPAdditionalHeaders]];
+    [hh addEntriesFromDictionary:[self transformLowercaseKeyForHTTPHeaders:HTTPHeaders]];
+
+    NSArray *curlHeaders = [self curlHeadersForHTTPHeaders:hh];
+    if ([request.HTTPMethod isEqualToString:@"POST"] && (request.HTTPBody.length > 0) &&
+        ([request valueForHTTPHeaderField:@"Content-Type"] == nil)) {
+        NSMutableArray *temp = [curlHeaders mutableCopy];
+        [temp addObject:@"Content-Type:application/x-www-form-urlencoded"];
+        curlHeaders = temp;
+    }
+    [_easyHandle setCustomHeaders:curlHeaders];
+
+    // TODO: timeoutInterval set or get
+    NSInteger timeoutInterval = [_session.configuration timeoutIntervalForRequest] * 1000;
+    _easyHandle.timeoutTimer = [[YMTimeoutSource alloc]
+        initWithQueue:_workQueue
+         milliseconds:timeoutInterval
+              handler:^{
+                  self.internalState = YMURLSessionTaskInternalStateTransferFailed;
+                  NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorTimedOut userInfo:nil];
+                  [self completeTaskWithError:urlError];
+                  // TODO: protocol
+              }];
+    [_easyHandle setAutomaticBodyDecompression:true];
+    [_easyHandle setRequestMethod:request.HTTPMethod ?: @"GET"];
+    if ([request.HTTPMethod isEqualToString:@"HEAD"]) {
+        [_easyHandle setNoBody:true];
+    }
 }
 
 - (YMTransferState *)createTransferStateWithURL:(NSURL *)url
@@ -267,6 +421,149 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
             break;
     }
     return nil;
+}
+
+- (NSInteger)errorCodeFromFileSystemError:(NSError *)error {
+    if (error.domain == NSCocoaErrorDomain) {
+        switch (error.code) {
+            case NSFileReadNoSuchFileError:
+                return NSURLErrorFileDoesNotExist;
+            case NSFileReadNoPermissionError:
+                return NSURLErrorNoPermissionsToReadFile;
+            default:
+                return NSURLErrorUnknown;
+        }
+    } else {
+        return NSURLErrorUnknown;
+    }
+}
+
+- (void)failWithError:(NSError *)error request:(NSURLRequest *)request {
+    NSDictionary *userInfo = @{
+        NSUnderlyingErrorKey : error,
+        NSURLErrorFailingURLErrorKey : request.URL,
+        NSURLErrorFailingURLStringErrorKey : request.URL.absoluteString,
+        NSLocalizedDescriptionKey : NSLocalizedString(error.localizedDescription, @"N/A")
+    };
+
+    NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:error.code userInfo:userInfo];
+    [self completeTaskWithError:urlError];
+    // TODO: delegate
+}
+
+- (void)completeTaskWithError:(NSError *)error {
+    _error = error;
+    if (self.internalState != YMURLSessionTaskInternalStateTransferFailed) {
+        // TODO: throw
+    }
+
+    _easyHandle.timeoutTimer = nil;
+    self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
+}
+
+- (NSDictionary *)transformLowercaseKeyForHTTPHeaders:(NSDictionary *)HTTPHeaders {
+    if (!HTTPHeaders) return nil;
+
+    NSMutableDictionary *result = @{}.mutableCopy;
+    for (NSString *key in [HTTPHeaders allKeys]) {
+        result[[key lowercaseString]] = HTTPHeaders[key];
+    }
+    return [result copy];
+}
+
+- (NSArray<NSString *> *)curlHeadersForHTTPHeaders:(NSDictionary *)HTTPHeaders {
+    NSMutableArray<NSString *> *result = [NSMutableArray array];
+    NSMutableSet<NSString *> *names = [NSMutableSet set];
+
+    for (NSString *key in [HTTPHeaders allKeys]) {
+        NSString *name = [key lowercaseString];
+        if ([names containsObject:name]) break;
+        [names addObject:name];
+
+        NSString *value = HTTPHeaders[key];
+        if (value.length == 0) {
+            [result addObject:[NSString stringWithFormat:@"%@;", key]];
+        } else {
+            [result addObject:[NSString stringWithFormat:@"%@: %@", key, value]];
+        }
+    }
+
+    NSDictionary *curlHeadersToSet = [self curlHeadersToSet];
+    for (NSString *key in [curlHeadersToSet allKeys]) {
+        NSString *name = [key lowercaseString];
+        if ([names containsObject:name]) break;
+        [names addObject:name];
+
+        NSString *value = curlHeadersToSet[key];
+        if (value.length == 0) {
+            [result addObject:[NSString stringWithFormat:@"%@;", key]];
+        } else {
+            [result addObject:[NSString stringWithFormat:@"%@: %@", key, value]];
+        }
+    }
+
+    NSArray *curlHeadersToRemove = [self curlHeadersToRemove];
+    for (NSString *key in curlHeadersToRemove) {
+        NSString *name = [key lowercaseString];
+        if ([names containsObject:name]) break;
+        [names addObject:name];
+        [result addObject:[NSString stringWithFormat:@"%@:", key]];
+    }
+
+    return result;
+}
+
+- (NSDictionary *)curlHeadersToSet {
+    return @{
+        @"Connection" : @"keep-alive",
+        @"User-Agent" : [self userAgentString],
+        @"Accept-Language" : [self acceptLanguageString]
+    };
+}
+
+- (NSArray *)curlHeadersToRemove {
+    if (_knownBody == nil) {
+        return @[];
+    } else if (_knownBody.type == YMURLSessionTaskBodyTypeNone) {
+        return @[];
+    }
+    return @[ @"Expect" ];
+}
+
+- (NSString *)userAgentString {
+    // from AFNetworking
+    NSString *userAgent = nil;
+    userAgent = [NSString
+        stringWithFormat:@"%@/%@ (%@; iOS %@; Scale/%0.2f)",
+                         [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleExecutableKey]
+                             ?: [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleIdentifierKey],
+                         [[NSBundle mainBundle] infoDictionary][@"CFBundleShortVersionString"]
+                             ?: [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleVersionKey],
+                         [[UIDevice currentDevice] model],
+                         [[UIDevice currentDevice] systemVersion],
+                         [[UIScreen mainScreen] scale]];
+
+    if (![userAgent canBeConvertedToEncoding:NSASCIIStringEncoding]) {
+        NSMutableString *mutableUserAgent = [userAgent mutableCopy];
+        if (CFStringTransform((__bridge CFMutableStringRef)(mutableUserAgent),
+                              NULL,
+                              (__bridge CFStringRef) @"Any-Latin; Latin-ASCII; [:^ASCII:] Remove",
+                              false)) {
+            userAgent = mutableUserAgent;
+        }
+    }
+    return userAgent;
+}
+
+- (NSString *)acceptLanguageString {
+    // from AFNetworking
+    NSMutableArray *acceptLanguagesComponents = [NSMutableArray array];
+    [[NSLocale preferredLanguages] enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
+        float q = 1.0f - (idx * 0.1f);
+        [acceptLanguagesComponents addObject:[NSString stringWithFormat:@"%@;q=%0.1g", obj, q]];
+        *stop = q <= 0.5f;
+    }];
+    return [acceptLanguagesComponents componentsJoinedByString:@", "];
 }
 
 @end

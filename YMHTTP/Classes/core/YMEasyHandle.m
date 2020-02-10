@@ -14,7 +14,6 @@
 
 @interface YMEasyHandle ()
 
-@property (nonatomic, strong) YMTimeoutSource *timeoutTimer;
 @property (nonatomic, strong) YMURLSessionConfiguration *config;
 
 @end
@@ -29,22 +28,6 @@
         _rawHandle = curl_easy_init();
         _delegate = delegate;
         [self setupCallbacks];
-
-        //        NSURLRequest *reqeust = [[NSURLRequest alloc] initWithURL:[NSURL
-        //        URLWithString:@"http://www.baidu.com"]]; curl_easy_setopt(
-        //            _rawHandle, CURLOPT_URL, [reqeust.URL.absoluteString cStringUsingEncoding:NSUTF8StringEncoding]);
-        //        //        curl_easy_setopt(_rawHandle, CURLOPT_BUFFERSIZE, INT_MAX);
-        //
-        //        //增加HTTP header
-        //        _headers = curl_slist_append(_headers, "Content-Type:application/json");
-        //        curl_easy_setopt(_rawHandle, CURLOPT_HTTPHEADER, _headers);
-        //
-        //        //        CURLcode rsp_code = curl_easy_perform(_rawHandle);
-        //        //        if (CURLE_OK == rsp_code) {
-        //        //            NSLog(@"请求返回成功");
-        //        //        } else {
-        //        //            NSLog(@"请求返回失败，返回码是 %i", rsp_code);
-        //        //        }
     }
     return self;
 }
@@ -77,6 +60,8 @@
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HEADERFUNCTION, _curl_header_function));
 
     // socket options
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SOCKOPTDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SOCKOPTFUNCTION, _curl_socket_function));
 }
 
 #pragma mark - Public Methods
@@ -117,6 +102,9 @@
     if (flag) {
         YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_DEBUGDATA, (__bridge void *)self));
         YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_DEBUGFUNCTION, _curl_debug_function));
+    } else {
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_DEBUGDATA, NULL));
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_DEBUGFUNCTION, NULL));
     }
 }
 
@@ -137,7 +125,7 @@
 }
 
 - (void)setErrorBuffer:(char *)buffer {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_NOPROGRESS, buffer));
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_ERRORBUFFER, buffer));
 }
 
 - (void)setFailOnHTTPErrorCode:(BOOL)flag {
@@ -159,7 +147,7 @@
 }
 
 - (void)setPreferredReceiveBufferSize:(NSInteger)size {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_REDIR_PROTOCOLS, MIN(size, CURL_MAX_WRITE_SIZE)));
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_BUFFERSIZE, MIN(size, CURL_MAX_WRITE_SIZE)));
 }
 
 - (void)setCustomHeaders:(NSArray<NSString *> *)headers {
@@ -192,7 +180,7 @@
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_UPLOAD, flag ? 1 : 0));
 }
 
-- (void)setRequestBodyLength:(NSInteger)length {
+- (void)setRequestBodyLength:(int64_t)length {
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_INFILESIZE_LARGE, length));
 }
 
@@ -203,7 +191,7 @@
 - (double)getTimeoutIntervalSpent {
     double timeSpent;
     curl_easy_getinfo(_rawHandle, CURLINFO_TOTAL_TIME, &timeSpent);
-    return timeSpent;
+    return timeSpent / 1000;
 }
 
 - (long)connectFailureErrno {
@@ -212,14 +200,23 @@
     return _errno;
 }
 
-#pragma mark - libcurl callback
+#pragma mark - Private Methods
+
+- (NSInteger)didReceiveHeaderData:(NSData *)headerData
+                             size:(int)size
+                            nmemb:(int)nmemb
+                    contentLength:(int)contentLength {
+    return 0;
+}
+
+#pragma mark - libcurl callbacks
 
 NS_INLINE YMEasyHandle *from(void *userdata) {
     if (!userdata) return nil;
     return (__bridge YMEasyHandle *)userdata;
 }
 
-size_t _curl_write_function(char *data, size_t size, size_t nmemb, void *userdata) {
+NSInteger _curl_write_function(char *data, size_t size, size_t nmemb, void *userdata) {
     NSLog(@"write %p", data);
     NSString *a = [[NSData dataWithBytes:data length:size]
         base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
@@ -231,7 +228,7 @@ size_t _curl_write_function(char *data, size_t size, size_t nmemb, void *userdat
     return 0;
 }
 
-size_t _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata) {
+NSInteger _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata) {
     NSLog(@"read %p", data);
     NSString *a = [[NSData dataWithBytes:data length:size]
         base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
@@ -239,7 +236,8 @@ size_t _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata
     return 0;
 }
 
-size_t _curl_header_function(char *data, size_t size, size_t nmemb, void *userdata) {
+NSInteger _curl_header_function(char *data, size_t size, size_t nmemb, void *userdata) {
+    NSLog(@"_curl_header_function %p", data);
     YMEasyHandle *handle = from(userdata);
     if (!handle) return 0;
 
@@ -259,8 +257,11 @@ int _curl_debug_function(CURL *handle, curl_infotype type, char *data, size_t si
     }
     if (!userptr) return 0;
     YMURLSessionTask *task = (__bridge YMURLSessionTask *)userptr;
+    // TODO: CFURLSessionInfo
     NSLog(@"%@ %@ %@", @(task.taskIdentifier), @(type), text);
     return 0;
 }
+
+int _curl_socket_function(void *userdata, curl_socket_t fd, curlsocktype type) { return 0; }
 
 @end

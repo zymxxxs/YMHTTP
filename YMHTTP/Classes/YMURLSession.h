@@ -11,6 +11,7 @@
 @class YMURLSessionConfiguration;
 @class YMURLSessionTaskBehaviour;
 @class YMURLSessionTask;
+@class YMEasyHandle;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -48,6 +49,8 @@ NS_ASSUME_NONNULL_BEGIN
 //                                                NSError *_Nullable error))completionHandler;
 
 - (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task;
+- (void)addHandle:(YMEasyHandle *)handle;
+- (void)removeHandle:(YMEasyHandle *)handle;
 
 - (instancetype)init __attribute__((unavailable(
     "Please use NSURLSessionConfiguration.defaultSessionConfiguration or other class methods to create instances")));

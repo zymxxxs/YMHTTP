@@ -49,7 +49,11 @@ NS_INLINE int nextSessionIdentifier() {
         ym_initializeLibcurl();
         _identifier = nextSessionIdentifier();
         _workQueue = dispatch_queue_create("", DISPATCH_QUEUE_SERIAL);
-        _delegateQueue = [[NSOperationQueue alloc] init];
+        if (queue) {
+            _delegateQueue = queue;
+        } else {
+            _delegateQueue = [[NSOperationQueue alloc] init];
+        }
         _delegateQueue.maxConcurrentOperationCount = 1;
         _delegate = delegate;
         _configuration = [configuration copy];
@@ -94,6 +98,14 @@ NS_INLINE int nextSessionIdentifier() {
         }
     }
     return b;
+}
+
+- (void)addHandle:(YMEasyHandle *)handle {
+    [_multiHandle addHandle:handle];
+}
+
+- (void)removeHandle:(YMEasyHandle *)handle {
+    [_multiHandle removeHandle:handle];
 }
 
 #pragma mark - Private Methods

@@ -9,6 +9,7 @@
 
 @class YMURLSessionConfiguration;
 @class YMURLSessionTask;
+@class YMTimeoutSource;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -27,8 +28,9 @@ typedef void *YMURLSessionEasyHandle;
 @interface YMEasyHandle : NSObject
 
 @property (nonatomic, assign) YMURLSessionEasyHandle rawHandle;
-@property (nonatomic, weak, nullable) id<YMEasyHandleDelegate> delegate;
-@property (nonatomic, strong, nullable) NSURL *url;
+@property (nullable, nonatomic, weak) id<YMEasyHandleDelegate> delegate;
+@property (nullable, nonatomic, strong) YMTimeoutSource *timeoutTimer;
+@property (nullable, nonatomic, strong) NSURL *url;
 
 - (instancetype)initWithDelegate:(id<YMEasyHandleDelegate>)delegate;
 
@@ -97,7 +99,7 @@ typedef void *YMURLSessionEasyHandle;
 
 /// Set size of the request body to send
 /// - SeeAlso: https://curl.haxx.se/libcurl/c/CURLOPT_INFILESIZE_LARGE.html
-- (void)setRequestBodyLength:(NSInteger)length;
+- (void)setRequestBodyLength:(int64_t)length;
 
 - (void)setTimeout:(NSInteger)timeout;
 

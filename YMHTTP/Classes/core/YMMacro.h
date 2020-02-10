@@ -93,10 +93,7 @@ NS_INLINE void ym_deferFunc(__strong ym_deferBlock_t *blockRef) { (*blockRef)();
 #define YM_MCODE(c) ym_handleMultiCode(c)
 #endif
 
-NS_INLINE void ym_initializeLibcurl() {
-    // TODO: throws
-    curl_global_init(CURL_GLOBAL_SSL);
-}
+NS_INLINE void ym_initializeLibcurl() { curl_global_init(CURL_GLOBAL_SSL); }
 
 NS_INLINE void ym_handleEasyCode(int code) {
     if (code == CURLE_OK) return;
@@ -110,6 +107,11 @@ NS_INLINE void ym_handleMultiCode(int code) {
     NSString *reason = [NSString stringWithFormat:@"An error occurred, CURLMcode is %@", @(code)];
     NSException *e = [NSException exceptionWithName:@"libcurl.multi" reason:reason userInfo:nil];
     @throw e;
+}
+
+NS_INLINE NSString *ym_getCurlVersion() {
+    char *info = curl_version();
+    return [NSString stringWithUTF8String:info];
 }
 
 #endif /* YMMacro_h */

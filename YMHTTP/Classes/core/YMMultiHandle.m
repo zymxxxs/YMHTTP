@@ -7,6 +7,7 @@
 
 #import "YMMultiHandle.h"
 #import "YMEasyHandle.h"
+#import "YMMacro.h"
 #import "YMTimeoutSource.h"
 #import "YMURLSessionConfiguration.h"
 #import "curl.h"
@@ -42,17 +43,18 @@
 }
 
 - (void)configureWithConfiguration:(YMURLSessionConfiguration *)configuration {
-    NSLog(@"%lu", (unsigned long)[configuration requestCachePolicy]);
+    YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_MAX_HOST_CONNECTIONS, configuration.HTTPMaximumConnectionsPerHost));
+    YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_PIPELINING, configuration.HTTPShouldUsePipelining ? 3 : 2));
 }
 
 - (void)setupCallbacks {
     // socket
-    curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETDATA, (__bridge void *)self);
-    curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETFUNCTION, _curlm_socket_function);
+    //    YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETDATA, (__bridge void *)self));
+    //    YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETFUNCTION, _curlm_socket_function));
 
     // timeout
-    curl_multi_setopt(_rawHandle, CURLMOPT_TIMERDATA, (__bridge void *)self);
-    curl_multi_setopt(_rawHandle, CURLMOPT_TIMERFUNCTION, _curlm_timer_function);
+    YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_TIMERDATA, (__bridge void *)self));
+    YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_TIMERFUNCTION, _curlm_timer_function));
 }
 
 - (int32_t)registerWithSocket:(curl_socket_t)socket what:(int)what socketSourcePtr:(void *)socketSourcePtr {
@@ -101,8 +103,10 @@
     BOOL needsTimeout = false;
     if ([_easyHandles count] == 0) needsTimeout = YES;
     [_easyHandles addObject:handle];
-    // TODO: Try catch
-    curl_multi_add_handle(_rawHandle, handle.rawHandle);
+
+    CURL *curl = curl_easy_init();
+    curl_easy_setopt(curl, CURLOPT_URL, "http://www.baidu.com");  // url
+    YM_MCODE(curl_multi_add_handle(_rawHandle, handle.rawHandle));
     if (needsTimeout) [self timeoutTimerFired];
 }
 
@@ -118,11 +122,11 @@
 
     if (idx == NSNotFound) {
         // TODO: throw error
+        return;
     }
 
     [_easyHandles removeObjectAtIndex:idx];
-    // TODO: Try catch
-    curl_multi_remove_handle(_rawHandle, handle.rawHandle);
+    YM_MCODE(curl_multi_remove_handle(_rawHandle, handle.rawHandle));
 }
 
 #pragma mark - libcurl callback
@@ -140,8 +144,7 @@ int _curlm_socket_function(
         @throw e;
     }
 
-    [handle registerWithSocket:socket what:what socketSourcePtr:socketptr];
-    return 0;
+    return [handle registerWithSocket:socket what:what socketSourcePtr:socketptr];
 }
 
 int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *userdata) {
@@ -151,24 +154,23 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
         @throw e;
     }
     [handle updateTimeoutTimerToValue:timeout];
+    NSLog(@"timeout is aaaaaaaaaa %@", @(timeout));
     return 0;
 }
 
 #pragma mark - Primate Methods
 
 - (void)performActionForSocket:(int)socket {
-    // TODO: try catch
     [self readAndWriteAvailableDataOnSocket:socket];
 }
 
 - (void)timeoutTimerFired {
-    // TODO: try catch
     [self readAndWriteAvailableDataOnSocket:CURL_SOCKET_TIMEOUT];
 }
 
 - (void)readAndWriteAvailableDataOnSocket:(int)socket {
     int runningHandlesCount = 0;
-    curl_multi_socket_action(_rawHandle, socket, 0, &runningHandlesCount);
+    YM_MCODE(curl_multi_socket_action(_rawHandle, socket, 0, &runningHandlesCount));
     [self readMessages];
 }
 
@@ -179,10 +181,10 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
 - (void)readMessages {
     while (true) {
         int count = 0;
-        CURLMsg msg = mutilHandleInfoRead(_rawHandle, &count);
-        if (!msg.easy_handle) break;
-        YMURLSessionEasyHandle easyHandle = msg.easy_handle;
-        int code = msg.data.result;
+        CURLMsg *msg = mutilHandleInfoRead(_rawHandle, &count);
+        if (msg == NULL || !msg->easy_handle) break;
+        YMURLSessionEasyHandle easyHandle = msg->easy_handle;
+        int code = msg->data.result;
         [self completedTransferForEasyHandle:easyHandle easyCode:code];
     }
 }
@@ -199,6 +201,7 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
 
     if (idx == NSNotFound) {
         // TODO: Transfer completed for easy handle, but it is not in the list of added handles.
+        return;
     }
     YMEasyHandle *easyHandle = _easyHandles[idx];
     int errCode = [easyHandle urlErrorCodeWithEasyCode:easyCode];
@@ -206,17 +209,16 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
     }
 }
 
-CURLMsg mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) {
-    CURLMsg info = {};
+CURLMsg *mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) {
     CURLMsg *msg = curl_multi_info_read(handle, msgs_in_queue);
-    if (msg == NULL) return info;
 
-    if (msg->msg != CURLMSG_DONE) return info;
+    if (msg == NULL) return NULL;
+    if (msg->msg != CURLMSG_DONE) return NULL;
 
-    return *msg;
+    return msg;
 }
 
-- (void)updateTimeoutTimerToValue:(int)value {
+- (void)updateTimeoutTimerToValue:(NSInteger)value {
     //    A timeout_ms value of -1 passed to this callback means you should delete the timer. All other values are valid
     //    expire times in number of milliseconds.
     if (value == -1)

@@ -8,7 +8,9 @@
 
 @implementation YMTimeoutSource
 
-- (instancetype)initWithQueue:(dispatch_queue_t)queue milliseconds:(int)milliseconds handler:(dispatch_block_t)handler {
+- (instancetype)initWithQueue:(dispatch_queue_t)queue
+                 milliseconds:(NSInteger)milliseconds
+                      handler:(dispatch_block_t)handler {
     self = [super init];
     if (self) {
         _queue = queue;
@@ -17,7 +19,8 @@
         _rawSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _queue);
 
         uint64_t delay = MAX(1, milliseconds - 1);
-        dispatch_time_t start = DISPATCH_TIME_NOW + delay * NSEC_PER_MSEC;
+
+        dispatch_time_t start = dispatch_time(DISPATCH_TIME_NOW, delay * NSEC_PER_MSEC);
 
         dispatch_source_set_timer(
             _rawSource, start, delay * NSEC_PER_MSEC, _milliseconds == 1 ? 1 * NSEC_PER_USEC : 1 * NSEC_PER_MSEC);

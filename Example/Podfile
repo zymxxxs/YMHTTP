@@ -1,4 +1,4 @@
-use_frameworks!
+#use_frameworks!
 
 
 platform :ios, '10.0'
@@ -9,7 +9,5 @@ target 'YMHTTP_Example' do
 
   target 'YMHTTP_Tests' do
     inherit! :search_paths
-
-    
   end
 end

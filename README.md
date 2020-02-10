@@ -20,10 +20,6 @@ it, simply add the following line to your Podfile:
 pod 'YMHTTP'
 ```
 
-## Author
 
-zymxxxs, zymxxxs@gmail.com
-
-## License
-
-YMHTTP is available under the MIT license. See the LICENSE file for more info.
+## TODO:
+* 使用 use_frameworks! 无法在真机运行
