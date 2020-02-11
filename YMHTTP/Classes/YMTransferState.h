@@ -18,15 +18,23 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, strong) NSURL *url;
 @property (nonatomic, strong) YMParsedResponseHeader *parsedResponseHeader;
-@property (nonatomic, strong) NSURLResponse *response;
-@property (nonatomic, strong) id<YMURLSessionTaskBodySource> requestBodySource;
-@property (nonatomic, assign) YMDataDrain *bodyDataDrain;
+@property (nullable, nonatomic, strong) NSURLResponse *response;
+@property (nullable, nonatomic, strong) id<YMURLSessionTaskBodySource> requestBodySource;
+@property (nonatomic, strong) YMDataDrain *bodyDataDrain;
 
-- (instancetype)initWithURL:(NSURL *)url dataDrain:(YMDataDrain *)dataDrain;
+- (instancetype)initWithURL:(NSURL *)url bodyDataDrain:(YMDataDrain *)bodyDataDrain;
 
 - (instancetype)initWithURL:(NSURL *)url
-                  dataDrain:(YMDataDrain *)dataDrain
-                 bodySource:(id<YMURLSessionTaskBodySource>)bodySource;
+       parsedResponseHeader:(YMParsedResponseHeader *)parsedResponseHeader
+                   response:(nullable NSURLResponse *)response
+                 bodySource:(nullable id<YMURLSessionTaskBodySource>)bodySource
+              bodyDataDrain:(YMDataDrain *)bodyDataDrain;
+
+- (instancetype)initWithURL:(NSURL *)url
+              bodyDataDrain:(YMDataDrain *)bodyDataDrain
+                 bodySource:(nullable id<YMURLSessionTaskBodySource>)bodySource;
+
+- (nullable YMTransferState *)byAppendingHTTPHeaderLineData:(NSData *)data error:(NSError **)error;
 
 @end
 
@@ -52,10 +60,11 @@ typedef NS_ENUM(NSUInteger, YMParsedResponseHeaderType) {
 @interface YMParsedResponseHeader : NSObject
 
 @property (nonatomic, assign) YMParsedResponseHeaderType type;
-@property (nonatomic, strong) NSMutableArray<NSString *> *headerLines;
+@property (nonatomic, strong) NSArray<NSString *> *lines;
 
-- (instancetype)ByAppendingHeaderLine:(NSData *)data
-                    onHeaderCompleted:(BOOL (^)(NSString *headerLine))onHeaderCompleted;
+- (nullable instancetype)byAppendingHeaderLine:(NSData *)data;
+
+- (NSHTTPURLResponse *)createHTTPURLResponseForURL:(NSURL *)URL;
 
 @end
 

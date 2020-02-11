@@ -11,15 +11,21 @@
 @class YMURLSessionTask;
 @class YMTimeoutSource;
 
+typedef NS_ENUM(NSUInteger, YMEasyHandleAction) {
+    YMEasyHandleActionAbort,
+    YMEasyHandleActionProceed,
+    YMEasyHandleActionPause,
+};
+
 NS_ASSUME_NONNULL_BEGIN
 
-@protocol YMEasyHandleDelegate
+@protocol YMEasyHandleDelegate <NSObject>
 
 /// Handle data read from the network
 - (void)didReceiveWithData:(NSURLRequest *)data;
 
 /// Handle header data read from the network
-- (void)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength;
+- (YMEasyHandleAction)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength;
 
 @end
 

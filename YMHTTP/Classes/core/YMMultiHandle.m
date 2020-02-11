@@ -49,8 +49,8 @@
 
 - (void)setupCallbacks {
     // socket
-    //    YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETDATA, (__bridge void *)self));
-    //    YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETFUNCTION, _curlm_socket_function));
+    YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETDATA, (__bridge void *)self));
+    YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_SOCKETFUNCTION, _curlm_socket_function));
 
     // timeout
     YM_ECODE(curl_multi_setopt(_rawHandle, CURLMOPT_TIMERDATA, (__bridge void *)self));
@@ -104,8 +104,6 @@
     if ([_easyHandles count] == 0) needsTimeout = YES;
     [_easyHandles addObject:handle];
 
-    CURL *curl = curl_easy_init();
-    curl_easy_setopt(curl, CURLOPT_URL, "http://www.baidu.com");  // url
     YM_MCODE(curl_multi_add_handle(_rawHandle, handle.rawHandle));
     if (needsTimeout) [self timeoutTimerFired];
 }

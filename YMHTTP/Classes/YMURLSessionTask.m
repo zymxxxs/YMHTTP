@@ -384,7 +384,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     YMDataDrain *drain = [self createTransferBodyDataDrain];
     switch (body.type) {
         case YMURLSessionTaskBodyTypeNone:
-            return [[YMTransferState alloc] initWithURL:url dataDrain:drain];
+            return [[YMTransferState alloc] initWithURL:url bodyDataDrain:drain];
             break;
         case YMURLSessionTaskBodyTypeData:
             // TODO: fix
@@ -398,6 +398,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         default:
             break;
     }
+    // TODO: '''
     return nil;
 }
 
@@ -420,6 +421,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
             // TODO: Download
             break;
     }
+
     return nil;
 }
 
@@ -564,6 +566,26 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         *stop = q <= 0.5f;
     }];
     return [acceptLanguagesComponents componentsJoinedByString:@", "];
+}
+
+#pragma mark - EasyHandle Delegate
+
+- (YMEasyHandleAction)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+        // TODO: Error
+    }
+
+    NSError *error = nil;
+    YMTransferState *ts = _transferState;
+    YMTransferState *newTS = [ts byAppendingHTTPHeaderLineData:data error:&error];
+    if (error) {
+        return YMEasyHandleActionAbort;
+    }
+
+    self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
+    _transferState = newTS;
+
+    return YMEasyHandleActionProceed;
 }
 
 @end

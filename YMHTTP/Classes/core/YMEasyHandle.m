@@ -12,9 +12,15 @@
 #import "YMURLSessionTask.h"
 #import "curl.h"
 
+typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
+    YMEasyHandlePauseStateReceive = 1 << 0,
+    YMEasyHandlePauseStateSend = 1 << 1
+};
+
 @interface YMEasyHandle ()
 
 @property (nonatomic, strong) YMURLSessionConfiguration *config;
+@property (nonatomic, assign) YMEasyHandlePauseState pauseState;
 
 @end
 
@@ -47,7 +53,6 @@
 
 - (void)setupCallbacks {
     // write
-
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_WRITEDATA, (__bridge void *)self));
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_WRITEFUNCTION, _curl_write_function));
 
@@ -202,10 +207,28 @@
 
 #pragma mark - Private Methods
 
-- (NSInteger)didReceiveHeaderData:(NSData *)headerData
-                             size:(int)size
-                            nmemb:(int)nmemb
-                    contentLength:(int)contentLength {
+- (size_t)didReceiveHeaderData:(char *)headerData
+                          size:(size_t)size
+                         nmemb:(size_t)nmemb
+                 contentLength:(double)contentLength {
+    NSData *buffer = [[NSData alloc] initWithBytes:headerData length:size * nmemb];
+    // TODO: setCookies
+
+    if (![_delegate respondsToSelector:@selector(didReceiveWithHeaderData:contentLength:)]) {
+        return 0;
+    }
+
+    YMEasyHandleAction action = [_delegate didReceiveWithHeaderData:buffer contentLength:(int64_t)contentLength];
+    switch (action) {
+        case YMEasyHandleActionProceed:
+            return size * nmemb;
+        case YMEasyHandleActionAbort: {
+            _pauseState = _pauseState | YMEasyHandlePauseStateReceive;
+            return 0;
+        }
+        case YMEasyHandleActionPause:
+            return CURL_WRITEFUNC_PAUSE;
+    }
     return 0;
 }
 
@@ -216,9 +239,9 @@ NS_INLINE YMEasyHandle *from(void *userdata) {
     return (__bridge YMEasyHandle *)userdata;
 }
 
-NSInteger _curl_write_function(char *data, size_t size, size_t nmemb, void *userdata) {
+size_t _curl_write_function(char *data, size_t size, size_t nmemb, void *userdata) {
     NSLog(@"write %p", data);
-    NSString *a = [[NSData dataWithBytes:data length:size]
+    NSString *a = [[NSData dataWithBytes:data length:size * nmemb]
         base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
     NSLog(@"%@", a);
     //    printf("CURL - Response received:\n%s", data);
@@ -228,7 +251,7 @@ NSInteger _curl_write_function(char *data, size_t size, size_t nmemb, void *user
     return 0;
 }
 
-NSInteger _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata) {
+size_t _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata) {
     NSLog(@"read %p", data);
     NSString *a = [[NSData dataWithBytes:data length:size]
         base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
@@ -236,8 +259,7 @@ NSInteger _curl_read_function(char *data, size_t size, size_t nmemb, void *userd
     return 0;
 }
 
-NSInteger _curl_header_function(char *data, size_t size, size_t nmemb, void *userdata) {
-    NSLog(@"_curl_header_function %p", data);
+size_t _curl_header_function(char *data, size_t size, size_t nmemb, void *userdata) {
     YMEasyHandle *handle = from(userdata);
     if (!handle) return 0;
 
@@ -247,7 +269,7 @@ NSInteger _curl_header_function(char *data, size_t size, size_t nmemb, void *use
 
     double length;
     YM_ECODE(curl_easy_getinfo(handle.rawHandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &length));
-    return size * nmemb;
+    return [handle didReceiveHeaderData:data size:size nmemb:nmemb contentLength:length];
 }
 
 int _curl_debug_function(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr) {
