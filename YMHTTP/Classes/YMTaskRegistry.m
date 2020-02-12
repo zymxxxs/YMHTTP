@@ -52,7 +52,7 @@
     _behaviours[identifier] = behaviour;
 }
 
-- (void)removeWithTask:(YMURLSessionTask *)task behaviour:(YMURLSessionTaskBehaviour *)behaviour {
+- (void)removeWithTask:(YMURLSessionTask *)task {
     NSUInteger taskIdentifier = task.taskIdentifier;
     if (taskIdentifier == 0) {
         // TODO: throw

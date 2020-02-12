@@ -8,6 +8,7 @@
 #import "YMURLSessionTask.h"
 #import "YMEasyHandle.h"
 #import "YMMacro.h"
+#import "YMTaskRegistry.h"
 #import "YMTimeoutSource.h"
 #import "YMTransferState.h"
 #import "YMURLSession.h"
@@ -62,6 +63,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 @property (nonatomic, assign) NSUInteger suspendCount;
 @property (nonatomic, strong) NSError *error;
 @property (nonatomic, strong) NSURLRequest *authRequest;
+
+@property (nonatomic, strong) NSData *cacheableData;
+@property (nonatomic, strong) NSHTTPURLResponse *cacheableResponse;
 
 @property (nonatomic, strong) YMEasyHandle *easyHandle;
 @property (nonatomic, assign) YMURLSessionTaskInternalState internalState;
@@ -463,6 +467,124 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
 }
 
+#pragma mark - Response Processing
+
+- (void)didReceiveResponse {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+        // TODO: failure
+    }
+    if (!_transferState.response) {
+        // TODO: failure
+    }
+
+    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
+        switch (_transferState.response.statusCode) {
+            case 301:
+                break;
+            case 302:
+                break;
+            case 303:
+                break;
+            case 307:
+                break;
+            default:
+                [self didReceiveResponseWithResponse:_transferState.response];
+        }
+    }
+}
+
+- (void)didReceiveResponseWithResponse:(NSHTTPURLResponse *)response {
+    _response = response;
+
+    /// TODO: Only cache data tasks:
+    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
+        if (_session && _session.delegate &&
+            [_session.delegate respondsToSelector:@selector(YMURLSession:
+                                                                dataTask:didReceiveResponse:completionHandler:)]) {
+            [self askDelegateHowToProceedAfterCompleteResponse:response];
+        }
+    }
+}
+
+- (void)askDelegateHowToProceedAfterCompleteResponse:(NSHTTPURLResponse *)response {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+        // TODO: Error
+    }
+
+    self.internalState = YMURLSessionTaskInternalStateWaitingForResponseHandler;
+    [_session.delegateQueue addOperationWithBlock:^{
+        id<YMURLSessionTaskDelegate> delegate = (id<YMURLSessionTaskDelegate>)self.session.delegate;
+        [delegate YMURLSession:self.session
+                      dataTask:self
+            didReceiveResponse:response
+             completionHandler:^(YMURLSessionResponseDisposition disposition){
+
+             }];
+    }];
+}
+
+- (void)didCompleteResponseCallbackWithDisposition:(YMURLSessionResponseDisposition)disposition {
+    switch (disposition) {
+        case YMURLSessionResponseCancel: {
+            NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil];
+            [self completeTaskWithError:urlError];
+            [self didFailWithError:urlError];
+        } break;
+        case YMURLSessionResponseAllow:
+            self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
+            break;
+    }
+}
+
+- (void)didFailWithError:(NSError *)error {
+    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    switch (b.type) {
+        case YMURLSessionTaskBehaviourTypeTaskDelegate: {
+            [_session.delegateQueue addOperationWithBlock:^{
+                if (self.state != YMURLSessionTaskStateCompleted) {
+                    id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
+                    self->_state = YMURLSessionTaskStateCompleted;
+                    dispatch_async(self.workQueue, ^{
+                        [self.session.taskRegistry removeWithTask:self];
+                    });
+                }
+            }];
+        } break;
+        case YMURLSessionTaskBehaviourTypeNoDelegate: {
+            if (self.state != YMURLSessionTaskStateCompleted) {
+                self->_state = YMURLSessionTaskStateCompleted;
+                dispatch_async(self.workQueue, ^{
+                    [self.session.taskRegistry removeWithTask:self];
+                });
+            }
+        } break;
+        case YMURLSessionTaskBehaviourTypeDataHandler: {
+            [_session.delegateQueue addOperationWithBlock:^{
+                if (self.state != YMURLSessionTaskStateCompleted) {
+                    if (b.dataTaskCompeltion) b.dataTaskCompeltion(nil, nil, error);
+                    self->_state = YMURLSessionTaskStateCompleted;
+                    dispatch_async(self.workQueue, ^{
+                        [self.session.taskRegistry removeWithTask:self];
+                    });
+                }
+            }];
+        } break;
+        case YMURLSessionTaskBehaviourTypeDownloadHandler: {
+            [_session.delegateQueue addOperationWithBlock:^{
+                if (self.state != YMURLSessionTaskStateCompleted) {
+                    if (b.dataTaskCompeltion) b.downloadCompletion(nil, nil, error);
+                    self->_state = YMURLSessionTaskStateCompleted;
+                    dispatch_async(self.workQueue, ^{
+                        [self.session.taskRegistry removeWithTask:self];
+                    });
+                }
+            }];
+        } break;
+    }
+}
+
 - (NSDictionary *)transformLowercaseKeyForHTTPHeaders:(NSDictionary *)HTTPHeaders {
     if (!HTTPHeaders) return nil;
 
@@ -584,6 +706,16 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
     _transferState = newTS;
+
+    if (!ts.isHeaderComplete && newTS.isHeaderComplete) {
+        NSHTTPURLResponse *response = newTS.response;
+        NSString *contentEncoding = response.allHeaderFields[@"Content-Encoding"];
+        // TODO: countOfBytesExpectedToReceive
+        if (![contentEncoding isEqualToString:@"identify"]) {
+        } else {
+        }
+        [self didReceiveResponse];
+    }
 
     return YMEasyHandleActionProceed;
 }

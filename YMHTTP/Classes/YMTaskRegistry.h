@@ -21,7 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)addWithTask:(YMURLSessionTask *)task behaviour:(YMURLSessionTaskBehaviour *)behaviour;
 
-- (void)removeWithTask:(YMURLSessionTask *)task behaviour:(YMURLSessionTaskBehaviour *)behaviour;
+- (void)removeWithTask:(YMURLSessionTask *)task;
 
 - (void)notifyOnTasksCompletion:(void (^)(void))tasksCompletion;
 

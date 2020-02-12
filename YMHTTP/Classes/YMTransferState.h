@@ -18,15 +18,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, strong) NSURL *url;
 @property (nonatomic, strong) YMParsedResponseHeader *parsedResponseHeader;
-@property (nullable, nonatomic, strong) NSURLResponse *response;
+@property (nullable, nonatomic, strong) NSHTTPURLResponse *response;
 @property (nullable, nonatomic, strong) id<YMURLSessionTaskBodySource> requestBodySource;
 @property (nonatomic, strong) YMDataDrain *bodyDataDrain;
+@property (readonly, nonatomic, assign) BOOL isHeaderComplete;
 
 - (instancetype)initWithURL:(NSURL *)url bodyDataDrain:(YMDataDrain *)bodyDataDrain;
 
 - (instancetype)initWithURL:(NSURL *)url
        parsedResponseHeader:(YMParsedResponseHeader *)parsedResponseHeader
-                   response:(nullable NSURLResponse *)response
+                   response:(nullable NSHTTPURLResponse *)response
                  bodySource:(nullable id<YMURLSessionTaskBodySource>)bodySource
               bodyDataDrain:(YMDataDrain *)bodyDataDrain;
 

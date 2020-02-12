@@ -40,7 +40,7 @@
 
 - (instancetype)initWithURL:(NSURL *)url
        parsedResponseHeader:(YMParsedResponseHeader *)parsedResponseHeader
-                   response:(NSURLResponse *)response
+                   response:(NSHTTPURLResponse *)response
                  bodySource:(id<YMURLSessionTaskBodySource>)bodySource
               bodyDataDrain:(YMDataDrain *)bodyDataDrain {
     self = [super init];
@@ -57,16 +57,18 @@
 - (YMTransferState *)byAppendingHTTPHeaderLineData:(NSData *)data error:(NSError *__autoreleasing _Nullable *)error {
     YMParsedResponseHeader *h = [_parsedResponseHeader byAppendingHeaderLine:data];
     if (!h) {
-        // TODO: Error
-        *error = [NSError errorWithDomain:@"YMHTTPParseSingleLineError" code:-1 userInfo:nil];
+        *error = [NSError errorWithDomain:NSURLErrorDomain
+                                     code:-1
+                                 userInfo:@{NSLocalizedDescriptionKey : @"YMHTTPParseSingleLineError"}];
         return nil;
     }
 
     if (h.type == YMParsedResponseHeaderTypeComplete) {
         NSHTTPURLResponse *response = [h createHTTPURLResponseForURL:_url];
         if (!response) {
-            // TODO: Error
-            *error = [NSError errorWithDomain:@"YMHTTPParseCompleteHeaderError" code:-1 userInfo:nil];
+            *error = [NSError errorWithDomain:NSURLErrorDomain
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey : @"YMHTTPParseCompleteHeaderError"}];
             return nil;
         }
         YMParsedResponseHeader *ph = [[YMParsedResponseHeader alloc] init];
@@ -84,6 +86,10 @@
                                                      bodyDataDrain:_bodyDataDrain];
         return ts;
     }
+}
+
+- (BOOL)isHeaderComplete {
+    return _response != nil;
 }
 
 @end

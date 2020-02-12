@@ -32,7 +32,6 @@ NS_INLINE int nextSessionIdentifier() {
 @property (nonatomic, assign) int identifier;
 @property (nonatomic, assign) BOOL invalidated;
 @property (nonatomic, assign) NSUInteger nextTaskIdentifier;
-@property (nonatomic, strong) YMTaskRegistry *taskRegistry;
 
 @end
 

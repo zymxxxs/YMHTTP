@@ -12,6 +12,7 @@
 @class YMURLSessionTaskBehaviour;
 @class YMURLSessionTask;
 @class YMEasyHandle;
+@class YMTaskRegistry;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -48,6 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 //                                                NSURLResponse *_Nullable response,
 //                                                NSError *_Nullable error))completionHandler;
 
+@property (nonatomic, strong) YMTaskRegistry *taskRegistry;
 - (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task;
 - (void)addHandle:(YMEasyHandle *)handle;
 - (void)removeHandle:(YMEasyHandle *)handle;
