@@ -54,7 +54,28 @@
     return self;
 }
 
-- (YMTransferState *)byAppendingHTTPHeaderLineData:(NSData *)data error:(NSError *__autoreleasing _Nullable *)error {
+- (instancetype)byAppendingBodyData:(NSData *)bodyData {
+    switch (_bodyDataDrain.type) {
+        case YMDataDrainInMemory: {
+            NSMutableData *data = _bodyDataDrain.data ? [_bodyDataDrain.data mutableCopy] : [NSMutableData data];
+            [data appendData:bodyData];
+            YMDataDrain *dataDrain = [[YMDataDrain alloc] init];
+            dataDrain.type = YMDataDrainInMemory;
+            return [[YMTransferState alloc] initWithURL:_url
+                                   parsedResponseHeader:_parsedResponseHeader
+                                               response:_response
+                                             bodySource:_requestBodySource
+                                          bodyDataDrain:dataDrain];
+        }
+        case YMDataDrainTypeToFile:
+            // TODO: upload
+            return self;
+        case YMDataDrainTypeIgnore:
+            return self;
+    }
+}
+
+- (instancetype)byAppendingHTTPHeaderLineData:(NSData *)data error:(NSError *__autoreleasing _Nullable *)error {
     YMParsedResponseHeader *h = [_parsedResponseHeader byAppendingHeaderLine:data];
     if (!h) {
         *error = [NSError errorWithDomain:NSURLErrorDomain

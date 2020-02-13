@@ -35,12 +35,13 @@ NS_ASSUME_NONNULL_BEGIN
               bodyDataDrain:(YMDataDrain *)bodyDataDrain
                  bodySource:(nullable id<YMURLSessionTaskBodySource>)bodySource;
 
-- (nullable YMTransferState *)byAppendingHTTPHeaderLineData:(NSData *)data error:(NSError **)error;
+- (instancetype)byAppendingBodyData:(NSData *)bodyData;
+- (nullable instancetype)byAppendingHTTPHeaderLineData:(NSData *)data error:(NSError **)error;
 
 @end
 
 typedef NS_ENUM(NSUInteger, YMDataDrainType) {
-    YMDYMDataDraineInMemory,
+    YMDataDrainInMemory,
     YMDataDrainTypeToFile,
     YMDataDrainTypeIgnore,
 };

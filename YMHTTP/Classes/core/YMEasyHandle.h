@@ -22,7 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol YMEasyHandleDelegate <NSObject>
 
 /// Handle data read from the network
-- (void)didReceiveWithData:(NSURLRequest *)data;
+- (YMEasyHandleAction)didReceiveWithData:(NSData *)data;
 
 /// Handle header data read from the network
 - (YMEasyHandleAction)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength;

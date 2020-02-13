@@ -401,7 +401,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
             dd.type = YMDataDrainTypeIgnore;
             return dd;
         case YMURLSessionTaskBehaviourTypeDataHandler:
-            dd.type = YMDYMDataDraineInMemory;
+            dd.type = YMDataDrainInMemory;
             dd.data = nil;
             return dd;
         case YMURLSessionTaskBehaviourTypeDownloadHandler:
@@ -482,7 +482,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 #pragma mark - Task Result Processing
 
-
 - (void)startLoading {
     if (self.internalState == YMURLSessionTaskInternalStateInitial) {
         if (!_originalRequest) {
@@ -521,7 +520,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     self.internalState = YMURLSessionTaskInternalStateWaitingForResponseHandler;
     [_session.delegateQueue addOperationWithBlock:^{
-        id<YMURLSessionTaskDelegate> delegate = (id<YMURLSessionTaskDelegate>)self.session.delegate;
+        id<YMURLSessionDataDelegate> delegate = (id<YMURLSessionDataDelegate>)self.session.delegate;
         [delegate YMURLSession:self.session
                       dataTask:self
             didReceiveResponse:response
@@ -706,6 +705,26 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     return [acceptLanguagesComponents componentsJoinedByString:@", "];
 }
 
+#pragma mark - Notify Delegate
+
+- (void)notifyDelegateAboutReceiveData:(NSData *)data {
+    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    if (b.type != YMURLSessionTaskBehaviourTypeTaskDelegate) return;
+
+    id<YMURLSessionDelegate> delegate = _session.delegate;
+
+    BOOL conformsToDataDelegate =
+        delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)];
+    if (conformsToDataDelegate && [self isKindOfClass:[YMURLSessionTask class]]) {
+        [_session.delegateQueue addOperationWithBlock:^{
+            id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)self.session.delegate;
+            [d YMURLSession:self.session task:self didReceiveData:data];
+        }];
+    };
+
+    // TODO: download delegate
+}
+
 #pragma mark - EasyHandle Delegate
 
 - (YMEasyHandleAction)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength {
@@ -734,6 +753,25 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     }
 
     return YMEasyHandleActionProceed;
+}
+
+- (YMEasyHandleAction)didReceiveWithData:(NSData *)data {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+        // TODO: Error
+    }
+
+    NSHTTPURLResponse *response = [self validateHeaderCompleteWithTS:_transferState];
+    if (response) _transferState.response = response;
+    self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
+    _transferState = [_transferState byAppendingBodyData:data];
+    return 0;
+}
+
+- (NSHTTPURLResponse *)validateHeaderCompleteWithTS:(YMTransferState *)ts {
+    if (!ts.isHeaderComplete) {
+        return [[NSHTTPURLResponse alloc] initWithURL:ts.url statusCode:200 HTTPVersion:@"HTTP/0.9" headerFields:@{}];
+    }
+    return nil;
 }
 
 @end

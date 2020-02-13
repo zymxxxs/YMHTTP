@@ -207,10 +207,27 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 
 #pragma mark - Private Methods
 
-- (size_t)didReceiveHeaderData:(char *)headerData
-                          size:(size_t)size
-                         nmemb:(size_t)nmemb
-                 contentLength:(double)contentLength {
+- (NSInteger)didReceiveData:(char *)data size:(NSInteger)size nmemb:(NSInteger)nmemb {
+    NSData *buffer = [[NSData alloc] initWithBytes:data length:size * nmemb];
+    if (![_delegate respondsToSelector:@selector(didReceiveWithData:)]) return 0;
+
+    YMEasyHandleAction action = [_delegate didReceiveWithData:buffer];
+    switch (action) {
+        case YMEasyHandleActionProceed:
+            return size * nmemb;
+        case YMEasyHandleActionAbort:
+            return 0;
+        case YMEasyHandleActionPause:
+            _pauseState = _pauseState | YMEasyHandlePauseStateReceive;
+            return CURL_WRITEFUNC_PAUSE;
+    }
+    return 0;
+}
+
+- (NSInteger)didReceiveHeaderData:(char *)headerData
+                             size:(size_t)size
+                            nmemb:(size_t)nmemb
+                    contentLength:(double)contentLength {
     NSData *buffer = [[NSData alloc] initWithBytes:headerData length:size * nmemb];
     // TODO: setCookies
 

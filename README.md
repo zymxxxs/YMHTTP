@@ -23,3 +23,4 @@ pod 'YMHTTP'
 
 ## TODO:
 * 使用 use_frameworks! 无法在真机运行
+* 移除 YMURLSessionDataTask 以及 YMURLSessionUploadTask 的概念，只保留了 YMURLSessionTask（delegate 中的命名以及对象命名） [待考虑是否继续保留还是移除]

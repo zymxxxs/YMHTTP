@@ -29,13 +29,21 @@ NS_ASSUME_NONNULL_BEGIN
     needNewBodyStream:(void (^)(NSInputStream *_Nullable bodyStream))completionHandler;
 
 - (void)YMURLSession:(YMURLSession *)session
-              dataTask:(YMURLSessionTask *)dataTask
+                    task:(YMURLSessionTask *)task
+    didCompleteWithError:(nullable NSError *)error;
+
+@end
+
+@protocol YMURLSessionDataDelegate <YMURLSessionTaskDelegate>
+
+@optional
+
+- (void)YMURLSession:(YMURLSession *)session
+                  task:(YMURLSessionTask *)task
     didReceiveResponse:(NSURLResponse *)response
      completionHandler:(void (^)(YMURLSessionResponseDisposition disposition))completionHandler;
 
-- (void)YMURLSession:(YMURLSession *)session
-                    task:(YMURLSessionTask *)task
-    didCompleteWithError:(nullable NSError *)error;
+- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveData:(NSData *)data;
 
 @end
 
