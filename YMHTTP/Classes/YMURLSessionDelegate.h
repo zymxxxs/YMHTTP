@@ -33,6 +33,10 @@ NS_ASSUME_NONNULL_BEGIN
     didReceiveResponse:(NSURLResponse *)response
      completionHandler:(void (^)(YMURLSessionResponseDisposition disposition))completionHandler;
 
+- (void)YMURLSession:(YMURLSession *)session
+                    task:(YMURLSessionTask *)task
+    didCompleteWithError:(nullable NSError *)error;
+
 @end
 
 NS_ASSUME_NONNULL_END

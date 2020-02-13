@@ -236,23 +236,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     }
 }
 
-- (void)startLoading {
-    if (self.internalState == YMURLSessionTaskInternalStateInitial) {
-        if (!_originalRequest) {
-            // TODO: error
-        }
-
-        if (_cachedResponse && [self canRespondFromCacheUsingResponse:_cachedResponse]) {
-        } else {
-            [self startNewTransferByRequest:_originalRequest];
-        }
-    }
-
-    if (self.internalState == YMURLSessionTaskInternalStateTransferReady) {
-        self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
-    }
-}
-
 - (BOOL)canRespondFromCacheUsingResponse:(NSCachedURLResponse *)response {
     // TODO:
     return true;
@@ -454,7 +437,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:error.code userInfo:userInfo];
     [self completeTaskWithError:urlError];
-    // TODO: delegate
+    [self didFailWithError:urlError];
 }
 
 - (void)completeTaskWithError:(NSError *)error {
@@ -489,12 +472,35 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
             case 307:
                 break;
             default:
-                [self didReceiveResponseWithResponse:_transferState.response];
+                [self didReceiveResponse:_transferState.response];
         }
     }
 }
 
-- (void)didReceiveResponseWithResponse:(NSHTTPURLResponse *)response {
+- (void)redirectReqeustForResponse:(NSHTTPURLResponse *)response fromRequest:(NSURLRequest *)request {
+}
+
+#pragma mark - Task Result Processing
+
+
+- (void)startLoading {
+    if (self.internalState == YMURLSessionTaskInternalStateInitial) {
+        if (!_originalRequest) {
+            // TODO: error
+        }
+
+        if (_cachedResponse && [self canRespondFromCacheUsingResponse:_cachedResponse]) {
+        } else {
+            [self startNewTransferByRequest:_originalRequest];
+        }
+    }
+
+    if (self.internalState == YMURLSessionTaskInternalStateTransferReady) {
+        self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
+    }
+}
+
+- (void)didReceiveResponse:(NSHTTPURLResponse *)response {
     _response = response;
 
     /// TODO: Only cache data tasks:
@@ -519,15 +525,19 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         [delegate YMURLSession:self.session
                       dataTask:self
             didReceiveResponse:response
-             completionHandler:^(YMURLSessionResponseDisposition disposition){
-
+             completionHandler:^(YMURLSessionResponseDisposition disposition) {
+                 [self didCompleteResponseCallbackWithDisposition:disposition];
              }];
     }];
 }
 
 - (void)didCompleteResponseCallbackWithDisposition:(YMURLSessionResponseDisposition)disposition {
+    if (self.internalState != YMURLSessionTaskInternalStateWaitingForResponseHandler) {
+        // TODO: Error
+    }
     switch (disposition) {
         case YMURLSessionResponseCancel: {
+            self.internalState = YMURLSessionTaskInternalStateTransferFailed;
             NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil];
             [self completeTaskWithError:urlError];
             [self didFailWithError:urlError];
@@ -545,6 +555,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
             [_session.delegateQueue addOperationWithBlock:^{
                 if (self.state != YMURLSessionTaskStateCompleted) {
                     id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
+                    if (d && [d respondsToSelector:@selector(YMURLSession:task:didCompleteWithError:)]) {
+                        [d YMURLSession:self.session task:self didCompleteWithError:error];
+                    }
+
                     self->_state = YMURLSessionTaskStateCompleted;
                     dispatch_async(self.workQueue, ^{
                         [self.session.taskRegistry removeWithTask:self];
@@ -584,6 +598,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         } break;
     }
 }
+
+#pragma mark - Headers Methods
 
 - (NSDictionary *)transformLowercaseKeyForHTTPHeaders:(NSDictionary *)HTTPHeaders {
     if (!HTTPHeaders) return nil;

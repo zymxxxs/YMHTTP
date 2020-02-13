@@ -46,10 +46,10 @@
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
     
-//    NSURLRequest *r = [NSURLRequest requestWithURL:[NSURL URLWithString:@"https://www.tmall.com"]];
-//    NSURLSessionTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:r completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-//
-//    }];
+    NSURLRequest *r = [NSURLRequest requestWithURL:[NSURL URLWithString:@"https://www.tmall.com"]];
+    NSURLSessionTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:r completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+
+    }];
 //    [task resume];
 }
 
