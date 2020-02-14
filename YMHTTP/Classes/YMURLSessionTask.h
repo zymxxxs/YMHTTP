@@ -24,7 +24,7 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
 @property (readonly) NSUInteger taskIdentifier;
 @property (nullable, readonly, copy) NSURLRequest *originalRequest;
 @property (nullable, readonly, copy) NSURLRequest *currentRequest;
-@property (nullable, readonly, copy) NSURLResponse *response;
+@property (nullable, readonly, copy) NSHTTPURLResponse *response;
 @property (readonly) YMURLSessionTaskState state;
 
 - (instancetype)initWithSession:(YMURLSession *)session

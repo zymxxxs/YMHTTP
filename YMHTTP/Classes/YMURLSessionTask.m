@@ -64,8 +64,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 @property (nonatomic, strong) NSError *error;
 @property (nonatomic, strong) NSURLRequest *authRequest;
 
-@property (nonatomic, strong) NSData *cacheableData;
-@property (nonatomic, strong) NSHTTPURLResponse *cacheableResponse;
+@property (nonatomic, strong) NSData *responseData;
 
 @property (nonatomic, strong) YMEasyHandle *easyHandle;
 @property (nonatomic, assign) YMURLSessionTaskInternalState internalState;
@@ -326,7 +325,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         [_easyHandle setRequestBodyLength:-1];
     }
 
-    [_easyHandle setFollowLocation:true];
+    [_easyHandle setFollowLocation:false];
 
     // The httpAdditionalHeaders from session configuration has to be added to the request.
     // The request.allHTTPHeaders can override the httpAdditionalHeaders elements. Add the
@@ -437,7 +436,33 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:error.code userInfo:userInfo];
     [self completeTaskWithError:urlError];
-    [self didFailWithError:urlError];
+    [self notifyDelegateAboutError:urlError];
+}
+
+- (void)completeTask {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
+        // TODO: Error
+    }
+
+    _response = _transferState.response;
+    _easyHandle.timeoutTimer = nil;
+
+    YMDataDrain *bodyData = _transferState.bodyDataDrain;
+    if (bodyData.type == YMDataDrainInMemory) {
+        NSData *data = [NSData data];
+        if (bodyData.data) {
+            data = [[NSData alloc] initWithData:bodyData.data];
+        }
+        [self notifyDelegateAboutLoadData:data];
+        self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
+    } else if (bodyData.type == YMDataDrainTypeToFile) {
+        // TODO:
+    } else if (true) {
+        // TODO: downloadn task
+    }
+
+    [self notifyDelegateAboutFinishLoading];
+    self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
 }
 
 - (void)completeTaskWithError:(NSError *)error {
@@ -450,37 +475,110 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
 }
 
-#pragma mark - Response Processing
+#pragma mark - Redirect Methods
 
-- (void)didReceiveResponse {
-    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
-        // TODO: failure
+- (void)redirectForRequest:(NSURLRequest *)reqeust {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
+        // TODO: Error
     }
-    if (!_transferState.response) {
-        // TODO: failure
-    }
-
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
-        switch (_transferState.response.statusCode) {
-            case 301:
-                break;
-            case 302:
-                break;
-            case 303:
-                break;
-            case 307:
-                break;
-            default:
-                [self didReceiveResponse:_transferState.response];
+        BOOL isResponds = [_session.delegate
+            respondsToSelector:@selector(YMURLSession:task:willPerformHTTPRedirection:newRequest:completionHandler:)];
+        if (isResponds) {
+            self.internalState = YMURLSessionTaskInternalStateWaitingForRedirectHandler;
+            [_session.delegateQueue addOperationWithBlock:^{
+                id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
+                [d YMURLSession:self.session
+                                          task:self
+                    willPerformHTTPRedirection:self.transferState.response
+                                    newRequest:reqeust
+                             completionHandler:^(NSURLRequest *_Nullable request) {
+                                 dispatch_async(self.workQueue, ^{
+                                     if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
+                                         // TODO: Error
+                                     }
+                                     if (request) {
+                                         [self startNewTransferByRequest:request];
+                                     } else {
+                                         self.internalState = YMURLSessionTaskInternalStateTransferCompleted;
+                                         [self completeTask];
+                                     }
+                                 });
+                             }];
+            }];
+        } else {
+            NSURLRequest *configuredRequest = [_session.configuration configureRequest:reqeust];
+            [self startNewTransferByRequest:configuredRequest];
         }
+    } else {
+        NSURLRequest *configuredRequest = [_session.configuration configureRequest:reqeust];
+        [self startNewTransferByRequest:configuredRequest];
     }
 }
 
-- (void)redirectReqeustForResponse:(NSHTTPURLResponse *)response fromRequest:(NSURLRequest *)request {
+- (NSURLRequest *)redirectedReqeustForResponse:(NSHTTPURLResponse *)response fromRequest:(NSURLRequest *)fromRequest {
+    NSString *method = nil;
+    NSURL *targetURL = nil;
+
+    NSString *location = response.allHeaderFields[@"Location"];
+    targetURL = [NSURL URLWithString:location];
+    if (!location && !targetURL) return nil;
+
+    switch (response.statusCode) {
+        case 301:
+        case 302:
+        case 303:
+            method = @"GET";
+            break;
+        case 307:
+            method = fromRequest.HTTPMethod ?: @"GET";
+            break;
+        default:
+            return nil;
+    }
+
+    NSMutableURLRequest *request = [fromRequest mutableCopy];
+    request.HTTPMethod = method;
+
+    if (targetURL.scheme && targetURL.host) {
+        request.URL = targetURL;
+        return request;
+    }
+
+    NSString *scheme = request.URL.scheme;
+    NSString *host = request.URL.host;
+    NSNumber *port = request.URL.port;
+
+    NSURLComponents *components = [[NSURLComponents alloc] init];
+    components.scheme = scheme;
+    components.host = host;
+    // Use the original port if the new URL does not contain a host
+    // ie Location: /foo => <original host>:<original port>/Foo
+    // but Location: newhost/foo  will ignore the original port
+    if (targetURL.host == nil) {
+        components.port = port;
+    }
+    // The path must either begin with "/" or be an empty string.
+    if (![targetURL.relativePath hasPrefix:@"/"]) {
+        components.path = [NSString stringWithFormat:@"/%@", targetURL.relativePath];
+    } else {
+        components.path = targetURL.relativePath;
+    }
+
+    NSString *urlString = components.string;
+    if (!urlString) {
+        // TODO: need Exception ？？？
+        return nil;
+    }
+
+    request.URL = [NSURL URLWithString:urlString];
+    double timeSpent = [_easyHandle getTimeoutIntervalSpent];
+    request.timeoutInterval = fromRequest.timeoutInterval - timeSpent;
+    return request;
 }
 
-#pragma mark - Task Result Processing
+#pragma mark - Task Processing
 
 - (void)startLoading {
     if (self.internalState == YMURLSessionTaskInternalStateInitial) {
@@ -499,55 +597,44 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     }
 }
 
-- (void)didReceiveResponse:(NSHTTPURLResponse *)response {
-    _response = response;
+#pragma mark - Notify Delegate
 
-    /// TODO: Only cache data tasks:
+- (void)notifyDelegateAboutReceiveData:(NSData *)data {
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
-    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
-        if (_session && _session.delegate &&
-            [_session.delegate respondsToSelector:@selector(YMURLSession:
-                                                                dataTask:didReceiveResponse:completionHandler:)]) {
-            [self askDelegateHowToProceedAfterCompleteResponse:response];
-        }
-    }
+    if (b.type != YMURLSessionTaskBehaviourTypeTaskDelegate) return;
+
+    id<YMURLSessionDelegate> delegate = _session.delegate;
+
+    BOOL conformsToDataDelegate =
+        delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)];
+    if (conformsToDataDelegate && [self isKindOfClass:[YMURLSessionTask class]]) {
+        [_session.delegateQueue addOperationWithBlock:^{
+            id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)self.session.delegate;
+            [d YMURLSession:self.session task:self didReceiveData:data];
+        }];
+    };
+
+    // TODO: Download task
 }
 
-- (void)askDelegateHowToProceedAfterCompleteResponse:(NSHTTPURLResponse *)response {
-    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
-        // TODO: Error
-    }
+- (void)notifyDelegateAboutLoadData:(NSData *)data {
+    _responseData = data;
+    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    if (b.type != YMURLSessionTaskBehaviourTypeTaskDelegate) return;
 
-    self.internalState = YMURLSessionTaskInternalStateWaitingForResponseHandler;
-    [_session.delegateQueue addOperationWithBlock:^{
-        id<YMURLSessionDataDelegate> delegate = (id<YMURLSessionDataDelegate>)self.session.delegate;
-        [delegate YMURLSession:self.session
-                      dataTask:self
-            didReceiveResponse:response
-             completionHandler:^(YMURLSessionResponseDisposition disposition) {
-                 [self didCompleteResponseCallbackWithDisposition:disposition];
-             }];
-    }];
+    id<YMURLSessionDelegate> delegate = _session.delegate;
+
+    BOOL conformsToDataDelegate =
+        delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)];
+    if (conformsToDataDelegate && [self isKindOfClass:[YMURLSessionTask class]]) {
+        [_session.delegateQueue addOperationWithBlock:^{
+            id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)self.session.delegate;
+            [d YMURLSession:self.session task:self didReceiveData:data];
+        }];
+    };
 }
 
-- (void)didCompleteResponseCallbackWithDisposition:(YMURLSessionResponseDisposition)disposition {
-    if (self.internalState != YMURLSessionTaskInternalStateWaitingForResponseHandler) {
-        // TODO: Error
-    }
-    switch (disposition) {
-        case YMURLSessionResponseCancel: {
-            self.internalState = YMURLSessionTaskInternalStateTransferFailed;
-            NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil];
-            [self completeTaskWithError:urlError];
-            [self didFailWithError:urlError];
-        } break;
-        case YMURLSessionResponseAllow:
-            self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
-            break;
-    }
-}
-
-- (void)didFailWithError:(NSError *)error {
+- (void)notifyDelegateAboutError:(NSError *)error {
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
     switch (b.type) {
         case YMURLSessionTaskBehaviourTypeTaskDelegate: {
@@ -595,6 +682,163 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                 }
             }];
         } break;
+    }
+}
+
+- (void)notifyDelegateAboutFinishLoading {
+}
+
+- (void)notifyDelegateAboutReceiveResponse:(NSHTTPURLResponse *)response {
+    _response = response;
+
+    /// TODO: Only cache data tasks:t
+    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
+        if (_session && _session.delegate &&
+            [_session.delegate respondsToSelector:@selector(YMURLSession:task:didReceiveResponse:completionHandler:)]) {
+            [self askDelegateHowToProceedAfterCompleteResponse:response];
+        }
+    }
+}
+
+- (void)askDelegateHowToProceedAfterCompleteResponse:(NSHTTPURLResponse *)response {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+        // TODO: Error
+    }
+
+    self.internalState = YMURLSessionTaskInternalStateWaitingForResponseHandler;
+    [_session.delegateQueue addOperationWithBlock:^{
+        id<YMURLSessionDataDelegate> delegate = (id<YMURLSessionDataDelegate>)self.session.delegate;
+        [delegate YMURLSession:self.session
+                          task:self
+            didReceiveResponse:response
+             completionHandler:^(YMURLSessionResponseDisposition disposition) {
+                 [self didCompleteResponseCallbackWithDisposition:disposition];
+             }];
+    }];
+}
+
+- (void)didCompleteResponseCallbackWithDisposition:(YMURLSessionResponseDisposition)disposition {
+    if (self.internalState != YMURLSessionTaskInternalStateWaitingForResponseHandler) {
+        // TODO: Error
+    }
+    switch (disposition) {
+        case YMURLSessionResponseCancel: {
+            self.internalState = YMURLSessionTaskInternalStateTransferFailed;
+            NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil];
+            [self completeTaskWithError:urlError];
+            [self notifyDelegateAboutError:urlError];
+        } break;
+        case YMURLSessionResponseAllow:
+            self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
+            break;
+    }
+}
+
+#pragma mark - EasyHandle Delegate
+
+- (YMEasyHandleAction)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+        // TODO: Error
+    }
+
+    NSError *error = nil;
+    YMTransferState *ts = _transferState;
+    YMTransferState *newTS = [ts byAppendingHTTPHeaderLineData:data error:&error];
+    if (error) {
+        return YMEasyHandleActionAbort;
+    }
+
+    self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
+    _transferState = newTS;
+
+    if (!ts.isHeaderComplete && newTS.isHeaderComplete) {
+        NSHTTPURLResponse *response = newTS.response;
+        NSString *contentEncoding = response.allHeaderFields[@"Content-Encoding"];
+        // TODO: countOfBytesExpectedToReceive
+        if (![contentEncoding isEqualToString:@"identify"]) {
+        } else {
+        }
+        [self didReceiveResponse];
+    }
+
+    return YMEasyHandleActionProceed;
+}
+
+- (void)didReceiveResponse {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+        // TODO: failure
+    }
+    if (!_transferState.response) {
+        // TODO: failure
+    }
+
+    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
+        switch (_transferState.response.statusCode) {
+            case 301:
+            case 302:
+            case 303:
+            case 307:
+                break;
+            default:
+                [self notifyDelegateAboutReceiveResponse:_transferState.response];
+        }
+    }
+}
+
+- (YMEasyHandleAction)didReceiveWithData:(NSData *)data {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+        // TODO: Error
+    }
+
+    NSHTTPURLResponse *response = [self validateHeaderCompleteWithTS:_transferState];
+    if (response) _transferState.response = response;
+    [self notifyDelegateAboutReceiveData:data];
+    self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
+    _transferState = [_transferState byAppendingBodyData:data];
+    return YMEasyHandleActionProceed;
+}
+
+- (NSHTTPURLResponse *)validateHeaderCompleteWithTS:(YMTransferState *)ts {
+    if (!ts.isHeaderComplete) {
+        return [[NSHTTPURLResponse alloc] initWithURL:ts.url statusCode:200 HTTPVersion:@"HTTP/0.9" headerFields:@{}];
+    }
+    return nil;
+}
+
+- (void)transferCompletedWithError:(NSError *)error {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+        // TODO:
+        assert(true);
+    }
+
+    if (!_currentRequest) {
+        // TODO:
+        assert(true);
+    }
+
+    if (error) {
+        self.internalState = YMURLSessionTaskInternalStateTransferFailed;
+        [self failWithError:error request:_currentRequest];
+        return;
+    }
+
+    if (_response) {
+        _transferState.response = _response;
+    }
+
+    NSHTTPURLResponse *response = _transferState.response;
+    if (!response) {
+        // TODO: Error
+    }
+
+    self.internalState = YMURLSessionTaskInternalStateTransferCompleted;
+    NSURLRequest *rr = [self redirectedReqeustForResponse:response fromRequest:_currentRequest];
+    if (rr) {
+        [self redirectForRequest:rr];
+    } else {
+        [self completeTask];
     }
 }
 
@@ -703,75 +947,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         *stop = q <= 0.5f;
     }];
     return [acceptLanguagesComponents componentsJoinedByString:@", "];
-}
-
-#pragma mark - Notify Delegate
-
-- (void)notifyDelegateAboutReceiveData:(NSData *)data {
-    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
-    if (b.type != YMURLSessionTaskBehaviourTypeTaskDelegate) return;
-
-    id<YMURLSessionDelegate> delegate = _session.delegate;
-
-    BOOL conformsToDataDelegate =
-        delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)];
-    if (conformsToDataDelegate && [self isKindOfClass:[YMURLSessionTask class]]) {
-        [_session.delegateQueue addOperationWithBlock:^{
-            id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)self.session.delegate;
-            [d YMURLSession:self.session task:self didReceiveData:data];
-        }];
-    };
-
-    // TODO: download delegate
-}
-
-#pragma mark - EasyHandle Delegate
-
-- (YMEasyHandleAction)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength {
-    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
-        // TODO: Error
-    }
-
-    NSError *error = nil;
-    YMTransferState *ts = _transferState;
-    YMTransferState *newTS = [ts byAppendingHTTPHeaderLineData:data error:&error];
-    if (error) {
-        return YMEasyHandleActionAbort;
-    }
-
-    self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
-    _transferState = newTS;
-
-    if (!ts.isHeaderComplete && newTS.isHeaderComplete) {
-        NSHTTPURLResponse *response = newTS.response;
-        NSString *contentEncoding = response.allHeaderFields[@"Content-Encoding"];
-        // TODO: countOfBytesExpectedToReceive
-        if (![contentEncoding isEqualToString:@"identify"]) {
-        } else {
-        }
-        [self didReceiveResponse];
-    }
-
-    return YMEasyHandleActionProceed;
-}
-
-- (YMEasyHandleAction)didReceiveWithData:(NSData *)data {
-    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
-        // TODO: Error
-    }
-
-    NSHTTPURLResponse *response = [self validateHeaderCompleteWithTS:_transferState];
-    if (response) _transferState.response = response;
-    self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
-    _transferState = [_transferState byAppendingBodyData:data];
-    return 0;
-}
-
-- (NSHTTPURLResponse *)validateHeaderCompleteWithTS:(YMTransferState *)ts {
-    if (!ts.isHeaderComplete) {
-        return [[NSHTTPURLResponse alloc] initWithURL:ts.url statusCode:200 HTTPVersion:@"HTTP/0.9" headerFields:@{}];
-    }
-    return nil;
 }
 
 @end

@@ -152,7 +152,6 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
         @throw e;
     }
     [handle updateTimeoutTimerToValue:timeout];
-    NSLog(@"timeout is aaaaaaaaaa %@", @(timeout));
     return 0;
 }
 
@@ -202,9 +201,19 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
         return;
     }
     YMEasyHandle *easyHandle = _easyHandles[idx];
+    NSError *err = nil;
     int errCode = [easyHandle urlErrorCodeWithEasyCode:easyCode];
     if (errCode != 0) {
+        NSString *d = nil;
+        if (easyHandle.errorBuffer[0] == 0) {
+            const char *description = curl_easy_strerror(errCode);
+            d = [[NSString alloc] initWithCString:description encoding:NSUTF8StringEncoding];
+        } else {
+            d = [[NSString alloc] initWithCString:easyHandle.errorBuffer encoding:NSUTF8StringEncoding];
+        }
+        err = [NSError errorWithDomain:NSURLErrorDomain code:errCode userInfo:@{NSLocalizedDescriptionKey : d}];
     }
+    [easyHandle transferCompletedWithError:err];
 }
 
 CURLMsg *mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue) {

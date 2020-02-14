@@ -27,6 +27,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// Handle header data read from the network
 - (YMEasyHandleAction)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength;
 
+- (void)transferCompletedWithError:(NSError *)error;
+
 @end
 
 typedef void *YMURLSessionEasyHandle;
@@ -34,11 +36,14 @@ typedef void *YMURLSessionEasyHandle;
 @interface YMEasyHandle : NSObject
 
 @property (nonatomic, assign) YMURLSessionEasyHandle rawHandle;
+@property (nonatomic, assign) char *errorBuffer;
 @property (nullable, nonatomic, weak) id<YMEasyHandleDelegate> delegate;
 @property (nullable, nonatomic, strong) YMTimeoutSource *timeoutTimer;
 @property (nullable, nonatomic, strong) NSURL *url;
 
 - (instancetype)initWithDelegate:(id<YMEasyHandleDelegate>)delegate;
+
+- (void)transferCompletedWithError:(NSError *)error;
 
 - (int)urlErrorCodeWithEasyCode:(int)easyCode;
 

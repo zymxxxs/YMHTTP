@@ -35,10 +35,10 @@
 //    [d resume];
     
     
-    [[self runWithURL:[NSURL URLWithString:@"http://www.baidu.com"]] resume];
-    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
-    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
-    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
+    [[self runWithURL:[NSURL URLWithString:@"https://www.taobao.com/xxxx"]] resume];
+//    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
+//    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
+//    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://www.baidu.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
@@ -46,15 +46,29 @@
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
     
-    NSURLRequest *r = [NSURLRequest requestWithURL:[NSURL URLWithString:@"https://www.tmall.com"]];
+    NSURLRequest *r = [NSURLRequest requestWithURL:[NSURL URLWithString:@"https://www.taobao.com/xxxxx"]];
     NSURLSessionTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:r completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
 
     }];
-//    [task resume];
+    [task resume];
+
+    
 }
+
+
 
 - (YMURLSessionTask *)runWithURL:(NSURL *)URL {
     return [_s dataTaskWithURL:URL];
 }
+
+- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didCompleteWithError:(NSError *)error {
+    
+}
+
+//- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task willPerformHTTPRedirection:(NSHTTPURLResponse *)response newRequest:(NSURLRequest *)request completionHandler:(void (^)(NSURLRequest * _Nullable))completionHandler {
+//    
+//}
+
+
 
 @end

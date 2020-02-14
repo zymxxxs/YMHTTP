@@ -33,6 +33,8 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     if (self) {
         _rawHandle = curl_easy_init();
         _delegate = delegate;
+        _errorBuffer = (char *)malloc(sizeof(char) * (CURL_ERROR_SIZE + 1));
+        memset(_errorBuffer, 0, sizeof(char) * (CURL_ERROR_SIZE + 1));
         [self setupCallbacks];
     }
     return self;
@@ -41,6 +43,10 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 - (void)dealloc {
     curl_easy_cleanup(_rawHandle);
     curl_slist_free_all(_headerList);
+}
+
+- (void)transferCompletedWithError:(NSError *)error {
+    [_delegate transferCompletedWithError:error];
 }
 
 - (void)resetTimer {
@@ -130,7 +136,8 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 }
 
 - (void)setErrorBuffer:(char *)buffer {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_ERRORBUFFER, buffer));
+    char *b = buffer ?: _errorBuffer;
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_ERRORBUFFER, b));
 }
 
 - (void)setFailOnHTTPErrorCode:(BOOL)flag {
@@ -257,15 +264,14 @@ NS_INLINE YMEasyHandle *from(void *userdata) {
 }
 
 size_t _curl_write_function(char *data, size_t size, size_t nmemb, void *userdata) {
-    NSLog(@"write %p", data);
-    NSString *a = [[NSData dataWithBytes:data length:size * nmemb]
-        base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
-    NSLog(@"%@", a);
-    //    printf("CURL - Response received:\n%s", data);
-    //    printf("CURL - Response handled %lu bytes:\n%s", size*nmemb);
     YMEasyHandle *handle = from(userdata);
     if (!handle) return 0;
-    return 0;
+
+    @YM_DEFER {
+        [handle resetTimer];
+    };
+
+    return [handle didReceiveData:data size:size nmemb:nmemb];
 }
 
 size_t _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata) {

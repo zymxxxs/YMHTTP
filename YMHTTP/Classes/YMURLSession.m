@@ -82,17 +82,19 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 - (YMURLSessionTask *)dataTaskWithURL:(NSURL *)url {
-    return [self dataTaskWithRequest:url behaviour:nil];
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    return [self dataTaskWithRequest:url behaviour:b];
 }
 
 - (YMURLSessionTask *)dataTaskWithRequest:(NSURLRequest *)request {
-    return [self dataTaskWithRequest:request behaviour:nil];
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    return [self dataTaskWithRequest:request behaviour:b];
 }
 
 - (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task {
     YMURLSessionTaskBehaviour *b = [_taskRegistry behaviourForTask:task];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
-        if (!_delegate || [_delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)]) {
+        if (!(_delegate && [_delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)])) {
             b.type = YMURLSessionTaskBehaviourTypeNoDelegate;
         }
     }
@@ -117,8 +119,7 @@ NS_INLINE int nextSessionIdentifier() {
     NSUInteger i = [self createNextTaskIdentifier];
     YMURLSessionTask *task = [[YMURLSessionTask alloc] initWithSession:self reqeust:r taskIdentifier:i];
     dispatch_async(_workQueue, ^{
-        YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
-        [self.taskRegistry addWithTask:task behaviour:b];
+        [self.taskRegistry addWithTask:task behaviour:behaviour];
     });
     return task;
 }

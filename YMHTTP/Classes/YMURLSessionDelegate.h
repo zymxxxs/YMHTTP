@@ -29,6 +29,12 @@ NS_ASSUME_NONNULL_BEGIN
     needNewBodyStream:(void (^)(NSInputStream *_Nullable bodyStream))completionHandler;
 
 - (void)YMURLSession:(YMURLSession *)session
+                          task:(YMURLSessionTask *)task
+    willPerformHTTPRedirection:(NSHTTPURLResponse *)response
+                    newRequest:(NSURLRequest *)request
+             completionHandler:(void (^)(NSURLRequest *_Nullable))completionHandler;
+
+- (void)YMURLSession:(YMURLSession *)session
                     task:(YMURLSessionTask *)task
     didCompleteWithError:(nullable NSError *)error;
 
