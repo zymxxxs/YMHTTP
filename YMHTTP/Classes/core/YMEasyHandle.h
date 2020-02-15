@@ -16,6 +16,12 @@ typedef NS_ENUM(NSUInteger, YMEasyHandleAction) {
     YMEasyHandleActionProceed,
     YMEasyHandleActionPause,
 };
+typedef NS_ENUM(NSUInteger, YMEasyHandleWriteBufferResult) {
+    YMEasyHandleWriteBufferResultAbort,
+    YMEasyHandleWriteBufferResultPause,
+    YMEasyHandleWriteBufferResultBytes,
+};
+
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -28,6 +34,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (YMEasyHandleAction)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength;
 
 - (void)transferCompletedWithError:(NSError *)error;
+
+- (void)fillWriteBuffer:(NSData *)buffer result:(void (^)(YMEasyHandleWriteBufferResult result, NSInteger length))result;
 
 @end
 

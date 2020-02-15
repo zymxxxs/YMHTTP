@@ -53,12 +53,31 @@
     [task resume];
 
     
+    int a = 2;
+    
+    switch (a) {
+        case 0:
+            NSLog(@"0");
+        case 1:
+            NSLog(@"1");
+        case 2:
+            NSLog(@"2");
+        case 3:
+            NSLog(@"3");
+            
+        default:
+            break;
+    }
+    
 }
 
 
 
 - (YMURLSessionTask *)runWithURL:(NSURL *)URL {
-    return [_s dataTaskWithURL:URL];
+    
+    NSMutableURLRequest *r = [[NSMutableURLRequest alloc] initWithURL:URL];
+    r.HTTPBody = [NSData dataWithBytes:"AA" length:strlen("AA")];
+    return [_s dataTaskWithRequest:r];
 }
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didCompleteWithError:(NSError *)error {

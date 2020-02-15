@@ -256,6 +256,27 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     return 0;
 }
 
+- (NSInteger)fillWriteBuffer:(char *)buffer size:(NSInteger)size nmemb:(NSInteger)nmemb {
+    NSData *data = [[NSData alloc] initWithBytes:buffer length:size *nmemb];
+    
+    __block NSInteger d;
+    [_delegate fillWriteBuffer:data result:^(YMEasyHandleWriteBufferResult result, NSInteger length) {
+        switch (result) {
+            case YMEasyHandleWriteBufferResultPause:
+                self.pauseState = self.pauseState | YMEasyHandlePauseStateSend;
+                d =  CURL_READFUNC_PAUSE;
+                break;
+            case YMEasyHandleWriteBufferResultAbort:
+                d =  CURL_READFUNC_ABORT;
+                break;
+            case YMEasyHandleWriteBufferResultBytes:
+                d = length;
+                break;
+        }
+    }];
+    return d;
+}
+
 #pragma mark - libcurl callbacks
 
 NS_INLINE YMEasyHandle *from(void *userdata) {
@@ -275,10 +296,13 @@ size_t _curl_write_function(char *data, size_t size, size_t nmemb, void *userdat
 }
 
 size_t _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata) {
-    NSLog(@"read %p", data);
-    NSString *a = [[NSData dataWithBytes:data length:size]
-        base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
-    NSLog(@"%@", a);
+    YMEasyHandle *handle = from(userdata);
+    if (!handle) return 0;
+
+    @YM_DEFER {
+        [handle resetTimer];
+    };
+    
     return 0;
 }
 

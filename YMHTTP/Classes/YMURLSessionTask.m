@@ -842,6 +842,17 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     }
 }
 
+
+- (void)fillWriteBuffer:(NSData *)buffer result:(void (^)(YMEasyHandleWriteBufferResult, NSInteger))result {
+    if (_internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+        // TODO: Error
+    }
+    
+    id<YMURLSessionTaskBodySource> source = _transferState.requestBodySource;
+    
+    
+    
+}
 #pragma mark - Headers Methods
 
 - (NSDictionary *)transformLowercaseKeyForHTTPHeaders:(NSDictionary *)HTTPHeaders {
