@@ -73,7 +73,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     // socket options
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SOCKOPTDATA, (__bridge void *)self));
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SOCKOPTFUNCTION, _curl_socket_function));
-    
+
     // seeking in input stream
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SEEKDATA, (__bridge void *)self));
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SEEKFUNCTION, (__bridge void *)self));
@@ -261,24 +261,25 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 }
 
 - (NSInteger)fillWriteBuffer:(char *)buffer size:(NSInteger)size nmemb:(NSInteger)nmemb {
-    NSData *data = [[NSData alloc] initWithBytes:buffer length:size *nmemb];
-    
+    NSData *data = [[NSData alloc] initWithBytes:buffer length:size * nmemb];
+
     __block NSInteger d;
-    [_delegate fillWriteBuffer:data result:^(YMEasyHandleWriteBufferResult result, NSInteger length) {
-        switch (result) {
-            case YMEasyHandleWriteBufferResultPause:
-                self.pauseState = self.pauseState | YMEasyHandlePauseStateSend;
-                d =  CURL_READFUNC_PAUSE;
-                break;
-            case YMEasyHandleWriteBufferResultAbort:
-                d =  CURL_READFUNC_ABORT;
-                break;
-            case YMEasyHandleWriteBufferResultBytes:
-                d = length;
-                break;
-        }
-    }];
-    
+    [_delegate fillWriteBuffer:data
+                        result:^(YMEasyHandleWriteBufferResult result, NSInteger length) {
+                            switch (result) {
+                                case YMEasyHandleWriteBufferResultPause:
+                                    self.pauseState = self.pauseState | YMEasyHandlePauseStateSend;
+                                    d = CURL_READFUNC_PAUSE;
+                                    break;
+                                case YMEasyHandleWriteBufferResultAbort:
+                                    d = CURL_READFUNC_ABORT;
+                                    break;
+                                case YMEasyHandleWriteBufferResultBytes:
+                                    d = length;
+                                    break;
+                            }
+                        }];
+
     return d;
 }
 
@@ -286,11 +287,11 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     if (origin != SEEK_SET) {
         // TODO: Error
     }
-    
+
     BOOL r = [_delegate seekInputStreamToPosition:offset];
-    if (r){
+    if (r) {
         return CURL_SEEKFUNC_OK;
-    }else {
+    } else {
         return CURL_SEEKFUNC_CANTSEEK;
     }
 }
@@ -320,7 +321,7 @@ size_t _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata
     @YM_DEFER {
         [handle resetTimer];
     };
-    
+
     return [handle fillWriteBuffer:data size:size nmemb:nmemb];
 }
 

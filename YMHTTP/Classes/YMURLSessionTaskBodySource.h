@@ -19,16 +19,14 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol YMURLSessionTaskBodySource <NSObject>
 
 - (void)getNextChunkWithLength:(NSInteger)length
-             completionHandler:(void (^)(YMBodySourceDataChunk chunk, NSData* _Nullable data))completionHandler;
+             completionHandler:(void (^)(YMBodySourceDataChunk chunk, NSData *_Nullable data))completionHandler;
 @end
-
 
 @interface YMBodyStreamSource : NSObject <YMURLSessionTaskBodySource>
 
 - (instancetype)initWithInputStream:(NSInputStream *)inputStream;
 
 @end
-
 
 @interface YMBodyDataSource : NSObject <YMURLSessionTaskBodySource>
 

@@ -22,7 +22,6 @@ typedef NS_ENUM(NSUInteger, YMEasyHandleWriteBufferResult) {
     YMEasyHandleWriteBufferResultBytes,
 };
 
-
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol YMEasyHandleDelegate <NSObject>
@@ -35,7 +34,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)transferCompletedWithError:(NSError *)error;
 
-- (void)fillWriteBuffer:(NSData *)buffer result:(void (^)(YMEasyHandleWriteBufferResult result, NSInteger length))result;
+- (void)fillWriteBuffer:(NSData *)buffer
+                 result:(void (^)(YMEasyHandleWriteBufferResult result, NSInteger length))result;
 
 - (BOOL)seekInputStreamToPosition:(uint64_t)position;
 
