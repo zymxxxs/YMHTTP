@@ -34,8 +34,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)transferCompletedWithError:(NSError *)error;
 
-- (void)fillWriteBuffer:(NSData *)buffer
-                 result:(void (^)(YMEasyHandleWriteBufferResult result, NSInteger length))result;
+- (void)fillWriteBufferLength:(NSInteger)length
+                       result:(void (^)(YMEasyHandleWriteBufferResult result, NSInteger length, NSData *_Nullable data))
+                                  result;
 
 - (BOOL)seekInputStreamToPosition:(uint64_t)position;
 

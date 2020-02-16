@@ -847,7 +847,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     }
 }
 
-- (void)fillWriteBuffer:(NSData *)buffer result:(void (^)(YMEasyHandleWriteBufferResult, NSInteger))result {
+- (void)fillWriteBufferLength:(NSInteger)length
+                       result:(void (^)(YMEasyHandleWriteBufferResult, NSInteger, NSData *_Nullable))result {
     if (_internalState != YMURLSessionTaskInternalStateTransferInProgress) {
         // TODO: Error
     }
@@ -860,22 +861,22 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     if (!result) return;
 
-    [source getNextChunkWithLength:buffer.length
+    [source getNextChunkWithLength:length
                  completionHandler:^(YMBodySourceDataChunk chunk, NSData *_Nullable data) {
                      switch (chunk) {
                          case YMBodySourceDataChunkData: {
                              NSUInteger count = data.length;
                              [self notifyDelegateAboutUploadedDataCount:(int64_t)count];
-                             result(YMEasyHandleWriteBufferResultBytes, count);
+                             result(YMEasyHandleWriteBufferResultBytes, count, data);
                          } break;
                          case YMBodySourceDataChunkDone:
-                             result(YMEasyHandleWriteBufferResultBytes, 0);
+                             result(YMEasyHandleWriteBufferResultBytes, 0, nil);
                              break;
                          case YMBodySourceDataChunkRetryLater:
-                             result(YMEasyHandleWriteBufferResultPause, -1);
+                             result(YMEasyHandleWriteBufferResultPause, -1, nil);
                              break;
                          case YMBodySourceDataChunkError:
-                             result(YMEasyHandleWriteBufferResultAbort, -1);
+                             result(YMEasyHandleWriteBufferResultAbort, -1, nil);
                              break;
                      }
                  }];

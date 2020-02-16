@@ -33,6 +33,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     if (self) {
         _rawHandle = curl_easy_init();
         _delegate = delegate;
+
         _errorBuffer = (char *)malloc(sizeof(char) * (CURL_ERROR_SIZE + 1));
         memset(_errorBuffer, 0, sizeof(char) * (CURL_ERROR_SIZE + 1));
         [self setupCallbacks];
@@ -236,8 +237,8 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 }
 
 - (NSInteger)didReceiveHeaderData:(char *)headerData
-                             size:(size_t)size
-                            nmemb:(size_t)nmemb
+                             size:(NSInteger)size
+                            nmemb:(NSInteger)nmemb
                     contentLength:(double)contentLength {
     NSData *buffer = [[NSData alloc] initWithBytes:headerData length:size * nmemb];
     // TODO: setCookies
@@ -261,24 +262,23 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 }
 
 - (NSInteger)fillWriteBuffer:(char *)buffer size:(NSInteger)size nmemb:(NSInteger)nmemb {
-    NSData *data = [[NSData alloc] initWithBytes:buffer length:size * nmemb];
-
     __block NSInteger d;
-    [_delegate fillWriteBuffer:data
-                        result:^(YMEasyHandleWriteBufferResult result, NSInteger length) {
-                            switch (result) {
-                                case YMEasyHandleWriteBufferResultPause:
-                                    self.pauseState = self.pauseState | YMEasyHandlePauseStateSend;
-                                    d = CURL_READFUNC_PAUSE;
-                                    break;
-                                case YMEasyHandleWriteBufferResultAbort:
-                                    d = CURL_READFUNC_ABORT;
-                                    break;
-                                case YMEasyHandleWriteBufferResultBytes:
-                                    d = length;
-                                    break;
-                            }
-                        }];
+    [_delegate fillWriteBufferLength:size * nmemb
+                              result:^(YMEasyHandleWriteBufferResult result, NSInteger length, NSData *data) {
+                                  switch (result) {
+                                      case YMEasyHandleWriteBufferResultPause:
+                                          self.pauseState = self.pauseState | YMEasyHandlePauseStateSend;
+                                          d = CURL_READFUNC_PAUSE;
+                                          break;
+                                      case YMEasyHandleWriteBufferResultAbort:
+                                          d = CURL_READFUNC_ABORT;
+                                          break;
+                                      case YMEasyHandleWriteBufferResultBytes:
+                                          memcpy(buffer, [data bytes], length);
+                                          d = length;
+                                          break;
+                                  }
+                              }];
 
     return d;
 }
