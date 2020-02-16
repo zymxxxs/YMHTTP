@@ -73,6 +73,10 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     // socket options
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SOCKOPTDATA, (__bridge void *)self));
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SOCKOPTFUNCTION, _curl_socket_function));
+    
+    // seeking in input stream
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SEEKDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SEEKFUNCTION, (__bridge void *)self));
 }
 
 #pragma mark - Public Methods
@@ -274,7 +278,21 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
                 break;
         }
     }];
+    
     return d;
+}
+
+- (int)seekInputStreamWithOffset:(int64_t)offset origin:(NSInteger)origin {
+    if (origin != SEEK_SET) {
+        // TODO: Error
+    }
+    
+    BOOL r = [_delegate seekInputStreamToPosition:offset];
+    if (r){
+        return CURL_SEEKFUNC_OK;
+    }else {
+        return CURL_SEEKFUNC_CANTSEEK;
+    }
 }
 
 #pragma mark - libcurl callbacks
@@ -303,7 +321,7 @@ size_t _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata
         [handle resetTimer];
     };
     
-    return 0;
+    return [handle fillWriteBuffer:data size:size nmemb:nmemb];
 }
 
 size_t _curl_header_function(char *data, size_t size, size_t nmemb, void *userdata) {
@@ -317,6 +335,12 @@ size_t _curl_header_function(char *data, size_t size, size_t nmemb, void *userda
     double length;
     YM_ECODE(curl_easy_getinfo(handle.rawHandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &length));
     return [handle didReceiveHeaderData:data size:size nmemb:nmemb contentLength:length];
+}
+
+int _curl_seek_function(void *userdata, curl_off_t offset, int origin) {
+    YMEasyHandle *handle = from(userdata);
+    if (!handle) return CURL_SEEKFUNC_FAIL;
+    return [handle seekInputStreamWithOffset:offset origin:origin];
 }
 
 int _curl_debug_function(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr) {

@@ -35,7 +35,7 @@
 //    [d resume];
     
     
-    [[self runWithURL:[NSURL URLWithString:@"https://www.taobao.com/xxxx"]] resume];
+    [[self runWithURL:[NSURL URLWithString:@"https://httpbin.org/post"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
@@ -76,11 +76,24 @@
 - (YMURLSessionTask *)runWithURL:(NSURL *)URL {
     
     NSMutableURLRequest *r = [[NSMutableURLRequest alloc] initWithURL:URL];
-    r.HTTPBody = [NSData dataWithBytes:"AA" length:strlen("AA")];
+    NSURL *b = [[NSBundle mainBundle] URLForResource:@"aaa" withExtension:@"txt"];
+    NSString *a = [NSString stringWithContentsOfURL:b
+                                           encoding:NSUTF8StringEncoding
+                                              error:nil];
+
+    r.HTTPBody = [a dataUsingEncoding:NSUTF8StringEncoding];
+    [r setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
+    r.HTTPBodyStream = [[NSInputStream alloc] initWithData:[a dataUsingEncoding:NSUTF8StringEncoding]];
+    r.HTTPMethod = @"POST";
+    [r.HTTPBodyStream open];
     return [_s dataTaskWithRequest:r];
 }
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didCompleteWithError:(NSError *)error {
+    
+}
+
+- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task needNewBodyStream:(void (^)(NSInputStream * _Nullable))completionHandler {
     
 }
 

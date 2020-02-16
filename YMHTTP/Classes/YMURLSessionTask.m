@@ -16,6 +16,8 @@
 #import "YMURLSessionDelegate.h"
 #import "YMURLSessionTaskBehaviour.h"
 #import "YMURLSessionTaskBody.h"
+#import "YMURLSessionTaskBodySource.h"
+#import "NSInputStream+YMCategory.h"
 
 typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     /// Task has been created, but nothing has been done, yet
@@ -373,16 +375,18 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
             return [[YMTransferState alloc] initWithURL:url bodyDataDrain:drain];
             break;
         case YMURLSessionTaskBodyTypeData:
-            // TODO: fix
-            break;
+        {
+            YMBodyDataSource *source = [[YMBodyDataSource alloc] initWithData:body.data];
+            return [[YMTransferState alloc] initWithURL:url bodyDataDrain:drain bodySource:source];
+        }
         case YMURLSessionTaskBodyTypeFile:
             // TODO: fix
             break;
         case YMURLSessionTaskBodyTypeStream:
-            // TODO: fix
-            break;
-        default:
-            break;
+        {
+            YMBodyStreamSource *source = [[YMBodyStreamSource alloc] initWithInputStream:body.inputStream];
+            return [[YMTransferState alloc] initWithURL:url bodyDataDrain:drain bodySource:source];
+        }
     }
     // TODO: '''
     return nil;
@@ -688,6 +692,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 - (void)notifyDelegateAboutFinishLoading {
 }
 
+- (void)notifyDelegateAboutUploadedDataCount:(int64_t)cout {
+    
+}
+
 - (void)notifyDelegateAboutReceiveResponse:(NSHTTPURLResponse *)response {
     _response = response;
 
@@ -850,8 +858,73 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     
     id<YMURLSessionTaskBodySource> source = _transferState.requestBodySource;
     
+    if (!source) {
+        // TODO: Error
+    }
     
+    if (!result) return;
     
+    [source getNextChunkWithLength:buffer.length completionHandler:^(YMBodySourceDataChunk chunk, NSData * _Nullable data) {
+        switch (chunk) {
+            case YMBodySourceDataChunkData:
+            {
+                NSUInteger count = data.length;
+                [self notifyDelegateAboutUploadedDataCount:(int64_t)count];
+                result(YMEasyHandleWriteBufferResultBytes, count);
+            }
+                break;
+            case YMBodySourceDataChunkDone:
+                result(YMEasyHandleWriteBufferResultBytes, 0);
+                break;
+            case YMBodySourceDataChunkRetryLater:
+                result(YMEasyHandleWriteBufferResultPause, -1);
+                break;
+            case YMBodySourceDataChunkError:
+                result(YMEasyHandleWriteBufferResultAbort, -1);
+                break;
+        }
+    }];
+}
+
+-(BOOL)seekInputStreamToPosition:(uint64_t)position {
+    __block NSInputStream *currentInputStream = nil;
+    
+    if (_session.delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)] && [_session.delegate respondsToSelector:@selector(YMURLSession:task:needNewBodyStream:)]) {
+        id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)_session.delegate;
+        
+        dispatch_group_t group = dispatch_group_create();
+        dispatch_group_enter(group);
+        
+        [d YMURLSession:_session
+                   task:self
+      needNewBodyStream:^(NSInputStream * _Nullable bodyStream) {
+            currentInputStream = bodyStream;
+            dispatch_group_leave(group);
+        }];
+        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 7 * NSEC_PER_SEC);
+        dispatch_group_wait(group, timeout);
+    }
+    
+    if (_originalRequest.URL && currentInputStream) {
+        if (self.internalState == YMURLSessionTaskInternalStateTransferInProgress) {
+            if ([_transferState.requestBodySource isKindOfClass:[YMBodyStreamSource class]]) {
+                BOOL result = [currentInputStream ym_seekToPosition:position];
+                if (!result) return false;
+                YMDataDrain *drain = [self createTransferBodyDataDrain];
+                YMBodyStreamSource *source = [[YMBodyStreamSource alloc] initWithInputStream:currentInputStream];
+                YMTransferState *ts = [[YMTransferState alloc] initWithURL:_originalRequest.URL
+                                       bodyDataDrain:drain
+                                          bodySource:source];
+                self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
+                _transferState = ts;
+                return true;
+            }
+        } else {
+            return NO;
+        }
+    }
+    
+    return NO;
 }
 #pragma mark - Headers Methods
 

@@ -37,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)fillWriteBuffer:(NSData *)buffer result:(void (^)(YMEasyHandleWriteBufferResult result, NSInteger length))result;
 
+- (BOOL)seekInputStreamToPosition:(uint64_t)position;
+
 @end
 
 typedef void *YMURLSessionEasyHandle;
