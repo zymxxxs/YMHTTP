@@ -16,7 +16,7 @@
 #import <YMHTTP/curl.h>
 #import <CFNetwork/CFNetwork.h>
 
-@interface YMViewController ()<YMURLSessionTaskDelegate, YMURLSessionDelegate>
+@interface YMViewController ()<YMURLSessionDelegate>
 
 @property (nonatomic, strong) YMURLSession *s;
 
@@ -35,7 +35,7 @@
 //    [d resume];
     
     
-    [[self runWithURL:[NSURL URLWithString:@"https://httpbin.org/post"]] resume];
+    [[self runWithURL:[NSURL URLWithString:@"https://httpbin.org/get"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
@@ -46,11 +46,13 @@
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
     
-    NSURLRequest *r = [NSURLRequest requestWithURL:[NSURL URLWithString:@"https://www.taobao.com/xxxxx"]];
+    NSURLRequest *r = [NSURLRequest requestWithURL:[NSURL URLWithString:@"https://httpbin.org/post"]];
     NSURLSessionTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:r completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
 
     }];
     [task resume];
+    
+    BOOL bb = [self conformsToProtocol:@protocol(YMURLSessionDelegate)];
 
     
     int a = 2;
@@ -76,22 +78,24 @@
 - (YMURLSessionTask *)runWithURL:(NSURL *)URL {
     
     NSMutableURLRequest *r = [[NSMutableURLRequest alloc] initWithURL:URL];
-    NSURL *b = [[NSBundle mainBundle] URLForResource:@"aaa" withExtension:@"txt"];
-    NSString *a = [NSString stringWithContentsOfURL:b
-                                           encoding:NSUTF8StringEncoding
-                                              error:nil];
-
-    r.HTTPBody = [a dataUsingEncoding:NSUTF8StringEncoding];
-    [r setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
-    r.HTTPBodyStream = [[NSInputStream alloc] initWithData:[a dataUsingEncoding:NSUTF8StringEncoding]];
+//    NSURL *b = [[NSBundle mainBundle] URLForResource:@"aaa" withExtension:@"txt"];
+//    NSString *a = [NSString stringWithContentsOfURL:b
+//                                           encoding:NSUTF8StringEncoding
+//                                              error:nil];
+//
+//    r.HTTPBody = [a dataUsingEncoding:NSUTF8StringEncoding];
+//    [r setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
+//    r.HTTPBodyStream = [[NSInputStream alloc] initWithData:[a dataUsingEncoding:NSUTF8StringEncoding]];
     r.HTTPMethod = @"POST";
-    [r.HTTPBodyStream open];
+//    [r.HTTPBodyStream open];
     return [_s dataTaskWithRequest:r];
 }
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didCompleteWithError:(NSError *)error {
-    
+
 }
+
+
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task needNewBodyStream:(void (^)(NSInputStream * _Nullable))completionHandler {
     

@@ -13,6 +13,7 @@
 #import "YMTimeoutSource.h"
 #import "YMTransferState.h"
 #import "YMURLSession.h"
+#import "YMURLSessionAuthenticationChallengeSender.h"
 #import "YMURLSessionConfiguration.h"
 #import "YMURLSessionDelegate.h"
 #import "YMURLSessionTaskBehaviour.h"
@@ -74,6 +75,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 @property (nonatomic, strong) NSCachedURLResponse *cachedResponse;
 @property (nonatomic, strong) YMURLSessionTaskBody *knownBody;
 
+@property (nonatomic, strong) NSLock *protocolLock;
+@property (nonatomic, strong) NSURLProtectionSpace *lastProtectionSpace;
+@property (nonatomic, strong) NSURLCredential *lastCredential;
+@property (nonatomic, assign) NSInteger previousFailureCount;
+
 @end
 
 @implementation YMURLSessionTask
@@ -115,6 +121,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 - (void)setupProps {
     _state = YMURLSessionTaskStateSuspended;
     _suspendCount = 1;
+    _previousFailureCount = 0;
+    _protocolLock = [[NSLock alloc] init];
 }
 
 - (void)resume {
@@ -357,7 +365,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                   self.internalState = YMURLSessionTaskInternalStateTransferFailed;
                   NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorTimedOut userInfo:nil];
                   [self completeTaskWithError:urlError];
-                  // TODO: protocol
+                  [self notifyDelegateAboutError:urlError];
               }];
     [_easyHandle setAutomaticBodyDecompression:true];
     [_easyHandle setRequestMethod:request.HTTPMethod ?: @"GET"];
@@ -607,11 +615,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     id<YMURLSessionDelegate> delegate = _session.delegate;
 
-    BOOL conformsToDataDelegate =
-        delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)];
+    BOOL conformsToDataDelegate = delegate && [delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)] &&
+                                  [delegate respondsToSelector:@selector(YMURLSession:task:didReceiveData:)];
     if (conformsToDataDelegate && [self isKindOfClass:[YMURLSessionTask class]]) {
         [_session.delegateQueue addOperationWithBlock:^{
-            id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)self.session.delegate;
+            id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)delegate;
             [d YMURLSession:self.session task:self didReceiveData:data];
         }];
     };
@@ -619,6 +627,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     // TODO: Download task
 }
 
+// may be unuse!!!
 - (void)notifyDelegateAboutLoadData:(NSData *)data {
     _responseData = data;
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
@@ -626,8 +635,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     id<YMURLSessionDelegate> delegate = _session.delegate;
 
-    BOOL conformsToDataDelegate =
-        delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)];
+    BOOL conformsToDataDelegate = delegate && [delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)] &&
+                                  [delegate respondsToSelector:@selector(YMURLSession:task:didReceiveData:)];
     if (conformsToDataDelegate && [self isKindOfClass:[YMURLSessionTask class]]) {
         [_session.delegateQueue addOperationWithBlock:^{
             id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)self.session.delegate;
@@ -688,6 +697,102 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 }
 
 - (void)notifyDelegateAboutFinishLoading {
+    // TODO: Error
+    if (!_response) {
+    }
+
+    if (_response.statusCode == 401) {
+        NSURLProtectionSpace *protectionSpace = [self createProtectionSpaceWithResponse:_response];
+
+        void (^proceedProposingCredential)(NSURLCredential *) = ^(NSURLCredential *credential) {
+            NSURLCredential *proposedCredential = nil;
+            NSURLCredential *lastCredential = nil;
+
+            [self.protocolLock lock];
+            lastCredential = self.lastCredential;
+            [self.protocolLock unlock];
+
+            if ([lastCredential isEqual:credential]) {
+                proposedCredential = credential;
+            } else {
+                proposedCredential = nil;
+            }
+
+            YMURLSessionAuthenticationChallengeSender *sender =
+                [[YMURLSessionAuthenticationChallengeSender alloc] init];
+            NSURLAuthenticationChallenge *challenge =
+                [[NSURLAuthenticationChallenge alloc] initWithProtectionSpace:protectionSpace
+                                                           proposedCredential:proposedCredential
+                                                         previousFailureCount:self.previousFailureCount
+                                                              failureResponse:self.response
+                                                                        error:nil
+                                                                       sender:sender];
+            self.previousFailureCount += 1;
+            [self notifyDelegateAboutReveiveChallenge:challenge];
+        };
+
+        if (protectionSpace) {
+            NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
+            if (storage) {
+                NSDictionary *credentials = storage.allCredentials[protectionSpace];
+                if (credentials) {
+                    NSArray *sortedKeys = [[credentials allKeys] sortedArrayUsingSelector:@selector(compare:)];
+                    NSString *firstKey = [sortedKeys firstObject];
+                    proceedProposingCredential(credentials[firstKey]);
+                }
+            } else {
+                NSURLCredential *credential = [storage defaultCredentialForProtectionSpace:protectionSpace];
+                proceedProposingCredential(credential);
+            }
+        } else {
+            proceedProposingCredential(nil);
+        }
+    }
+
+    NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
+    if (storage) {
+        NSURLCredential *lastCredential = nil;
+        NSURLProtectionSpace *lastProtectionSpace = nil;
+
+        [_protocolLock lock];
+        lastCredential = self.lastCredential;
+        lastProtectionSpace = self.lastProtectionSpace;
+        [_protocolLock unlock];
+
+        if (lastProtectionSpace && lastCredential) {
+            [storage setCredential:lastCredential forProtectionSpace:lastProtectionSpace];
+        }
+    }
+
+    // TODO: Cache
+
+    // TODO: Delegate
+}
+
+- (NSURLProtectionSpace *)createProtectionSpaceWithResponse:(NSHTTPURLResponse *)response {
+    NSString *host = response.URL.host ?: @"";
+    NSNumber *port = response.URL.port ?: @(80);
+    NSString *protocol = response.URL.scheme;
+
+    NSString *wwwAuthHeaderValue = response.allHeaderFields[@"WWW-Authenticate"];
+    if (wwwAuthHeaderValue) {
+        NSString *authMethod = [wwwAuthHeaderValue componentsSeparatedByString:@" "][0];
+        NSString *realm = [authMethod componentsSeparatedByString:@"realm="][1];
+        realm = [realm substringFromIndex:1];
+        realm = [realm substringToIndex:realm.length - 1];
+
+        NSURLProtectionSpace *space = [[NSURLProtectionSpace alloc] initWithHost:host
+                                                                            port:port.integerValue
+                                                                        protocol:protocol
+                                                                           realm:realm
+                                                            authenticationMethod:authMethod];
+        return space;
+    } else {
+        return nil;
+    }
+}
+
+- (void)notifyDelegateAboutReveiveChallenge:(NSURLAuthenticationChallenge *)challenge {
 }
 
 - (void)notifyDelegateAboutUploadedDataCount:(int64_t)cout {
@@ -696,10 +801,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 - (void)notifyDelegateAboutReceiveResponse:(NSHTTPURLResponse *)response {
     _response = response;
 
-    /// TODO: Only cache data tasks:t
+    /// TODO: Only cache data tasks
+
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
-        if (_session && _session.delegate &&
+        if (_session.delegate &&
             [_session.delegate respondsToSelector:@selector(YMURLSession:task:didReceiveResponse:completionHandler:)]) {
             [self askDelegateHowToProceedAfterCompleteResponse:response];
         }
