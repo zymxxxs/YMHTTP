@@ -162,6 +162,33 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     });
 }
 
+- (void)suspend {
+    dispatch_sync(_workQueue, ^{
+        if (_state == YMURLSessionTaskStateCanceling || _state == YMURLSessionTaskStateCompleted) return;
+        self.suspendCount += 1;
+        [self updateTaskState];
+
+        if (_suspendCount == 1) {
+            dispatch_async(_workQueue, ^{
+                [self stopLoading];
+            });
+        }
+    });
+}
+
+- (void)cancel {
+    dispatch_sync(_workQueue, ^{
+        if (_state == YMURLSessionTaskStateRunning || _state == YMURLSessionTaskStateSuspended) {
+            _state = YMURLSessionTaskStateCanceling;
+            dispatch_async(_workQueue, ^{
+                NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil];
+                [self stopLoading];
+                [self notifyDelegateAboutError:urlError];
+            });
+        }
+    });
+}
+
 #pragma mark - Setter Methods
 
 - (void)setInternalState:(YMURLSessionTaskInternalState)internalState {
@@ -607,6 +634,20 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     }
 }
 
+- (void)stopLoading {
+    if (_state == YMURLSessionTaskStateSuspended) {
+        if (self.internalState == YMURLSessionTaskInternalStateTransferInProgress) {
+            self.internalState = YMURLSessionTaskInternalStateTransferReady;
+        }
+    } else {
+        self.internalState = YMURLSessionTaskInternalStateTransferFailed;
+        if (!_error) {
+            // TODO: Error
+        }
+        [self completeTaskWithError:_error];
+    }
+}
+
 #pragma mark - Notify Delegate
 
 - (void)notifyDelegateAboutReceiveData:(NSData *)data {
@@ -702,76 +743,129 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     }
 
     // TODO: AuthenticationChallenge
-    
-//    if (_response.statusCode == 401) {
-//        NSURLProtectionSpace *protectionSpace = [self createProtectionSpaceWithResponse:_response];
-//
-//        void (^proceedProposingCredential)(NSURLCredential *) = ^(NSURLCredential *credential) {
-//            NSURLCredential *proposedCredential = nil;
-//            NSURLCredential *lastCredential = nil;
-//
-//            [self.protocolLock lock];
-//            lastCredential = self.lastCredential;
-//            [self.protocolLock unlock];
-//
-//            if ([lastCredential isEqual:credential]) {
-//                proposedCredential = credential;
-//            } else {
-//                proposedCredential = nil;
-//            }
-//
-//            YMURLSessionAuthenticationChallengeSender *sender =
-//                [[YMURLSessionAuthenticationChallengeSender alloc] init];
-//            NSURLAuthenticationChallenge *challenge =
-//                [[NSURLAuthenticationChallenge alloc] initWithProtectionSpace:protectionSpace
-//                                                           proposedCredential:proposedCredential
-//                                                         previousFailureCount:self.previousFailureCount
-//                                                              failureResponse:self.response
-//                                                                        error:nil
-//                                                                       sender:sender];
-//            self.previousFailureCount += 1;
-//            [self notifyDelegateAboutReveiveChallenge:challenge];
-//        };
-//
-//        if (protectionSpace) {
-//            NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
-//            if (storage) {
-//                NSDictionary *credentials = storage.allCredentials[protectionSpace];
-//                if (credentials) {
-//                    NSArray *sortedKeys = [[credentials allKeys] sortedArrayUsingSelector:@selector(compare:)];
-//                    NSString *firstKey = [sortedKeys firstObject];
-//                    proceedProposingCredential(credentials[firstKey]);
-//                } else {
-//                    NSURLCredential *credential = [storage defaultCredentialForProtectionSpace:protectionSpace];
-//                    proceedProposingCredential(credential);
-//                }
-//            } else {
-//                NSURLCredential *credential = [storage defaultCredentialForProtectionSpace:protectionSpace];
-//                proceedProposingCredential(credential);
-//            }
-//        } else {
-//            proceedProposingCredential(nil);
-//        }
-//    }
-//
-//    NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
-//    if (storage) {
-//        NSURLCredential *lastCredential = nil;
-//        NSURLProtectionSpace *lastProtectionSpace = nil;
-//
-//        [_protocolLock lock];
-//        lastCredential = self.lastCredential;
-//        lastProtectionSpace = self.lastProtectionSpace;
-//        [_protocolLock unlock];
-//
-//        if (lastProtectionSpace && lastCredential) {
-//            [storage setCredential:lastCredential forProtectionSpace:lastProtectionSpace];
-//        }
-//    }
+
+    //    if (_response.statusCode == 401) {
+    //        NSURLProtectionSpace *protectionSpace = [self createProtectionSpaceWithResponse:_response];
+    //
+    //        void (^proceedProposingCredential)(NSURLCredential *) = ^(NSURLCredential *credential) {
+    //            NSURLCredential *proposedCredential = nil;
+    //            NSURLCredential *lastCredential = nil;
+    //
+    //            [self.protocolLock lock];
+    //            lastCredential = self.lastCredential;
+    //            [self.protocolLock unlock];
+    //
+    //            if ([lastCredential isEqual:credential]) {
+    //                proposedCredential = credential;
+    //            } else {
+    //                proposedCredential = nil;
+    //            }
+    //
+    //            YMURLSessionAuthenticationChallengeSender *sender =
+    //                [[YMURLSessionAuthenticationChallengeSender alloc] init];
+    //            NSURLAuthenticationChallenge *challenge =
+    //                [[NSURLAuthenticationChallenge alloc] initWithProtectionSpace:protectionSpace
+    //                                                           proposedCredential:proposedCredential
+    //                                                         previousFailureCount:self.previousFailureCount
+    //                                                              failureResponse:self.response
+    //                                                                        error:nil
+    //                                                                       sender:sender];
+    //            self.previousFailureCount += 1;
+    //            [self notifyDelegateAboutReveiveChallenge:challenge];
+    //        };
+    //
+    //        if (protectionSpace) {
+    //            NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
+    //            if (storage) {
+    //                NSDictionary *credentials = storage.allCredentials[protectionSpace];
+    //                if (credentials) {
+    //                    NSArray *sortedKeys = [[credentials allKeys] sortedArrayUsingSelector:@selector(compare:)];
+    //                    NSString *firstKey = [sortedKeys firstObject];
+    //                    proceedProposingCredential(credentials[firstKey]);
+    //                } else {
+    //                    NSURLCredential *credential = [storage defaultCredentialForProtectionSpace:protectionSpace];
+    //                    proceedProposingCredential(credential);
+    //                }
+    //            } else {
+    //                NSURLCredential *credential = [storage defaultCredentialForProtectionSpace:protectionSpace];
+    //                proceedProposingCredential(credential);
+    //            }
+    //        } else {
+    //            proceedProposingCredential(nil);
+    //        }
+    //    }
+    //
+    //    NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
+    //    if (storage) {
+    //        NSURLCredential *lastCredential = nil;
+    //        NSURLProtectionSpace *lastProtectionSpace = nil;
+    //
+    //        [_protocolLock lock];
+    //        lastCredential = self.lastCredential;
+    //        lastProtectionSpace = self.lastProtectionSpace;
+    //        [_protocolLock unlock];
+    //
+    //        if (lastProtectionSpace && lastCredential) {
+    //            [storage setCredential:lastCredential forProtectionSpace:lastProtectionSpace];
+    //        }
+    //    }
 
     // TODO: Cache
 
-    // TODO: Delegate
+    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    switch (b.type) {
+        case YMURLSessionTaskBehaviourTypeTaskDelegate: {
+            // TODO: DownloadTask
+
+            [_session.delegateQueue addOperationWithBlock:^{
+                if (self.state == YMURLSessionTaskStateCompleted) return;
+                if ([self.session.delegate respondsToSelector:@selector(YMURLSession:task:didCompleteWithError:)]) {
+                    id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)self.session.delegate;
+                    [d YMURLSession:self.session task:self didCompleteWithError:nil];
+                }
+                self->_state = YMURLSessionTaskStateCompleted;
+                dispatch_async(self.workQueue, ^{
+                    [self.session.taskRegistry removeWithTask:self];
+                });
+            }];
+        } break;
+        case YMURLSessionTaskBehaviourTypeNoDelegate: {
+            [_session.delegateQueue addOperationWithBlock:^{
+                if (self.state == YMURLSessionTaskStateCompleted) return;
+                self->_state = YMURLSessionTaskStateCompleted;
+                dispatch_async(self.workQueue, ^{
+                    [self.session.taskRegistry removeWithTask:self];
+                });
+            }];
+        } break;
+        case YMURLSessionTaskBehaviourTypeDataHandler: {
+            [_session.delegateQueue addOperationWithBlock:^{
+                if (self.state == YMURLSessionTaskStateCompleted) return;
+                self->_state = YMURLSessionTaskStateCompleted;
+                if (b.dataTaskCompeltion) {
+                    NSData *data = self.responseData ?: [NSData data];
+                    b.dataTaskCompeltion(data, self.response, nil);
+                }
+                dispatch_async(self.workQueue, ^{
+                    [self.session.taskRegistry removeWithTask:self];
+                });
+            }];
+        } break;
+        case YMURLSessionTaskBehaviourTypeDownloadHandler: {
+            [_session.delegateQueue addOperationWithBlock:^{
+                if (self.state == YMURLSessionTaskStateCompleted) return;
+                self->_state = YMURLSessionTaskStateCompleted;
+                if (b.downloadCompletion) {
+                    // TODO: location download
+                    NSURL *location = nil;
+                    b.downloadCompletion(location, self.response, nil);
+                }
+                dispatch_async(self.workQueue, ^{
+                    [self.session.taskRegistry removeWithTask:self];
+                });
+            }];
+        } break;
+    }
 }
 
 - (NSURLProtectionSpace *)createProtectionSpaceWithResponse:(NSHTTPURLResponse *)response {
