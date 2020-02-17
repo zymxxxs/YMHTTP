@@ -7,13 +7,7 @@
 //
 
 #import "YMViewController.h"
-#import <YMHTTP/YMEasyHandle.h>
-#import <YMHTTP/YMMultiHandle.h>
-#import <YMHTTP/YMURLSessionConfiguration.h>
-#import <YMHTTP/YMURLSession.h>
-#import <YMHTTP/YMURLSessionTask.h>
-#import <YMHTTP/YMMacro.h>
-#import <YMHTTP/curl.h>
+#import <YMHTTP/YMHTTP.h>
 #import <CFNetwork/CFNetwork.h>
 
 @interface YMViewController ()<YMURLSessionDelegate>
@@ -51,8 +45,6 @@
 
     }];
     [task resume];
-    
-    BOOL bb = [self conformsToProtocol:@protocol(YMURLSessionDelegate)];
 
     
     int a = 2;

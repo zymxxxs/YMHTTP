@@ -28,3 +28,5 @@ pod 'YMHTTP'
 * statusheader == [3] 解析错误
 * cache 待解决
 * download 不支持断点续传 待解决
+* taskhandle
+* fatalError
