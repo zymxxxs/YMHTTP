@@ -701,68 +701,73 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     if (!_response) {
     }
 
-    if (_response.statusCode == 401) {
-        NSURLProtectionSpace *protectionSpace = [self createProtectionSpaceWithResponse:_response];
-
-        void (^proceedProposingCredential)(NSURLCredential *) = ^(NSURLCredential *credential) {
-            NSURLCredential *proposedCredential = nil;
-            NSURLCredential *lastCredential = nil;
-
-            [self.protocolLock lock];
-            lastCredential = self.lastCredential;
-            [self.protocolLock unlock];
-
-            if ([lastCredential isEqual:credential]) {
-                proposedCredential = credential;
-            } else {
-                proposedCredential = nil;
-            }
-
-            YMURLSessionAuthenticationChallengeSender *sender =
-                [[YMURLSessionAuthenticationChallengeSender alloc] init];
-            NSURLAuthenticationChallenge *challenge =
-                [[NSURLAuthenticationChallenge alloc] initWithProtectionSpace:protectionSpace
-                                                           proposedCredential:proposedCredential
-                                                         previousFailureCount:self.previousFailureCount
-                                                              failureResponse:self.response
-                                                                        error:nil
-                                                                       sender:sender];
-            self.previousFailureCount += 1;
-            [self notifyDelegateAboutReveiveChallenge:challenge];
-        };
-
-        if (protectionSpace) {
-            NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
-            if (storage) {
-                NSDictionary *credentials = storage.allCredentials[protectionSpace];
-                if (credentials) {
-                    NSArray *sortedKeys = [[credentials allKeys] sortedArrayUsingSelector:@selector(compare:)];
-                    NSString *firstKey = [sortedKeys firstObject];
-                    proceedProposingCredential(credentials[firstKey]);
-                }
-            } else {
-                NSURLCredential *credential = [storage defaultCredentialForProtectionSpace:protectionSpace];
-                proceedProposingCredential(credential);
-            }
-        } else {
-            proceedProposingCredential(nil);
-        }
-    }
-
-    NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
-    if (storage) {
-        NSURLCredential *lastCredential = nil;
-        NSURLProtectionSpace *lastProtectionSpace = nil;
-
-        [_protocolLock lock];
-        lastCredential = self.lastCredential;
-        lastProtectionSpace = self.lastProtectionSpace;
-        [_protocolLock unlock];
-
-        if (lastProtectionSpace && lastCredential) {
-            [storage setCredential:lastCredential forProtectionSpace:lastProtectionSpace];
-        }
-    }
+    // TODO: AuthenticationChallenge
+    
+//    if (_response.statusCode == 401) {
+//        NSURLProtectionSpace *protectionSpace = [self createProtectionSpaceWithResponse:_response];
+//
+//        void (^proceedProposingCredential)(NSURLCredential *) = ^(NSURLCredential *credential) {
+//            NSURLCredential *proposedCredential = nil;
+//            NSURLCredential *lastCredential = nil;
+//
+//            [self.protocolLock lock];
+//            lastCredential = self.lastCredential;
+//            [self.protocolLock unlock];
+//
+//            if ([lastCredential isEqual:credential]) {
+//                proposedCredential = credential;
+//            } else {
+//                proposedCredential = nil;
+//            }
+//
+//            YMURLSessionAuthenticationChallengeSender *sender =
+//                [[YMURLSessionAuthenticationChallengeSender alloc] init];
+//            NSURLAuthenticationChallenge *challenge =
+//                [[NSURLAuthenticationChallenge alloc] initWithProtectionSpace:protectionSpace
+//                                                           proposedCredential:proposedCredential
+//                                                         previousFailureCount:self.previousFailureCount
+//                                                              failureResponse:self.response
+//                                                                        error:nil
+//                                                                       sender:sender];
+//            self.previousFailureCount += 1;
+//            [self notifyDelegateAboutReveiveChallenge:challenge];
+//        };
+//
+//        if (protectionSpace) {
+//            NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
+//            if (storage) {
+//                NSDictionary *credentials = storage.allCredentials[protectionSpace];
+//                if (credentials) {
+//                    NSArray *sortedKeys = [[credentials allKeys] sortedArrayUsingSelector:@selector(compare:)];
+//                    NSString *firstKey = [sortedKeys firstObject];
+//                    proceedProposingCredential(credentials[firstKey]);
+//                } else {
+//                    NSURLCredential *credential = [storage defaultCredentialForProtectionSpace:protectionSpace];
+//                    proceedProposingCredential(credential);
+//                }
+//            } else {
+//                NSURLCredential *credential = [storage defaultCredentialForProtectionSpace:protectionSpace];
+//                proceedProposingCredential(credential);
+//            }
+//        } else {
+//            proceedProposingCredential(nil);
+//        }
+//    }
+//
+//    NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
+//    if (storage) {
+//        NSURLCredential *lastCredential = nil;
+//        NSURLProtectionSpace *lastProtectionSpace = nil;
+//
+//        [_protocolLock lock];
+//        lastCredential = self.lastCredential;
+//        lastProtectionSpace = self.lastProtectionSpace;
+//        [_protocolLock unlock];
+//
+//        if (lastProtectionSpace && lastCredential) {
+//            [storage setCredential:lastCredential forProtectionSpace:lastProtectionSpace];
+//        }
+//    }
 
     // TODO: Cache
 
@@ -777,7 +782,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     NSString *wwwAuthHeaderValue = response.allHeaderFields[@"WWW-Authenticate"];
     if (wwwAuthHeaderValue) {
         NSString *authMethod = [wwwAuthHeaderValue componentsSeparatedByString:@" "][0];
-        NSString *realm = [authMethod componentsSeparatedByString:@"realm="][1];
+        NSString *realm = [wwwAuthHeaderValue componentsSeparatedByString:@"realm="][1];
         realm = [realm substringFromIndex:1];
         realm = [realm substringToIndex:realm.length - 1];
 
