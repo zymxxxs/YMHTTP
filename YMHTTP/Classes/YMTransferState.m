@@ -173,7 +173,7 @@
 /// - SeeAlso: https://tools.ietf.org/html/rfc2616#section-6.1
 - (NSArray *)statusLineFromLine:(NSString *)line {
     NSArray *a = [line componentsSeparatedByString:@" "];
-    if ([a count] != 3) return nil;
+    if ([a count] < 3) return nil;
 
     NSString *s = a[1];
 
@@ -191,19 +191,19 @@
     for (NSString *line in lines) {
         NSRange r = [line rangeOfString:@":"];
         if (r.location != NSNotFound) {
-            NSString *key = [line substringToIndex:r.location];
-            NSString *value = [line substringFromIndex:r.location + 1];
+            NSString *head = [line substringToIndex:r.location];
+            NSString *tail = [line substringFromIndex:r.location + 1];
 
             NSCharacterSet *set = [NSCharacterSet whitespaceAndNewlineCharacterSet];
-            NSString *trimKey = [key stringByTrimmingCharactersInSet:set];
-            NSString *trimValue = [value stringByTrimmingCharactersInSet:set];
-            if (trimKey && trimValue) {
+            NSString *key = [head stringByTrimmingCharactersInSet:set];
+            NSString *value = [tail stringByTrimmingCharactersInSet:set];
+            if (key && value) {
                 if (!headerFields) headerFields = [NSMutableDictionary dictionary];
-                if (headerFields[trimKey]) {
-                    NSString *v = [NSString stringWithFormat:@"%@ %@", headerFields[trimKey], trimValue];
-                    [headerFields setObject:v forKey:trimKey];
+                if (headerFields[key]) {
+                    NSString *v = [NSString stringWithFormat:@"%@, %@", headerFields[key], value];
+                    [headerFields setObject:v forKey:key];
                 } else {
-                    headerFields[trimKey] = trimValue;
+                    headerFields[key] = value;
                 }
             }
         } else {

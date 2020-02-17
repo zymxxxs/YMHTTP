@@ -21,6 +21,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 
 @property (nonatomic, strong) YMURLSessionConfiguration *config;
 @property (nonatomic, assign) YMEasyHandlePauseState pauseState;
+@property (nonatomic, strong) NSURL *URL;
 
 @end
 
@@ -149,6 +150,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_FAILONERROR, flag ? 1 : 0));
 }
 - (void)setURL:(NSURL *)URL {
+    _url = URL;
     if (URL.absoluteString) {
         YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_URL, [URL.absoluteString UTF8String]));
     }
@@ -241,7 +243,8 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
                             nmemb:(NSInteger)nmemb
                     contentLength:(double)contentLength {
     NSData *buffer = [[NSData alloc] initWithBytes:headerData length:size * nmemb];
-    // TODO: setCookies
+
+    [self setCookiesWithHeaderData:buffer];
 
     if (![_delegate respondsToSelector:@selector(didReceiveWithHeaderData:contentLength:)]) {
         return 0;
@@ -258,7 +261,6 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
         case YMEasyHandleActionPause:
             return CURL_WRITEFUNC_PAUSE;
     }
-    return 0;
 }
 
 - (NSInteger)fillWriteBuffer:(char *)buffer size:(NSInteger)size nmemb:(NSInteger)nmemb {
@@ -293,6 +295,29 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
         return CURL_SEEKFUNC_OK;
     } else {
         return CURL_SEEKFUNC_CANTSEEK;
+    }
+}
+
+- (void)setCookiesWithHeaderData:(NSData *)data {
+    if (_config && _config.HTTPCookieAcceptPolicy != NSHTTPCookieAcceptPolicyNever && _config.HTTPCookieStorage) {
+        NSString *headerLine = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+        if (headerLine.length == 0) return;
+
+        NSRange r = [headerLine rangeOfString:@":"];
+        if (r.location != NSNotFound) {
+            NSString *head = [headerLine substringToIndex:r.location];
+            NSString *tail = [headerLine substringFromIndex:r.location + 1];
+
+            NSCharacterSet *set = [NSCharacterSet whitespaceAndNewlineCharacterSet];
+            NSString *key = [head stringByTrimmingCharactersInSet:set];
+            NSString *value = [tail stringByTrimmingCharactersInSet:set];
+
+            if (key && value) {
+                NSArray *cookies = [NSHTTPCookie cookiesWithResponseHeaderFields:@{key : value} forURL:_url];
+                if ([cookies count] == 0) return;
+                [_config.HTTPCookieStorage setCookies:cookies forURL:_url mainDocumentURL:nil];
+            }
+        }
     }
 }
 

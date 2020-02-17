@@ -35,9 +35,9 @@
 //    [d resume];
     
     
-    [[self runWithURL:[NSURL URLWithString:@"https://httpbin.org/get"]] resume];
+//    [[self runWithURL:[NSURL URLWithString:@"https://httpbin.org/get"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
-//    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
+    [[self runWithURL:[NSURL URLWithString:@"https://www.github.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://www.baidu.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
