@@ -221,6 +221,7 @@ NS_INLINE int nextSessionIdentifier() {
     if ([request isKindOfClass:[NSURL class]]) {
         r = [NSURLRequest requestWithURL:request];
     }
+
     [_configuration configureRequest:r];
     return r;
 }

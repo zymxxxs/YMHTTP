@@ -54,7 +54,7 @@ typedef void *YMURLSessionEasyHandle;
 
 - (instancetype)initWithDelegate:(id<YMEasyHandleDelegate>)delegate;
 
-- (void)transferCompletedWithError:(NSError *)error;
+- (void)transferCompletedWithError:(nullable NSError *)error;
 
 - (int)urlErrorCodeWithEasyCode:(int)easyCode;
 

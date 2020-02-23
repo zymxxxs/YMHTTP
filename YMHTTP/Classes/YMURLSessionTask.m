@@ -354,10 +354,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     if (body.type == YMURLSessionTaskBodyTypeNone) {
         [_easyHandle setUpload:false];
         [_easyHandle setRequestBodyLength:0];
-    } else if (bodySize) {
+    } else if (bodySize != nil) {
         [_easyHandle setUpload:true];
         [_easyHandle setRequestBodyLength:bodySize.unsignedLongLongValue];
-    } else if (!bodySize) {
+    } else if (bodySize == nil) {
         [_easyHandle setUpload:true];
         [_easyHandle setRequestBodyLength:-1];
     }
@@ -464,12 +464,16 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 }
 
 - (void)failWithError:(NSError *)error request:(NSURLRequest *)request {
-    NSDictionary *userInfo = @{
-        NSUnderlyingErrorKey : error,
-        NSURLErrorFailingURLErrorKey : request.URL,
-        NSURLErrorFailingURLStringErrorKey : request.URL.absoluteString,
-        NSLocalizedDescriptionKey : NSLocalizedString(error.localizedDescription, @"N/A")
-    };
+    NSDictionary *userInfo = nil;
+
+    if (request.URL) {
+        userInfo = @{
+            NSUnderlyingErrorKey : error,
+            NSURLErrorFailingURLErrorKey : request.URL,
+            NSURLErrorFailingURLStringErrorKey : request.URL.absoluteString,
+            NSLocalizedDescriptionKey : NSLocalizedString(error.localizedDescription, @"N/A")
+        };
+    }
 
     NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:error.code userInfo:userInfo];
     [self completeTaskWithError:urlError];
@@ -557,6 +561,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 - (NSURLRequest *)redirectedReqeustForResponse:(NSHTTPURLResponse *)response fromRequest:(NSURLRequest *)fromRequest {
     NSString *method = nil;
     NSURL *targetURL = nil;
+
+    if (!response.allHeaderFields) return nil;
 
     NSString *location = response.allHeaderFields[@"Location"];
     targetURL = [NSURL URLWithString:location];

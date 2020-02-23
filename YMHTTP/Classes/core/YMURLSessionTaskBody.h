@@ -29,7 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithInputStream:(NSInputStream *)InputStream;
 
 /// - Returns: The body length, or `nil` for no body (e.g. `GET` request).
-- (NSNumber *)getBodyLengthWithError:(NSError **)error;
+- (nullable NSNumber *)getBodyLengthWithError:(NSError **)error;
 
 @end
 

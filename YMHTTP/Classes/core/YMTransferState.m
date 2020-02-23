@@ -75,21 +75,26 @@
     }
 }
 
-- (instancetype)byAppendingHTTPHeaderLineData:(NSData *)data error:(NSError *__autoreleasing _Nullable *)error {
+- (instancetype)byAppendingHTTPHeaderLineData:(NSData *)data error:(NSError **)error {
     YMParsedResponseHeader *h = [_parsedResponseHeader byAppendingHeaderLine:data];
     if (!h) {
-        *error = [NSError errorWithDomain:NSURLErrorDomain
-                                     code:-1
-                                 userInfo:@{NSLocalizedDescriptionKey : @"YMHTTPParseSingleLineError"}];
+        if (error != NULL) {
+            *error = [NSError errorWithDomain:NSURLErrorDomain
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey : @"YMHTTPParseSingleLineError"}];
+        }
         return nil;
     }
 
     if (h.type == YMParsedResponseHeaderTypeComplete) {
         NSHTTPURLResponse *response = [h createHTTPURLResponseForURL:_url];
         if (!response) {
-            *error = [NSError errorWithDomain:NSURLErrorDomain
-                                         code:-1
-                                     userInfo:@{NSLocalizedDescriptionKey : @"YMHTTPParseCompleteHeaderError"}];
+            if (error != NULL) {
+                *error = [NSError errorWithDomain:NSURLErrorDomain
+                                             code:-1
+                                         userInfo:@{NSLocalizedDescriptionKey : @"YMHTTPParseCompleteHeaderError"}];
+            }
+
             return nil;
         }
         YMParsedResponseHeader *ph = [[YMParsedResponseHeader alloc] init];

@@ -66,7 +66,7 @@ typedef NS_ENUM(NSUInteger, YMParsedResponseHeaderType) {
 
 - (nullable instancetype)byAppendingHeaderLine:(NSData *)data;
 
-- (NSHTTPURLResponse *)createHTTPURLResponseForURL:(NSURL *)URL;
+- (nullable NSHTTPURLResponse *)createHTTPURLResponseForURL:(NSURL *)URL;
 
 @end
 

@@ -38,19 +38,18 @@ typedef NS_OPTIONS(NSUInteger, YMState) {
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://61.135.169.125"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
-//    [[self runWithURL:[NSURL URLWithString:@"http://www.baidu.com"]] resume];
+    [[self runWithURL:[NSURL URLWithString:@"http://www.baidu.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
     
-    int i = 0;
-    while (i<200) {
-        [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
-        [[self runWithURL:[NSURL URLWithString:@"http://www.baidu.com"]] resume];
-        i++;
-    }
+//    int i = 0;
+//    while (i<50) {
+//        [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
+//        i++;
+//    }
     
 //    NSURLRequest *r = [NSURLRequest requestWithURL:[NSURL URLWithString:@"https://61.135.169.125"]];
 //    NSURLSessionTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:r completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
@@ -114,16 +113,13 @@ typedef NS_OPTIONS(NSUInteger, YMState) {
 }
 
 
-- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveResponse:(NSURLResponse *)response completionHandler:(void (^)(YMURLSessionResponseDisposition))completionHandler {
-    NSLog(@"didReceiveResponse");
-//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        completionHandler(YMURLSessionResponseAllow);
-//    });
-}
-
-//- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task willPerformHTTPRedirection:(NSHTTPURLResponse *)response newRequest:(NSURLRequest *)request completionHandler:(void (^)(NSURLRequest * _Nullable))completionHandler {
-//    
+//- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveResponse:(NSURLResponse *)response completionHandler:(void (^)(YMURLSessionResponseDisposition))completionHandler {
+//    NSLog(@"didReceiveResponse");
+////    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+//        completionHandler(YMURLSessionResponseAllow);
+////    });
 //}
+
 
 
 
