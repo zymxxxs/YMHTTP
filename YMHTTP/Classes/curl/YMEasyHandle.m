@@ -320,7 +320,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 
 - (int)seekInputStreamWithOffset:(int64_t)offset origin:(NSInteger)origin {
     if (origin != SEEK_SET) {
-        // TODO: Error
+        YM_FATALERROR(@"Unexpected 'origin' in seek.");
     }
 
     BOOL r = [_delegate seekInputStreamToPosition:offset];

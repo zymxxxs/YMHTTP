@@ -201,7 +201,7 @@ NS_INLINE int nextSessionIdentifier() {
 
 - (YMURLSessionTask *)dataTaskWithRequest:(id)request behaviour:(YMURLSessionTaskBehaviour *)behaviour {
     if (_invalidated) {
-        // TODO: throw
+        YM_FATALERROR(@"Session invalidated");
     }
     NSURLRequest *r = [self createConfiguredRequestFrom:request];
     NSUInteger i = [self createNextTaskIdentifier];

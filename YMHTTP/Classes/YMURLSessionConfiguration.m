@@ -5,8 +5,6 @@
 //  Created by zymxxxs on 2020/2/3.
 //
 
-// TODO: copy
-
 #import "YMURLSessionConfiguration.h"
 
 @implementation YMURLSessionConfiguration

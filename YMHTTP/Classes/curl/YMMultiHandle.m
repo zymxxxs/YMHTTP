@@ -119,7 +119,7 @@
         }];
 
     if (idx == NSNotFound) {
-        // TODO: throw error
+        YM_FATALERROR(@"Handle not in list.");
         return;
     }
 
@@ -138,8 +138,7 @@ int _curlm_socket_function(
     YMURLSessionEasyHandle easyHandle, curl_socket_t socket, int what, void *userdata, void *socketptr) {
     YMMultiHandle *handle = from(userdata);
     if (!handle) {
-        NSException *e = nil;
-        @throw e;
+        YM_FATALERROR(nil);
     }
 
     return [handle registerWithSocket:socket what:what socketSourcePtr:socketptr];
@@ -148,8 +147,7 @@ int _curlm_socket_function(
 int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *userdata) {
     YMMultiHandle *handle = from(userdata);
     if (!handle) {
-        NSException *e = nil;
-        @throw e;
+YM_FATALERROR(nil);
     }
     [handle updateTimeoutTimerToValue:timeout];
     return 0;
@@ -197,7 +195,7 @@ int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *
         }];
 
     if (idx == NSNotFound) {
-        // TODO: Transfer completed for easy handle, but it is not in the list of added handles.
+        YM_FATALERROR(@"Transfer completed for easy handle, but it is not in the list of added handles.");
         return;
     }
     YMEasyHandle *easyHandle = _easyHandles[idx];
@@ -271,7 +269,7 @@ CURLMsg *mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue)
                 _type = YMSocketRegisterActionTypeUnregister;
                 break;
             default:
-                // TODO: throw a exception
+                YM_FATALERROR(@"Invalid CURL_POLL value.");
                 break;
         }
     }

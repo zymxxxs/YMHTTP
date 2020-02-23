@@ -6,6 +6,7 @@
 //
 
 #import "YMTaskRegistry.h"
+#import "YMMacro.h"
 #import "YMURLSessionTask.h"
 
 @interface YMTaskRegistry ()
@@ -40,12 +41,15 @@
 - (void)addWithTask:(YMURLSessionTask *)task behaviour:(YMURLSessionTaskBehaviour *)behaviour {
     NSUInteger taskIdentifier = task.taskIdentifier;
     if (taskIdentifier == 0) {
-        // TODO: throw
+        YM_FATALERROR(@"Invalid task identifier");
     }
     NSString *identifier = @(taskIdentifier).stringValue;
     if (_tasks[identifier]) {
         if ([_tasks[identifier] isEqual:task]) {
+            YM_FATALERROR(@"Trying to re-insert a task that's already in the registry.");
         } else {
+            YM_FATALERROR(
+                @"Trying to insert a task, but a different task with the same identifier is already in the registry.");
         }
     }
     _tasks[identifier] = task;
@@ -55,16 +59,16 @@
 - (void)removeWithTask:(YMURLSessionTask *)task {
     NSUInteger taskIdentifier = task.taskIdentifier;
     if (taskIdentifier == 0) {
-        // TODO: throw
+        YM_FATALERROR(@"Invalid task identifier");
     }
     NSString *identifier = @(taskIdentifier).stringValue;
     if (!_tasks[identifier]) {
-        // TODO: throw
+        YM_FATALERROR(@"Trying to remove task, but it's not in the registry.");
     }
     [_tasks removeObjectForKey:identifier];
 
     if (!_behaviours[identifier]) {
-        // TODO: throw
+        YM_FATALERROR(@"Trying to remove task's behaviour, but it's not in the registry.");
     }
     [_behaviours removeObjectForKey:identifier];
 
@@ -78,9 +82,9 @@
     if (_behaviours[identifier])
         return _behaviours[identifier];
     else {
-        // TODO: Throw Error
-        return nil;
+        YM_FATALERROR(@"Trying to access a behaviour for a task that in not in the registry.");
     }
+    return nil;
 }
 
 @end

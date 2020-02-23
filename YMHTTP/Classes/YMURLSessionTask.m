@@ -130,7 +130,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         if (_state == YMURLSessionTaskStateCanceling || _state == YMURLSessionTaskStateCompleted) return;
         _suspendCount -= 1;
         if (_suspendCount > 0) {
-            // TODO: throw Error
+            YM_FATALERROR(@"Resuming a task that's not suspended. Calls to resume() / suspend() need to be matched.");
         }
         [self updateTaskState];
         if (_suspendCount == 0) {
@@ -166,6 +166,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     dispatch_sync(_workQueue, ^{
         if (_state == YMURLSessionTaskStateCanceling || _state == YMURLSessionTaskStateCompleted) return;
         self.suspendCount += 1;
+        if (_suspendCount >= NSIntegerMax) {
+            YM_FATALERROR(@"Task suspended too many times NSIntegerMax.");
+        }
         [self updateTaskState];
 
         if (_suspendCount == 1) {
@@ -279,7 +282,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 - (void)startNewTransferByRequest:(NSURLRequest *)request {
     if (!request.URL) {
-        // TODO: error
+        YM_FATALERROR(@"No URL in request.");
     }
 
     [self getBodyWithCompletion:^(YMURLSessionTaskBody *body) {
@@ -333,7 +336,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     [_easyHandle setFailOnHTTPErrorCode:false];
 
     if (!request.URL) {
-        // TODO: error
+        YM_FATALERROR(@"No URL in request.");
     }
     [_easyHandle setURL:request.URL];
     [_easyHandle setSessionConfig:_session.configuration];
@@ -482,7 +485,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 - (void)completeTask {
     if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
-        // TODO: Error
+        YM_FATALERROR(@"Trying to complete the task, but its transfer isn't complete.");
     }
 
     _response = _transferState.response;
@@ -509,7 +512,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 - (void)completeTaskWithError:(NSError *)error {
     _error = error;
     if (self.internalState != YMURLSessionTaskInternalStateTransferFailed) {
-        // TODO: throw
+        YM_FATALERROR(@"Trying to complete the task, but its transfer isn't complete / failed.");
     }
 
     _easyHandle.timeoutTimer = nil;
@@ -520,7 +523,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 - (void)redirectForRequest:(NSURLRequest *)reqeust {
     if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
-        // TODO: Error
+        YM_FATALERROR(@"Trying to redirect, but the transfer is not complete.");
     }
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
@@ -537,7 +540,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                              completionHandler:^(NSURLRequest *_Nullable request) {
                                  dispatch_async(self.workQueue, ^{
                                      if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
-                                         // TODO: Error
+                                         YM_FATALERROR(@"Received callback for HTTP redirection, but we're not waiting "
+                                                       @"for it. Was it called multiple times?");
                                      }
                                      if (request) {
                                          [self startNewTransferByRequest:request];
@@ -611,8 +615,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     NSString *urlString = components.string;
     if (!urlString) {
-        // TODO: need Exception ？？？
-        return nil;
+        // maybe need return nil
+        YM_FATALERROR(@"Invalid URL");
     }
 
     request.URL = [NSURL URLWithString:urlString];
@@ -626,7 +630,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 - (void)startLoading {
     if (self.internalState == YMURLSessionTaskInternalStateInitial) {
         if (!_originalRequest) {
-            // TODO: error
+            YM_FATALERROR(@"Task has no original request.");
         }
 
         if (_cachedResponse && [self canRespondFromCacheUsingResponse:_cachedResponse]) {
@@ -648,7 +652,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     } else {
         self.internalState = YMURLSessionTaskInternalStateTransferFailed;
         if (!_error) {
-            // TODO: Error
+            YM_FATALERROR(nil);
         }
         [self completeTaskWithError:_error];
     }
@@ -744,8 +748,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 }
 
 - (void)notifyDelegateAboutFinishLoading {
-    // TODO: Error
     if (!_response) {
+        YM_FATALERROR(@"No response");
     }
 
     // TODO: AuthenticationChallenge
@@ -919,7 +923,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 - (void)askDelegateHowToProceedAfterCompleteResponse:(NSHTTPURLResponse *)response {
     if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
-        // TODO: Error
+        YM_FATALERROR(@"Transfer not in progress.");
     }
 
     self.internalState = YMURLSessionTaskInternalStateWaitingForResponseHandler;
@@ -936,7 +940,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 - (void)didCompleteResponseCallbackWithDisposition:(YMURLSessionResponseDisposition)disposition {
     if (self.internalState != YMURLSessionTaskInternalStateWaitingForResponseHandler) {
-        // TODO: Error
+        YM_FATALERROR(@"Received response disposition, but we're not waiting for it.");
     }
     switch (disposition) {
         case YMURLSessionResponseCancel: {
@@ -955,7 +959,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 - (YMEasyHandleAction)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength {
     if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
-        // TODO: Error
+        YM_FATALERROR(@"Received header data, but no transfer in progress.");
     }
 
     NSError *error = nil;
@@ -983,10 +987,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 - (void)didReceiveResponse {
     if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
-        // TODO: failure
+        YM_FATALERROR(@"Transfer not in progress.");
     }
     if (!_transferState.response) {
-        // TODO: failure
+        YM_FATALERROR(@"Header complete, but not URL response.");
     }
 
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
@@ -1005,7 +1009,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 - (YMEasyHandleAction)didReceiveWithData:(NSData *)data {
     if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
-        // TODO: Error
+        YM_FATALERROR(@"Received body data, but no transfer in progress.");
     }
 
     NSHTTPURLResponse *response = [self validateHeaderCompleteWithTS:_transferState];
@@ -1025,13 +1029,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
 - (void)transferCompletedWithError:(NSError *)error {
     if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
-        // TODO:
-        assert(true);
+        YM_FATALERROR(@"Transfer completed, but it wasn't in progress.");
     }
 
     if (!_currentRequest) {
-        // TODO:
-        assert(true);
+        YM_FATALERROR(@"Transfer completed, but there's no current request.");
     }
 
     if (error) {
@@ -1046,7 +1048,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     NSHTTPURLResponse *response = _transferState.response;
     if (!response) {
-        // TODO: Error
+        YM_FATALERROR(@"Transfer completed, but there's no response.");
     }
 
     self.internalState = YMURLSessionTaskInternalStateTransferCompleted;
@@ -1061,13 +1063,13 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 - (void)fillWriteBufferLength:(NSInteger)length
                        result:(void (^)(YMEasyHandleWriteBufferResult, NSInteger, NSData *_Nullable))result {
     if (_internalState != YMURLSessionTaskInternalStateTransferInProgress) {
-        // TODO: Error
+        YM_FATALERROR(@"Requested to fill write buffer, but transfer isn't in progress.");
     }
 
     id<YMURLSessionTaskBodySource> source = _transferState.requestBodySource;
 
     if (!source) {
-        // TODO: Error
+        YM_FATALERROR(@"Requested to fill write buffer, but transfer state has no body source.");
     }
 
     if (!result) return;
@@ -1126,9 +1128,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                 self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
                 _transferState = ts;
                 return true;
+            } else {
+                YM_FATALERROR(nil);
             }
-        } else {
-            return NO;
         }
     }
 
