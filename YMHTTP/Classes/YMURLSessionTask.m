@@ -194,7 +194,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 - (void)setInternalState:(YMURLSessionTaskInternalState)internalState {
     YMURLSessionTaskInternalState newValue = internalState;
     if (![self isEasyHandlePausedForState:_internalState] && [self isEasyHandlePausedForState:newValue]) {
-        // TODO: Error
+        [_easyHandle pauseReceive];
     }
 
     if ([self isEasyHandleAddedToMultiHandleForState:_internalState] &&
@@ -212,7 +212,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     }
 
     if ([self isEasyHandlePausedForState:oldValue] && ![self isEasyHandlePausedForState:_internalState]) {
-        // TODO: Error Need to solve pausing receive.
+        [_easyHandle unpauseReceive];
     }
 }
 

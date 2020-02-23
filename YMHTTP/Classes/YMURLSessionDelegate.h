@@ -18,7 +18,7 @@ typedef NS_ENUM(NSInteger, YMURLSessionResponseDisposition) {
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol YMURLSessionDelegate <NSObject>
-
+@optional
 - (void)YMURLSession:(YMURLSession *)session didBecomeInvalidWithError:(nullable NSError *)error;
 
 @end

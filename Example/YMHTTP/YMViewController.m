@@ -10,7 +10,12 @@
 #import <YMHTTP/YMHTTP.h>
 #import <CFNetwork/CFNetwork.h>
 
-@interface YMViewController ()<YMURLSessionDelegate>
+typedef NS_OPTIONS(NSUInteger, YMState) {
+    YMStateReceive = 1 << 0,
+    YMStateSend = 1 << 1
+};
+
+@interface YMViewController ()<YMURLSessionDataDelegate>
 
 @property (nonatomic, strong) YMURLSession *s;
 
@@ -31,7 +36,7 @@
     
 //    [[self runWithURL:[NSURL URLWithString:@"https://httpbin.org/get"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
-    [[self runWithURL:[NSURL URLWithString:@"https://www.github.com"]] resume];
+//    [[self runWithURL:[NSURL URLWithString:@"http://61.135.169.125"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://www.baidu.com"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
@@ -40,29 +45,43 @@
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
 //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
     
-    NSURLRequest *r = [NSURLRequest requestWithURL:[NSURL URLWithString:@"https://httpbin.org/post"]];
-    NSURLSessionTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:r completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-
-    }];
-    [task resume];
-
-    
-    int a = 2;
-    
-    switch (a) {
-        case 0:
-            NSLog(@"0");
-        case 1:
-            NSLog(@"1");
-        case 2:
-            NSLog(@"2");
-        case 3:
-            NSLog(@"3");
-            
-        default:
-            break;
+    int i = 0;
+    while (i<200) {
+        [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
+        [[self runWithURL:[NSURL URLWithString:@"http://www.baidu.com"]] resume];
+        i++;
     }
     
+//    NSURLRequest *r = [NSURLRequest requestWithURL:[NSURL URLWithString:@"https://61.135.169.125"]];
+//    NSURLSessionTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:r completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+//
+//    }];
+//    [task resume];
+    
+    
+//    int a = 2;
+//
+//    switch (a) {
+//        case 0:
+//            NSLog(@"0");
+//        case 1:
+//            NSLog(@"1");
+//        case 2:
+//            NSLog(@"2");
+//        case 3:
+//            NSLog(@"3");
+//
+//        default:
+//            break;
+//    }
+    
+//    YMState state;
+//
+//    state = YMStateSend;
+//    NSLog(@"%d", state & YMStateReceive);
+//    state = YMStateSend | YMStateReceive;
+//
+//    NSLog(@"%d", state & YMStateReceive);
 }
 
 
@@ -78,19 +97,28 @@
 //    r.HTTPBody = [a dataUsingEncoding:NSUTF8StringEncoding];
 //    [r setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
 //    r.HTTPBodyStream = [[NSInputStream alloc] initWithData:[a dataUsingEncoding:NSUTF8StringEncoding]];
-    r.HTTPMethod = @"POST";
+    r.HTTPMethod = @"GET";
 //    [r.HTTPBodyStream open];
     return [_s dataTaskWithRequest:r];
 }
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didCompleteWithError:(NSError *)error {
+    NSLog(@"didCompleteWithError");
+    NSLog(@"%@", task.response);
+    NSLog(@"%@", error);
+}
 
+- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveData:(NSData *)data {
+    NSLog(@"didReceiveData");
+    NSLog(@"%@", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
 }
 
 
-
-- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task needNewBodyStream:(void (^)(NSInputStream * _Nullable))completionHandler {
-    
+- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveResponse:(NSURLResponse *)response completionHandler:(void (^)(YMURLSessionResponseDisposition))completionHandler {
+    NSLog(@"didReceiveResponse");
+//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        completionHandler(YMURLSessionResponseAllow);
+//    });
 }
 
 //- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task willPerformHTTPRedirection:(NSHTTPURLResponse *)response newRequest:(NSURLRequest *)request completionHandler:(void (^)(NSURLRequest * _Nullable))completionHandler {

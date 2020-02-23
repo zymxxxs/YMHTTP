@@ -207,6 +207,13 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_TIMEOUT, (long)timeout));
 }
 
+- (void)setPauseState:(YMEasyHandlePauseState)pauseState {
+    NSUInteger send = pauseState & YMEasyHandlePauseStateSend;
+    NSUInteger receive = pauseState & YMEasyHandlePauseStateReceive;
+    int bitmask = 0 | (send ? CURLPAUSE_SEND : CURLPAUSE_SEND_CONT) | (receive ? CURLPAUSE_RECV : CURLPAUSE_RECV_CONT);
+    YM_ECODE(curl_easy_pause(_rawHandle, bitmask));
+}
+
 - (double)getTimeoutIntervalSpent {
     double timeSpent;
     curl_easy_getinfo(_rawHandle, CURLINFO_TOTAL_TIME, &timeSpent);
@@ -219,6 +226,32 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     return _errno;
 }
 
+-(void)pauseSend {
+    if (_pauseState & YMEasyHandlePauseStateSend) return;
+    
+    _pauseState = _pauseState | YMEasyHandlePauseStateSend;
+    [self setPauseState:_pauseState];
+}
+- (void)unpauseSend {
+    if (!(_pauseState & YMEasyHandlePauseStateSend)) return;
+    
+    _pauseState = _pauseState ^ YMEasyHandlePauseStateSend;
+    [self setPauseState:_pauseState];
+}
+
+-(void)pauseReceive {
+    if (_pauseState & YMEasyHandlePauseStateReceive) return;
+    
+    _pauseState = _pauseState | YMEasyHandlePauseStateReceive;
+    [self setPauseState:_pauseState];
+}
+
+- (void)unpauseReceive {
+    if (!(_pauseState & YMEasyHandlePauseStateReceive)) return;
+    
+    _pauseState = _pauseState ^ YMEasyHandlePauseStateReceive;
+    [self setPauseState:_pauseState];
+}
 #pragma mark - Private Methods
 
 - (NSInteger)didReceiveData:(char *)data size:(NSInteger)size nmemb:(NSInteger)nmemb {

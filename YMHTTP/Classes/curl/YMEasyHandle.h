@@ -127,6 +127,14 @@ typedef void *YMURLSessionEasyHandle;
 
 - (double)getTimeoutIntervalSpent;
 
+- (void)pauseReceive;
+- (void)unpauseReceive;
+
+
+- (void)pauseSend;
+- (void)unpauseSend;
+
+
 @end
 
 NS_ASSUME_NONNULL_END
