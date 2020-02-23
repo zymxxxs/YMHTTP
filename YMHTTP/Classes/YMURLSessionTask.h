@@ -38,6 +38,7 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
 
 - (void)suspend;
 - (void)resume;
+- (void)cancel;
 
 - (instancetype)init __attribute__((unavailable(
     "Please use NSURLSessionConfiguration.defaultSessionConfiguration or other class methods to create instances")));

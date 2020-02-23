@@ -19,6 +19,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol YMURLSessionDelegate <NSObject>
 
+- (void)YMURLSession:(YMURLSession *)session didBecomeInvalidWithError:(nullable NSError *)error;
+
 @end
 
 @protocol YMURLSessionTaskDelegate <YMURLSessionDelegate>

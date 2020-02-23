@@ -13,6 +13,8 @@
 #import "YMURLSessionTask.h"
 #import "YMURLSessionTaskBehaviour.h"
 
+static YMURLSession *_sharedSession = nil;
+
 static dispatch_queue_t _globalVarSyncQ = nil;
 static int sessionCounter = 0;
 NS_INLINE int nextSessionIdentifier() {
@@ -32,6 +34,7 @@ NS_INLINE int nextSessionIdentifier() {
 @property (nonatomic, assign) int identifier;
 @property (nonatomic, assign) BOOL invalidated;
 @property (nonatomic, assign) NSUInteger nextTaskIdentifier;
+@property (nullable, strong) id<YMURLSessionDelegate> delegate;
 
 @end
 
@@ -62,7 +65,6 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 + (YMURLSession *)sharedSession {
-    static YMURLSession *_sharedSession = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         YMURLSessionConfiguration *configuration = [YMURLSessionConfiguration defaultSessionConfiguration];
@@ -79,6 +81,92 @@ NS_INLINE int nextSessionIdentifier() {
 
 + (YMURLSession *)sessionWithConfiguration:(YMURLSessionConfiguration *)configuration {
     return [self sessionWithConfiguration:configuration delegate:nil delegateQueue:nil];
+}
+
+- (void)finishTasksAndInvalidate {
+    dispatch_async(_workQueue, ^{
+        self.invalidated = true;
+
+        void (^invalidateSessionCallback)(void) = ^{
+            if (!self.delegate) return;
+            [self.delegateQueue addOperationWithBlock:^{
+                if ([self.delegate respondsToSelector:@selector(YMURLSession:didBecomeInvalidWithError:)]) {
+                    [self.delegate YMURLSession:self didBecomeInvalidWithError:nil];
+                }
+                self.delegate = nil;
+            }];
+        };
+
+        if (!self.taskRegistry.isEmpty) {
+            [self.taskRegistry notifyOnTasksCompletion:invalidateSessionCallback];
+        } else {
+            invalidateSessionCallback();
+        }
+    });
+}
+
+- (void)invalidateAndCancel {
+    if (_sharedSession) return;
+
+    dispatch_sync(_workQueue, ^{
+        self.invalidated = true;
+    });
+
+    for (YMURLSessionTask *task in _taskRegistry.allTasks) {
+        [task cancel];
+    }
+
+    dispatch_async(_workQueue, ^{
+        if (!self.delegate) return;
+        [self.delegateQueue addOperationWithBlock:^{
+            if ([self.delegate respondsToSelector:@selector(YMURLSession:didBecomeInvalidWithError:)]) {
+                [self.delegate YMURLSession:self didBecomeInvalidWithError:nil];
+            }
+            self.delegate = nil;
+        }];
+    });
+}
+
+- (void)resetWithCompletionHandler:(void (^)(void))completionHandler {
+    dispatch_queue_t globalQ = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
+    dispatch_async(globalQ, ^{
+        if (self.configuration.URLCache) {
+            [self.configuration.URLCache removeAllCachedResponses];
+        }
+
+        NSURLCredentialStorage *storage = self.configuration.URLCredentialStorage;
+        if (storage) {
+            for (NSURLProtectionSpace *protectionSpace in storage.allCredentials) {
+                NSDictionary *credentialEntry = storage.allCredentials[protectionSpace];
+                for (NSURLCredential *credential in credentialEntry.allValues) {
+                    [storage removeCredential:credential forProtectionSpace:protectionSpace];
+                }
+            }
+        }
+        [self flushWithCompletionHandler:completionHandler];
+    });
+}
+
+- (void)flushWithCompletionHandler:(void (^)(void))completionHandler {
+    if (completionHandler) {
+        [_delegateQueue addOperationWithBlock:^{
+            completionHandler();
+        }];
+    }
+}
+
+- (void)getAllTasksWithCompletionHandler:(void (^)(NSArray<__kindof YMURLSessionTask *> *_Nonnull))completionHandler {
+    dispatch_async(_workQueue, ^{
+        [self.delegateQueue addOperationWithBlock:^{
+            NSMutableArray *tasks = [[NSMutableArray alloc] init];
+            for (YMURLSessionTask *task in self.taskRegistry.allTasks) {
+                if (task.state == YMURLSessionTaskStateRunning) {
+                    [tasks addObject:task];
+                }
+            }
+            if (completionHandler) completionHandler(tasks);
+        }];
+    });
 }
 
 - (YMURLSessionTask *)dataTaskWithURL:(NSURL *)url {

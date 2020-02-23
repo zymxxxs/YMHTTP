@@ -34,6 +34,16 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nullable, copy) NSString *sessionDescription;
 @property (readonly, nonatomic, strong) dispatch_queue_t workQueue;
 
+- (void)finishTasksAndInvalidate;
+
+- (void)invalidateAndCancel;
+
+- (void)resetWithCompletionHandler:(void (^)(void))completionHandler;
+
+- (void)flushWithCompletionHandler:(void (^)(void))completionHandler;
+
+- (void)getAllTasksWithCompletionHandler:(void (^)(NSArray<__kindof YMURLSessionTask *> *tasks))completionHandler;
+
 - (YMURLSessionTask *)dataTaskWithRequest:(NSURLRequest *)request;
 
 - (YMURLSessionTask *)dataTaskWithURL:(NSURL *)url;
@@ -50,6 +60,7 @@ NS_ASSUME_NONNULL_BEGIN
 //                                                NSError *_Nullable error))completionHandler;
 
 @property (nonatomic, strong) YMTaskRegistry *taskRegistry;
+
 - (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task;
 - (void)addHandle:(YMEasyHandle *)handle;
 - (void)removeHandle:(YMEasyHandle *)handle;
