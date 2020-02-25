@@ -12,6 +12,7 @@
 #import "YMURLSessionConfiguration.h"
 #import "YMURLSessionTask.h"
 #import "YMURLSessionTaskBehaviour.h"
+#import "YMURLSessionTaskBody.h"
 
 static YMURLSession *_sharedSession = nil;
 
@@ -169,14 +170,82 @@ NS_INLINE int nextSessionIdentifier() {
     });
 }
 
-- (YMURLSessionTask *)dataTaskWithURL:(NSURL *)url {
+- (YMURLSessionTask *)taskWithURL:(NSURL *)url {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
-    return [self dataTaskWithRequest:url behaviour:b];
+    return [self taskWithRequest:url behaviour:b];
 }
 
-- (YMURLSessionTask *)dataTaskWithRequest:(NSURLRequest *)request {
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
-    return [self dataTaskWithRequest:request behaviour:b];
+    return [self taskWithRequest:request behaviour:b];
+}
+
+- (YMURLSessionTask *)taskWithURL:(NSURL *)url
+                completionHandler:
+                    (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    b.type = YMURLSessionTaskBehaviourTypeDataHandler;
+    b.dataTaskCompeltion = completionHandler;
+    return [self taskWithRequest:url behaviour:b];
+}
+
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
+                    completionHandler:
+                        (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    b.type = YMURLSessionTaskBehaviourTypeDataHandler;
+    b.dataTaskCompeltion = completionHandler;
+    return [self taskWithRequest:request behaviour:b];
+}
+
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request fromFile:(NSURL *)fileURL {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    b.type = YMURLSessionTaskBehaviourTypeTaskDelegate;
+
+    YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithFileURL:fileURL];
+
+    return [self taskWithRequest:request body:body behaviour:b];
+}
+
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request fromData:(NSData *)bodyData {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    b.type = YMURLSessionTaskBehaviourTypeTaskDelegate;
+
+    YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithData:bodyData];
+
+    return [self taskWithRequest:request body:body behaviour:b];
+}
+
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
+                             fromData:(NSData *)bodyData
+                    completionHandler:
+                        (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    b.type = YMURLSessionTaskBehaviourTypeDataHandler;
+
+    YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithData:bodyData];
+
+    return [self taskWithRequest:request body:body behaviour:b];
+}
+
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
+                             fromFile:(NSURL *)fileURL
+                    completionHandler:
+                        (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    b.type = YMURLSessionTaskBehaviourTypeDataHandler;
+    b.dataTaskCompeltion = completionHandler;
+
+    YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithFileURL:fileURL];
+
+    return [self taskWithRequest:request body:body behaviour:b];
+}
+
+- (YMURLSessionTask *)uploadTaskWithStreamedRequest:(NSURLRequest *)request {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    b.type = YMURLSessionTaskBehaviourTypeTaskDelegate;
+
+    return [self taskWithRequest:request body:nil behaviour:b];
 }
 
 - (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task {
@@ -199,13 +268,28 @@ NS_INLINE int nextSessionIdentifier() {
 
 #pragma mark - Private Methods
 
-- (YMURLSessionTask *)dataTaskWithRequest:(id)request behaviour:(YMURLSessionTaskBehaviour *)behaviour {
+- (YMURLSessionTask *)taskWithRequest:(id)request behaviour:(YMURLSessionTaskBehaviour *)behaviour {
     if (_invalidated) {
         YM_FATALERROR(@"Session invalidated");
     }
     NSURLRequest *r = [self createConfiguredRequestFrom:request];
     NSUInteger i = [self createNextTaskIdentifier];
     YMURLSessionTask *task = [[YMURLSessionTask alloc] initWithSession:self reqeust:r taskIdentifier:i];
+    dispatch_async(_workQueue, ^{
+        [self.taskRegistry addWithTask:task behaviour:behaviour];
+    });
+    return task;
+}
+
+- (YMURLSessionTask *)taskWithRequest:(id)request
+                                 body:(YMURLSessionTaskBody *)body
+                            behaviour:(YMURLSessionTaskBehaviour *)behaviour {
+    if (_invalidated) {
+        YM_FATALERROR(@"Session invalidated");
+    }
+    NSURLRequest *r = [self createConfiguredRequestFrom:request];
+    NSUInteger i = [self createNextTaskIdentifier];
+    YMURLSessionTask *task = [[YMURLSessionTask alloc] initWithSession:self reqeust:r taskIdentifier:i body:body];
     dispatch_async(_workQueue, ^{
         [self.taskRegistry addWithTask:task behaviour:behaviour];
     });

@@ -29,4 +29,4 @@ pod 'YMHTTP'
 * cache 待解决
 * download 不支持断点续传 待解决
 * taskhandle
-* fatalError
+* ~~fatalError~~

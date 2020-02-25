@@ -44,20 +44,37 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)getAllTasksWithCompletionHandler:(void (^)(NSArray<__kindof YMURLSessionTask *> *tasks))completionHandler;
 
-- (YMURLSessionTask *)dataTaskWithRequest:(NSURLRequest *)request;
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request;
 
-- (YMURLSessionTask *)dataTaskWithURL:(NSURL *)url;
+- (YMURLSessionTask *)taskWithURL:(NSURL *)url;
 
-// TODO: dataTask
-//- (YMURLSessionTask *)dataTaskWithRequest:(NSURLRequest *)request
-//                        completionHandler:(void (^)(NSData *_Nullable data,
-//                                                    NSURLResponse *_Nullable response,
-//                                                    NSError *_Nullable error))completionHandler;
-//
-//- (YMURLSessionTask *)dataTaskWithURL:(NSURL *)url
-//                    completionHandler:(void (^)(NSData *_Nullable data,
-//                                                NSURLResponse *_Nullable response,
-//                                                NSError *_Nullable error))completionHandler;
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
+                    completionHandler:(void (^)(NSData *_Nullable data,
+                                                NSURLResponse *_Nullable response,
+                                                NSError *_Nullable error))completionHandler;
+
+- (YMURLSessionTask *)taskWithURL:(NSURL *)url
+                completionHandler:(void (^)(NSData *_Nullable data,
+                                            NSURLResponse *_Nullable response,
+                                            NSError *_Nullable error))completionHandler;
+
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request fromFile:(NSURL *)fileURL;
+
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request fromData:(NSData *)bodyData;
+
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
+                             fromFile:(NSURL *)fileURL
+                    completionHandler:(void (^)(NSData *_Nullable data,
+                                                NSURLResponse *_Nullable response,
+                                                NSError *_Nullable error))completionHandler;
+
+- (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
+                             fromData:(nullable NSData *)bodyData
+                    completionHandler:(void (^)(NSData *_Nullable data,
+                                                NSURLResponse *_Nullable response,
+                                                NSError *_Nullable error))completionHandler;
+
+- (YMURLSessionTask *)uploadTaskWithStreamedRequest:(NSURLRequest *)request;
 
 @property (nonatomic, strong) YMTaskRegistry *taskRegistry;
 
