@@ -34,4 +34,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+@interface YMBodyFileSource : NSObject <YMURLSessionTaskBodySource>
+
+- (instancetype)initWithFileURL:(NSURL *)fileURL
+                      workQueue:(dispatch_queue_t)workQueue
+           dataAvailableHandler:(void (^)(void))dataAvailableHandler;
+
+@end
+
 NS_ASSUME_NONNULL_END

@@ -411,21 +411,23 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     switch (body.type) {
         case YMURLSessionTaskBodyTypeNone:
             return [[YMTransferState alloc] initWithURL:url bodyDataDrain:drain];
-            break;
         case YMURLSessionTaskBodyTypeData: {
             YMBodyDataSource *source = [[YMBodyDataSource alloc] initWithData:body.data];
             return [[YMTransferState alloc] initWithURL:url bodyDataDrain:drain bodySource:source];
         }
-        case YMURLSessionTaskBodyTypeFile:
-            // TODO: fix
-            break;
+        case YMURLSessionTaskBodyTypeFile: {
+            YMBodyFileSource *source = [[YMBodyFileSource alloc] initWithFileURL:body.fileURL
+                                                                       workQueue:workQueue
+                                                            dataAvailableHandler:^{
+                                                                [self.easyHandle unpauseSend];
+                                                            }];
+            return [[YMTransferState alloc] initWithURL:url bodyDataDrain:drain bodySource:source];
+        }
         case YMURLSessionTaskBodyTypeStream: {
             YMBodyStreamSource *source = [[YMBodyStreamSource alloc] initWithInputStream:body.inputStream];
             return [[YMTransferState alloc] initWithURL:url bodyDataDrain:drain bodySource:source];
         }
     }
-    // TODO: '''
-    return nil;
 }
 
 - (YMDataDrain *)createTransferBodyDataDrain {
@@ -713,7 +715,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                     });
                 }
             }];
-        } break;
+            break;
+        }
         case YMURLSessionTaskBehaviourTypeNoDelegate: {
             if (self.state != YMURLSessionTaskStateCompleted) {
                 self->_state = YMURLSessionTaskStateCompleted;
@@ -721,7 +724,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                     [self.session.taskRegistry removeWithTask:self];
                 });
             }
-        } break;
+            break;
+        }
         case YMURLSessionTaskBehaviourTypeDataHandler: {
             [_session.delegateQueue addOperationWithBlock:^{
                 if (self.state != YMURLSessionTaskStateCompleted) {
@@ -732,7 +736,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                     });
                 }
             }];
-        } break;
+            break;
+        }
         case YMURLSessionTaskBehaviourTypeDownloadHandler: {
             [_session.delegateQueue addOperationWithBlock:^{
                 if (self.state != YMURLSessionTaskStateCompleted) {
@@ -743,7 +748,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                     });
                 }
             }];
-        } break;
+            break;
+        }
     }
 }
 
@@ -838,7 +844,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                     [self.session.taskRegistry removeWithTask:self];
                 });
             }];
-        } break;
+            break;
+        }
         case YMURLSessionTaskBehaviourTypeNoDelegate: {
             [_session.delegateQueue addOperationWithBlock:^{
                 if (self.state == YMURLSessionTaskStateCompleted) return;
@@ -847,7 +854,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                     [self.session.taskRegistry removeWithTask:self];
                 });
             }];
-        } break;
+            break;
+        }
         case YMURLSessionTaskBehaviourTypeDataHandler: {
             [_session.delegateQueue addOperationWithBlock:^{
                 if (self.state == YMURLSessionTaskStateCompleted) return;
@@ -860,7 +868,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                     [self.session.taskRegistry removeWithTask:self];
                 });
             }];
-        } break;
+            break;
+        }
         case YMURLSessionTaskBehaviourTypeDownloadHandler: {
             [_session.delegateQueue addOperationWithBlock:^{
                 if (self.state == YMURLSessionTaskStateCompleted) return;
@@ -874,7 +883,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                     [self.session.taskRegistry removeWithTask:self];
                 });
             }];
-        } break;
+            break;
+        }
     }
 }
 
@@ -948,7 +958,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
             NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil];
             [self completeTaskWithError:urlError];
             [self notifyDelegateAboutError:urlError];
-        } break;
+            break;
+        }
         case YMURLSessionResponseAllow:
             self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
             break;
@@ -1081,7 +1092,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
                              NSUInteger count = data.length;
                              [self notifyDelegateAboutUploadedDataCount:(int64_t)count];
                              result(YMEasyHandleWriteBufferResultBytes, count, data);
-                         } break;
+                             break;
+                         }
                          case YMBodySourceDataChunkDone:
                              result(YMEasyHandleWriteBufferResultBytes, 0, nil);
                              break;

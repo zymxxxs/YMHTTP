@@ -45,6 +45,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 - (void)dealloc {
     curl_easy_cleanup(_rawHandle);
     curl_slist_free_all(_headerList);
+    free(_errorBuffer);
 }
 
 - (void)transferCompletedWithError:(NSError *)error {
@@ -207,7 +208,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_TIMEOUT, (long)timeout));
 }
 
-- (void)setPauseState:(YMEasyHandlePauseState)pauseState {
+- (void)updatePauseState:(YMEasyHandlePauseState)pauseState {
     NSUInteger send = pauseState & YMEasyHandlePauseStateSend;
     NSUInteger receive = pauseState & YMEasyHandlePauseStateReceive;
     int bitmask = 0 | (send ? CURLPAUSE_SEND : CURLPAUSE_SEND_CONT) | (receive ? CURLPAUSE_RECV : CURLPAUSE_RECV_CONT);
@@ -230,27 +231,27 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     if (_pauseState & YMEasyHandlePauseStateSend) return;
     
     _pauseState = _pauseState | YMEasyHandlePauseStateSend;
-    [self setPauseState:_pauseState];
+    [self updatePauseState:_pauseState];
 }
 - (void)unpauseSend {
     if (!(_pauseState & YMEasyHandlePauseStateSend)) return;
     
     _pauseState = _pauseState ^ YMEasyHandlePauseStateSend;
-    [self setPauseState:_pauseState];
+    [self updatePauseState:_pauseState];
 }
 
 -(void)pauseReceive {
     if (_pauseState & YMEasyHandlePauseStateReceive) return;
     
     _pauseState = _pauseState | YMEasyHandlePauseStateReceive;
-    [self setPauseState:_pauseState];
+    [self updatePauseState:_pauseState];
 }
 
 - (void)unpauseReceive {
     if (!(_pauseState & YMEasyHandlePauseStateReceive)) return;
     
     _pauseState = _pauseState ^ YMEasyHandlePauseStateReceive;
-    [self setPauseState:_pauseState];
+    [self updatePauseState:_pauseState];
 }
 #pragma mark - Private Methods
 
