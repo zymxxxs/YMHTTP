@@ -71,7 +71,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 @property (nonatomic, strong) YMURLSession *session;
 @property (nonatomic, strong) dispatch_queue_t workQueue;
-@property (nonatomic, assign) NSUInteger suspendCount;
+@property (nonatomic, assign) NSInteger suspendCount;
 @property (nonatomic, strong) NSURLRequest *authRequest;
 
 @property (nonatomic, strong) NSData *responseData;
@@ -147,7 +147,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 - (void)resume {
     dispatch_sync(_workQueue, ^{
         if (self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
-        _suspendCount -= 1;
+        self.suspendCount -= 1;
         if (_suspendCount < 0) {
             YM_FATALERROR(@"Resuming a task that's not suspended. Calls to resume() / suspend() need to be matched.");
         }
@@ -155,6 +155,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         if (_suspendCount == 0) {
             self.hasTriggeredResume = true;
             [self getProtocolWithCompletion:^(BOOL isContinue) {
+                if (self.suspendCount != 0) return ;
                 BOOL isHTTPScheme = [self.originalRequest.URL.scheme isEqualToString:@"http"] ||
                                     [self.originalRequest.URL.scheme isEqualToString:@"https"];
                 if (isHTTPScheme && isContinue) {
@@ -177,6 +178,48 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                         [self notifyDelegateAboutError:self.error];
                     }
                 }
+            }];
+        }
+    });
+}
+
+
+- (void)suspend {
+    dispatch_sync(_workQueue, ^{
+        if (self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
+        self.suspendCount += 1;
+        if (_suspendCount >= NSIntegerMax) {
+            YM_FATALERROR(@"Task suspended too many times NSIntegerMax.");
+        }
+        [self updateTaskState];
+
+        if (self.suspendCount == 1) {
+            [self getProtocolWithCompletion:^(BOOL isContinue) {
+                if (self.suspendCount != 1) return ;
+                dispatch_async(self.workQueue, ^{
+                    [self stopLoading];
+                });
+            }];
+        }
+    });
+}
+
+- (void)cancel {
+    dispatch_sync(_workQueue, ^{
+        if (_state == YMURLSessionTaskStateRunning || _state == YMURLSessionTaskStateSuspended) {
+            self.state = YMURLSessionTaskStateCanceling;
+            [self getProtocolWithCompletion:^(BOOL isContinue) {
+                dispatch_async(self.workQueue, ^{
+                    NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
+                                                            code:NSURLErrorCancelled
+                                                        userInfo:nil];
+                    self.error = urlError;
+
+                    if (isContinue) {
+                        [self stopLoading];
+                        [self notifyDelegateAboutError:urlError];
+                    }
+                });
             }];
         }
     });
@@ -260,46 +303,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     [self.protocolLock lock];
     self.protocolState = YMURLSessionTaskProtocolStateInvalidated;
     [self.protocolLock unlock];
-}
-
-- (void)suspend {
-    dispatch_sync(_workQueue, ^{
-        if (self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
-        self.suspendCount += 1;
-        if (_suspendCount >= NSIntegerMax) {
-            YM_FATALERROR(@"Task suspended too many times NSIntegerMax.");
-        }
-        [self updateTaskState];
-
-        if (_suspendCount == 1) {
-            [self getProtocolWithCompletion:^(BOOL isContinue) {
-                dispatch_async(self.workQueue, ^{
-                    [self stopLoading];
-                });
-            }];
-        }
-    });
-}
-
-- (void)cancel {
-    dispatch_sync(_workQueue, ^{
-        if (_state == YMURLSessionTaskStateRunning || _state == YMURLSessionTaskStateSuspended) {
-            _state = YMURLSessionTaskStateCanceling;
-            [self getProtocolWithCompletion:^(BOOL isContinue) {
-                dispatch_async(self.workQueue, ^{
-                    NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
-                                                            code:NSURLErrorCancelled
-                                                        userInfo:nil];
-                    self.error = urlError;
-
-                    if (isContinue) {
-                        [self stopLoading];
-                        [self notifyDelegateAboutError:urlError];
-                    }
-                });
-            }];
-        }
-    });
 }
 
 #pragma mark - Setter Getter Methods
@@ -387,7 +390,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     } else {
         self.state = YMURLSessionTaskStateSuspended;
     }
-    NSLog(@"%@", @(_state));
 }
 
 - (BOOL)canRespondFromCacheUsingResponse:(NSCachedURLResponse *)response {

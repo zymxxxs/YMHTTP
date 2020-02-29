@@ -30,3 +30,10 @@ pod 'YMHTTP'
 * download 不支持断点续传 待解决
 * taskhandle
 * ~~fatalError~~
+* YMURLSessionTaskProtocolState 需要重新命名
+* YMURLSessionTaskProtocolStateInvalidated 可能无用
+* 多次 resume、suspend 之后 crash
+
+
+# 待预研
+* NSURLSession 中 suspend 无效
