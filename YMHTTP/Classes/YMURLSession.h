@@ -76,10 +76,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (YMURLSessionTask *)uploadTaskWithStreamedRequest:(NSURLRequest *)request;
 
+#pragma mark - Private
+
 @property (nonatomic, strong) YMTaskRegistry *taskRegistry;
 
 - (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task;
+
 - (void)addHandle:(YMEasyHandle *)handle;
+
 - (void)removeHandle:(YMEasyHandle *)handle;
 
 - (instancetype)init __attribute__((unavailable(

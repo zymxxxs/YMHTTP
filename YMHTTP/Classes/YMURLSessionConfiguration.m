@@ -12,7 +12,7 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _requestCachePolicy = NSURLRequestUseProtocolCachePolicy;
+        self.requestCachePolicy = NSURLRequestUseProtocolCachePolicy;
         _timeoutIntervalForRequest = 60;
         _timeoutIntervalForResource = 604800;
         _allowsCellularAccess = true;

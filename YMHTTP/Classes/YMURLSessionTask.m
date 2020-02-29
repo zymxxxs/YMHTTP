@@ -7,6 +7,7 @@
 
 #import "YMURLSessionTask.h"
 #import "NSInputStream+YMCategory.h"
+#import "NSURLCache+YMCategory.h"
 #import "YMEasyHandle.h"
 #import "YMMacro.h"
 #import "YMTaskRegistry.h"
@@ -59,15 +60,25 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     YMURLSessionTaskInternalStateTaskCompleted,
 };
 
+typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
+    YMURLSessionTaskProtocolStateToBeCreate,
+    YMURLSessionTaskProtocolStateAwaitingCacheReply,
+    YMURLSessionTaskProtocolStateExisting,
+    YMURLSessionTaskProtocolStateInvalidated
+};
+
 @interface YMURLSessionTask () <YMEasyHandleDelegate>
 
 @property (nonatomic, strong) YMURLSession *session;
 @property (nonatomic, strong) dispatch_queue_t workQueue;
 @property (nonatomic, assign) NSUInteger suspendCount;
-@property (nonatomic, strong) NSError *error;
 @property (nonatomic, strong) NSURLRequest *authRequest;
 
 @property (nonatomic, strong) NSData *responseData;
+
+@property (nonatomic, strong) NSLock *protocolLock;
+@property (nonatomic, assign) YMURLSessionTaskProtocolState protocolState;
+@property (nonatomic, strong) NSMutableArray<void (^)(BOOL)> *protocolBag;
 
 @property (nonatomic, strong) YMEasyHandle *easyHandle;
 @property (nonatomic, assign) YMURLSessionTaskInternalState internalState;
@@ -75,14 +86,20 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 @property (nonatomic, strong) NSCachedURLResponse *cachedResponse;
 @property (nonatomic, strong) YMURLSessionTaskBody *knownBody;
 
-@property (nonatomic, strong) NSLock *protocolLock;
 @property (nonatomic, strong) NSURLProtectionSpace *lastProtectionSpace;
 @property (nonatomic, strong) NSURLCredential *lastCredential;
 @property (nonatomic, assign) NSInteger previousFailureCount;
 
+@property (nullable, readwrite, copy) NSError *error;
+@property (atomic, readwrite) YMURLSessionTaskState state;
+@property BOOL hasTriggeredResume;
+
 @end
 
-@implementation YMURLSessionTask
+@implementation YMURLSessionTask {
+    NSURLRequest *_currentRequest;
+    NSHTTPURLResponse *_response;
+}
 
 /// Create a data task. If there is a httpBody in the URLRequest, use that as a parameter
 - (instancetype)initWithSession:(YMURLSession *)session
@@ -119,52 +136,135 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 }
 
 - (void)setupProps {
-    _state = YMURLSessionTaskStateSuspended;
+    self.state = YMURLSessionTaskStateSuspended;
     _suspendCount = 1;
     _previousFailureCount = 0;
+
     _protocolLock = [[NSLock alloc] init];
+    _protocolState = YMURLSessionTaskProtocolStateToBeCreate;
 }
 
 - (void)resume {
     dispatch_sync(_workQueue, ^{
-        if (_state == YMURLSessionTaskStateCanceling || _state == YMURLSessionTaskStateCompleted) return;
+        if (self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
         _suspendCount -= 1;
-        if (_suspendCount > 0) {
+        if (_suspendCount < 0) {
             YM_FATALERROR(@"Resuming a task that's not suspended. Calls to resume() / suspend() need to be matched.");
         }
         [self updateTaskState];
         if (_suspendCount == 0) {
-            BOOL isHTTPScheme = [_originalRequest.URL.scheme isEqualToString:@"http"] ||
-                                [_originalRequest.URL.scheme isEqualToString:@"https"];
-            if (isHTTPScheme) {
-                // TODO: lock protocol
-                _easyHandle = [[YMEasyHandle alloc] initWithDelegate:self];
-                self.internalState = YMURLSessionTaskInternalStateInitial;
-                dispatch_async(_workQueue, ^{
-                    [self startLoading];
-                });
-            } else {
-                if (_error == nil) {
-                    NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
-                    userInfo[NSLocalizedDescriptionKey] = @"unsupported URL";
-                    NSURL *url = _originalRequest.URL;
-                    if (url) {
-                        userInfo[NSURLErrorFailingURLErrorKey] = url;
-                        userInfo[NSURLErrorFailingURLStringErrorKey] = url.absoluteString;
+            self.hasTriggeredResume = true;
+            [self getProtocolWithCompletion:^(BOOL isContinue) {
+                BOOL isHTTPScheme = [self.originalRequest.URL.scheme isEqualToString:@"http"] ||
+                                    [self.originalRequest.URL.scheme isEqualToString:@"https"];
+                if (isHTTPScheme && isContinue) {
+                    dispatch_async(self.workQueue, ^{
+                        [self startLoading];
+                    });
+                } else {
+                    if (self.error == nil) {
+                        NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
+                        userInfo[NSLocalizedDescriptionKey] = @"unsupported URL";
+                        NSURL *url = self.originalRequest.URL;
+                        if (url) {
+                            userInfo[NSURLErrorFailingURLErrorKey] = url;
+                            userInfo[NSURLErrorFailingURLStringErrorKey] = url.absoluteString;
+                        }
+                        NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
+                                                                code:NSURLErrorUnsupportedURL
+                                                            userInfo:userInfo];
+                        self.error = urlError;
+                        [self notifyDelegateAboutError:self.error];
                     }
-                    NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
-                                                            code:NSURLErrorUnsupportedURL
-                                                        userInfo:userInfo];
-                    _error = urlError;
                 }
-            }
+            }];
         }
     });
 }
 
+- (void)getProtocolWithCompletion:(void (^)(BOOL isContinue))completion {
+    [self.protocolLock lock];
+    switch (self.protocolState) {
+        case YMURLSessionTaskProtocolStateToBeCreate: {
+            NSURLCache *cache = self.session.configuration.URLCache;
+            if (cache) {
+                self.protocolBag = [NSMutableArray array];
+                [self.protocolBag addObject:completion];
+
+                self.protocolState = YMURLSessionTaskProtocolStateAwaitingCacheReply;
+                [self.protocolLock unlock];
+                [cache ym_getCachedResponseForDataTask:self
+                                     completionHandler:^(NSCachedURLResponse *_Nullable cachedResponse) {
+                                         [self createEasyHandle];
+                                         [self satisfyProtocolRequest];
+                                     }];
+            } else {
+                [self createEasyHandle];
+                self.protocolState = YMURLSessionTaskProtocolStateExisting;
+                [self.protocolLock unlock];
+                completion(true);
+            }
+            break;
+        }
+
+        case YMURLSessionTaskProtocolStateAwaitingCacheReply: {
+            [self.protocolBag addObject:completion];
+            [self.protocolLock unlock];
+            break;
+        }
+        case YMURLSessionTaskProtocolStateExisting: {
+            [self.protocolLock unlock];
+            completion(true);
+            break;
+        }
+        case YMURLSessionTaskProtocolStateInvalidated: {
+            [self.protocolLock unlock];
+            completion(false);
+            break;
+        }
+    }
+}
+
+- (void)satisfyProtocolRequest {
+    [self.protocolLock lock];
+    switch (self.protocolState) {
+        case YMURLSessionTaskProtocolStateToBeCreate: {
+            self.protocolState = YMURLSessionTaskProtocolStateExisting;
+            [self.protocolLock unlock];
+            break;
+        }
+        case YMURLSessionTaskProtocolStateAwaitingCacheReply: {
+            self.protocolState = YMURLSessionTaskProtocolStateExisting;
+            [self.protocolLock unlock];
+
+            for (void (^callback)(BOOL) in self.protocolBag) {
+                callback(true);
+            }
+            self.protocolBag = nil;
+            break;
+        }
+        case YMURLSessionTaskProtocolStateExisting:
+        case YMURLSessionTaskProtocolStateInvalidated: {
+            [self.protocolLock unlock];
+            break;
+        }
+    }
+}
+
+- (void)createEasyHandle {
+    self.easyHandle = [[YMEasyHandle alloc] initWithDelegate:self];
+    self.internalState = YMURLSessionTaskInternalStateInitial;
+}
+
+- (void)invalidateProtocol {
+    [self.protocolLock lock];
+    self.protocolState = YMURLSessionTaskProtocolStateInvalidated;
+    [self.protocolLock unlock];
+}
+
 - (void)suspend {
     dispatch_sync(_workQueue, ^{
-        if (_state == YMURLSessionTaskStateCanceling || _state == YMURLSessionTaskStateCompleted) return;
+        if (self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
         self.suspendCount += 1;
         if (_suspendCount >= NSIntegerMax) {
             YM_FATALERROR(@"Task suspended too many times NSIntegerMax.");
@@ -172,9 +272,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
         [self updateTaskState];
 
         if (_suspendCount == 1) {
-            dispatch_async(_workQueue, ^{
-                [self stopLoading];
-            });
+            [self getProtocolWithCompletion:^(BOOL isContinue) {
+                dispatch_async(self.workQueue, ^{
+                    [self stopLoading];
+                });
+            }];
         }
     });
 }
@@ -183,16 +285,24 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     dispatch_sync(_workQueue, ^{
         if (_state == YMURLSessionTaskStateRunning || _state == YMURLSessionTaskStateSuspended) {
             _state = YMURLSessionTaskStateCanceling;
-            dispatch_async(_workQueue, ^{
-                NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil];
-                [self stopLoading];
-                [self notifyDelegateAboutError:urlError];
-            });
+            [self getProtocolWithCompletion:^(BOOL isContinue) {
+                dispatch_async(self.workQueue, ^{
+                    NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
+                                                            code:NSURLErrorCancelled
+                                                        userInfo:nil];
+                    self.error = urlError;
+
+                    if (isContinue) {
+                        [self stopLoading];
+                        [self notifyDelegateAboutError:urlError];
+                    }
+                });
+            }];
         }
     });
 }
 
-#pragma mark - Setter Methods
+#pragma mark - Setter Getter Methods
 
 - (void)setInternalState:(YMURLSessionTaskInternalState)internalState {
     YMURLSessionTaskInternalState newValue = internalState;
@@ -265,14 +375,19 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     }
 }
 
+- (BOOL)isSuspendedAfterResume {
+    return self.hasTriggeredResume && (self.state == YMURLSessionTaskStateSuspended);
+}
+
 #pragma mark - Private Methods
 
 - (void)updateTaskState {
-    if (_suspendCount == 0) {
-        _state = YMURLSessionTaskStateRunning;
+    if (self.suspendCount == 0) {
+        self.state = YMURLSessionTaskStateRunning;
     } else {
-        _state = YMURLSessionTaskStateSuspended;
+        self.state = YMURLSessionTaskStateSuspended;
     }
+    NSLog(@"%@", @(_state));
 }
 
 - (BOOL)canRespondFromCacheUsingResponse:(NSCachedURLResponse *)response {
@@ -647,7 +762,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 }
 
 - (void)stopLoading {
-    if (_state == YMURLSessionTaskStateSuspended) {
+    if (self.state == YMURLSessionTaskStateSuspended) {
         if (self.internalState == YMURLSessionTaskInternalStateTransferInProgress) {
             self.internalState = YMURLSessionTaskInternalStateTransferReady;
         }
@@ -751,6 +866,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
             break;
         }
     }
+    [self invalidateProtocol];
 }
 
 - (void)notifyDelegateAboutFinishLoading {
@@ -886,6 +1002,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
             break;
         }
     }
+
+    [self invalidateProtocol];
 }
 
 - (NSURLProtectionSpace *)createProtectionSpaceWithResponse:(NSHTTPURLResponse *)response {
@@ -1148,6 +1266,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
 
     return NO;
 }
+
 #pragma mark - Headers Methods
 
 - (NSDictionary *)transformLowercaseKeyForHTTPHeaders:(NSDictionary *)HTTPHeaders {

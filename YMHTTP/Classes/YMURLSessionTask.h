@@ -25,6 +25,7 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
 @property (nullable, readonly, copy) NSURLRequest *originalRequest;
 @property (nullable, readonly, copy) NSURLRequest *currentRequest;
 @property (nullable, readonly, copy) NSHTTPURLResponse *response;
+@property (nullable, readonly, copy) NSError *error;
 @property (readonly) YMURLSessionTaskState state;
 
 - (instancetype)initWithSession:(YMURLSession *)session
@@ -40,10 +41,9 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
 - (void)resume;
 - (void)cancel;
 
-- (instancetype)init __attribute__((unavailable(
-    "Please use NSURLSessionConfiguration.defaultSessionConfiguration or other class methods to create instances")));
-+ (instancetype)new __attribute__((unavailable(
-    "Please use NSURLSessionConfiguration.defaultSessionConfiguration or other class methods to create instances")));
+#pragma mark - Private
+
+@property (readonly, getter=isSuspendedAfterResume) BOOL isSuspendedAfterResume;
 
 @end
 

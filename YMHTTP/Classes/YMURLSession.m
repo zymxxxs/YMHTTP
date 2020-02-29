@@ -161,7 +161,7 @@ NS_INLINE int nextSessionIdentifier() {
         [self.delegateQueue addOperationWithBlock:^{
             NSMutableArray *tasks = [[NSMutableArray alloc] init];
             for (YMURLSessionTask *task in self.taskRegistry.allTasks) {
-                if (task.state == YMURLSessionTaskStateRunning) {
+                if (task.state == YMURLSessionTaskStateRunning && task.isSuspendedAfterResume) {
                     [tasks addObject:task];
                 }
             }
