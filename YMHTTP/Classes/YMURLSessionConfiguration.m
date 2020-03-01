@@ -12,7 +12,7 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        self.requestCachePolicy = NSURLRequestUseProtocolCachePolicy;
+        _requestCachePolicy = NSURLRequestUseProtocolCachePolicy;
         _timeoutIntervalForRequest = 60;
         _timeoutIntervalForResource = 604800;
         _allowsCellularAccess = true;
@@ -58,7 +58,20 @@
 }
 
 - (id)copyWithZone:(NSZone *)zone {
-    return [[self.class alloc] init];
+    YMURLSessionConfiguration *session = [[self.class alloc] init];
+    session.requestCachePolicy = self.requestCachePolicy;
+    session.timeoutIntervalForRequest = self.timeoutIntervalForRequest;
+    session.timeoutIntervalForResource = self.timeoutIntervalForResource;
+    session.allowsCellularAccess = self.allowsCellularAccess;
+    session.HTTPShouldUsePipelining = self.HTTPShouldUsePipelining;
+    session.HTTPShouldSetCookies = self.HTTPShouldSetCookies;
+    session.HTTPCookieAcceptPolicy = self.HTTPShouldSetCookies;
+    session.HTTPAdditionalHeaders = self.HTTPAdditionalHeaders;
+    session.HTTPMaximumConnectionsPerHost = self.HTTPMaximumConnectionsPerHost;
+    session.HTTPCookieStorage = self.HTTPCookieStorage;
+    session.URLCredentialStorage = self.URLCredentialStorage;
+    session.URLCache = self.URLCache;
+    return session;
 }
 
 @end
