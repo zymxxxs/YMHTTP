@@ -81,6 +81,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 @property (nonatomic, assign) YMURLSessionTaskProtocolState protocolState;
 @property (nonatomic, strong) NSMutableArray<void (^)(BOOL)> *protocolBag;
 @property (nonatomic, strong) NSCachedURLResponse *cachedResponse;
+@property (nonatomic, strong) NSMutableArray<NSData *> *cacheableData;
 
 @property (nonatomic, strong) YMEasyHandle *easyHandle;
 @property (nonatomic, assign) YMURLSessionTaskInternalState internalState;
@@ -760,7 +761,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             YM_FATALERROR(@"Task has no original request.");
         }
 
-        if (self.cachedResponse && [self canRespondFromCacheUsingResponse:self.cachedResponse]) {
+        void (^usingLocalCache)(void) = ^{
             self.internalState = YMURLSessionTaskInternalStateFulfillingFromCache;
             dispatch_async(self.workQueue, ^{
                 [self notifyDelegateAboutReceiveResponse:(NSHTTPURLResponse *)self.cachedResponse.response];
@@ -770,9 +771,73 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                 [self notifyDelegateAboutFinishLoading];
                 self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
             });
-        } else {
-            [self startNewTransferByRequest:_originalRequest];
+        };
+
+        NSURLRequestCachePolicy cachePolicy = self.session.configuration.requestCachePolicy;
+        switch (cachePolicy) {
+            case NSURLRequestUseProtocolCachePolicy: {
+                if (self.cachedResponse && [self canRespondFromCacheUsingResponse:self.cachedResponse]) {
+                    usingLocalCache();
+                } else {
+                    [self startNewTransferByRequest:_originalRequest];
+                }
+                break;
+            }
+            case NSURLRequestReloadIgnoringLocalCacheData: {
+                [self startNewTransferByRequest:_originalRequest];
+                break;
+            }
+            case NSURLRequestReturnCacheDataElseLoad: {
+                if (self.cachedResponse) {
+                    usingLocalCache();
+                } else {
+                    [self startNewTransferByRequest:_originalRequest];
+                }
+                break;
+            }
+            case NSURLRequestReturnCacheDataDontLoad: {
+                if (self.cachedResponse) {
+                    usingLocalCache();
+                } else {
+                    dispatch_async(self.workQueue, ^{
+                        NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
+                        userInfo[NSLocalizedDescriptionKey] = @"resource unavailable";
+                        NSURL *url = self.originalRequest.URL;
+                        if (url) {
+                            userInfo[NSURLErrorFailingURLErrorKey] = url;
+                            userInfo[NSURLErrorFailingURLStringErrorKey] = url.absoluteString;
+                        }
+                        NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
+                                                                code:NSURLErrorResourceUnavailable
+                                                            userInfo:userInfo];
+                        self.error = urlError;
+                        [self stopLoading];
+                        [self notifyDelegateAboutError:urlError];
+                    });
+                }
+                break;
+            }
+            case NSURLRequestReloadIgnoringLocalAndRemoteCacheData:
+            case NSURLRequestReloadRevalidatingCacheData:
+            default: {
+                [self startNewTransferByRequest:_originalRequest];
+                break;
+            }
         }
+
+        //        if (self.cachedResponse && [self canRespondFromCacheUsingResponse:self.cachedResponse]) {
+        //            self.internalState = YMURLSessionTaskInternalStateFulfillingFromCache;
+        //            dispatch_async(self.workQueue, ^{
+        //                [self notifyDelegateAboutReceiveResponse:(NSHTTPURLResponse *)self.cachedResponse.response];
+        //                if (self.cachedResponse.data) {
+        //                    [self notifyDelegateAboutLoadData:self.cachedResponse.data];
+        //                }
+        //                [self notifyDelegateAboutFinishLoading];
+        //                self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
+        //            });
+        //        } else {
+        //            [self startNewTransferByRequest:_originalRequest];
+        //        }
     }
 
     if (self.internalState == YMURLSessionTaskInternalStateTransferReady) {
@@ -814,14 +879,15 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     // TODO: Download task
 }
 
-// may be unuse!!!
+// TODO:  may be unuse!!!
 - (void)notifyDelegateAboutLoadData:(NSData *)data {
+    // TODO: 可以移除，在 completeTask 里 memory 处理、以及缓存处理
     _responseData = data;
+
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
     if (b.type != YMURLSessionTaskBehaviourTypeTaskDelegate) return;
 
     id<YMURLSessionDelegate> delegate = _session.delegate;
-
     BOOL conformsToDataDelegate = delegate && [delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)] &&
                                   [delegate respondsToSelector:@selector(YMURLSession:task:didReceiveData:)];
     if (conformsToDataDelegate && [self isKindOfClass:[YMURLSessionTask class]]) {
@@ -961,7 +1027,36 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     //        }
     //    }
 
-    // TODO: Cache
+    if (self.session.configuration.URLCache && self.cacheableData && self.cachedResponse &&
+        [self isKindOfClass:[YMURLSessionTask class]]) {
+        NSMutableData *data = [NSMutableData data];
+        for (NSData *d in self.cacheableData) {
+            [data appendData:d];
+        }
+        NSCachedURLResponse *cacheable =
+            [[NSCachedURLResponse alloc] initWithResponse:(NSURLResponse *)self.cachedResponse data:data];
+        BOOL protocolAllows = [YMURLCacheHelper canCacheResponse:cacheable request:self.currentRequest];
+        if (protocolAllows) {
+            id<YMURLSessionDelegate> delegate = self.session.delegate;
+            if (delegate && [delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)] &&
+                [delegate respondsToSelector:@selector(YMURLSession:task:willCacheResponse:completionHandler:)]) {
+                id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)delegate;
+                [d YMURLSession:self.session
+                                 task:self
+                    willCacheResponse:cacheable
+                    completionHandler:^(NSCachedURLResponse *_Nullable actualCacheable) {
+                        if (actualCacheable) {
+                            NSURLCache *cache = self.session.configuration.URLCache;
+                            [cache ym_storeCachedResponse:cacheable forDataTask:self];
+                        }
+                    }];
+
+            } else {
+                NSURLCache *cache = self.session.configuration.URLCache;
+                [cache ym_storeCachedResponse:cacheable forDataTask:self];
+            }
+        }
+    }
 
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
     switch (b.type) {
@@ -971,7 +1066,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             [_session.delegateQueue addOperationWithBlock:^{
                 if (self.state == YMURLSessionTaskStateCompleted) return;
                 if ([self.session.delegate respondsToSelector:@selector(YMURLSession:task:didCompleteWithError:)]) {
-                    id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)self.session.delegate;
+                    id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
                     [d YMURLSession:self.session task:self didCompleteWithError:nil];
                 }
                 self->_state = YMURLSessionTaskStateCompleted;

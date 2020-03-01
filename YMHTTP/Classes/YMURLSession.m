@@ -241,7 +241,7 @@ NS_INLINE int nextSessionIdentifier() {
     return [self taskWithRequest:request body:body behaviour:b];
 }
 
-- (YMURLSessionTask *)uploadTaskWithStreamedRequest:(NSURLRequest *)request {
+- (YMURLSessionTask *)taskWithStreamedRequest:(NSURLRequest *)request {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
     b.type = YMURLSessionTaskBehaviourTypeTaskDelegate;
 

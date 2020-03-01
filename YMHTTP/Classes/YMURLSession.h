@@ -74,7 +74,7 @@ NS_ASSUME_NONNULL_BEGIN
                                                 NSURLResponse *_Nullable response,
                                                 NSError *_Nullable error))completionHandler;
 
-- (YMURLSessionTask *)uploadTaskWithStreamedRequest:(NSURLRequest *)request;
+- (YMURLSessionTask *)taskWithStreamedRequest:(NSURLRequest *)request;
 
 #pragma mark - Private
 

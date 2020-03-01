@@ -51,6 +51,11 @@ NS_ASSUME_NONNULL_BEGIN
     didReceiveResponse:(NSURLResponse *)response
      completionHandler:(void (^)(YMURLSessionResponseDisposition disposition))completionHandler;
 
+- (void)YMURLSession:(YMURLSession *)session
+                 task:(YMURLSessionTask *)task
+    willCacheResponse:(NSCachedURLResponse *)proposedResponse
+    completionHandler:(void (^)(NSCachedURLResponse *_Nullable cachedResponse))completionHandler;
+
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveData:(NSData *)data;
 
 @end
