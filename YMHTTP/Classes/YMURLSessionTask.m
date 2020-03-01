@@ -13,6 +13,7 @@
 #import "YMTaskRegistry.h"
 #import "YMTimeoutSource.h"
 #import "YMTransferState.h"
+#import "YMURLCacheHelper.h"
 #import "YMURLSession.h"
 #import "YMURLSessionAuthenticationChallengeSender.h"
 #import "YMURLSessionConfiguration.h"
@@ -79,11 +80,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 @property (nonatomic, strong) NSLock *protocolLock;
 @property (nonatomic, assign) YMURLSessionTaskProtocolState protocolState;
 @property (nonatomic, strong) NSMutableArray<void (^)(BOOL)> *protocolBag;
+@property (nonatomic, strong) NSCachedURLResponse *cachedResponse;
 
 @property (nonatomic, strong) YMEasyHandle *easyHandle;
 @property (nonatomic, assign) YMURLSessionTaskInternalState internalState;
 @property (nonatomic, strong) YMTransferState *transferState;
-@property (nonatomic, strong) NSCachedURLResponse *cachedResponse;
 @property (nonatomic, strong) YMURLSessionTaskBody *knownBody;
 
 @property (nonatomic, strong) NSURLProtectionSpace *lastProtectionSpace;
@@ -155,7 +156,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         if (_suspendCount == 0) {
             self.hasTriggeredResume = true;
             [self getProtocolWithCompletion:^(BOOL isContinue) {
-                if (self.suspendCount != 0) return ;
+                if (self.suspendCount != 0) return;
                 BOOL isHTTPScheme = [self.originalRequest.URL.scheme isEqualToString:@"http"] ||
                                     [self.originalRequest.URL.scheme isEqualToString:@"https"];
                 if (isHTTPScheme && isContinue) {
@@ -183,7 +184,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     });
 }
 
-
 - (void)suspend {
     dispatch_sync(_workQueue, ^{
         if (self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
@@ -195,7 +195,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
         if (self.suspendCount == 1) {
             [self getProtocolWithCompletion:^(BOOL isContinue) {
-                if (self.suspendCount != 1) return ;
+                if (self.suspendCount != 1) return;
                 dispatch_async(self.workQueue, ^{
                     [self stopLoading];
                 });
@@ -238,6 +238,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                 [self.protocolLock unlock];
                 [cache ym_getCachedResponseForDataTask:self
                                      completionHandler:^(NSCachedURLResponse *_Nullable cachedResponse) {
+                                         self.cachedResponse = cachedResponse;
                                          [self createEasyHandle];
                                          [self satisfyProtocolRequest];
                                      }];
@@ -393,7 +394,14 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (BOOL)canRespondFromCacheUsingResponse:(NSCachedURLResponse *)response {
-    // TODO:
+    BOOL canCache = [YMURLCacheHelper canCacheResponse:response request:self.currentRequest];
+    if (!canCache) {
+        NSURLCache *cache = self.session.configuration.URLCache;
+        if (cache) {
+            [cache ym_removeCachedResponseForDataTask:self];
+        }
+        return false;
+    }
     return true;
 }
 
@@ -752,7 +760,16 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             YM_FATALERROR(@"Task has no original request.");
         }
 
-        if (_cachedResponse && [self canRespondFromCacheUsingResponse:_cachedResponse]) {
+        if (self.cachedResponse && [self canRespondFromCacheUsingResponse:self.cachedResponse]) {
+            self.internalState = YMURLSessionTaskInternalStateFulfillingFromCache;
+            dispatch_async(self.workQueue, ^{
+                [self notifyDelegateAboutReceiveResponse:(NSHTTPURLResponse *)self.cachedResponse.response];
+                if (self.cachedResponse.data) {
+                    [self notifyDelegateAboutLoadData:self.cachedResponse.data];
+                }
+                [self notifyDelegateAboutFinishLoading];
+                self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
+            });
         } else {
             [self startNewTransferByRequest:_originalRequest];
         }

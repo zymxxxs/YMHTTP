@@ -70,7 +70,7 @@ NS_INLINE NSString *parseArgumentPart(NSString *part, NSString *name) {
             return false;
     }
 
-    if (httpResponse.allHeaderFields[@"cache-control"] != nil) {
+    if (httpResponse.allHeaderFields[@"Vary"] != nil) {
         return false;
     }
 
@@ -79,11 +79,10 @@ NS_INLINE NSString *parseArgumentPart(NSString *part, NSString *name) {
 
     NSString *dateString = httpResponse.allHeaderFields[@"Date"];
     if (dateString) {
-        NSDate *date = [dateFormatter() dateFromString:dateString];
-        // TODO:
-        //        [date earlierDate:]
+        expirationStart = [dateFormatter() dateFromString:dateString];
     } else {
-        //        expirationStart = response.date;
+        // TODO: maybe date is null
+        NSLog(@"--------------------no date header");
     }
 
     if (httpResponse.allHeaderFields[@"WWW-Authenticate"] || httpResponse.allHeaderFields[@"Proxy-Authenticate"] ||
@@ -178,8 +177,8 @@ NS_INLINE NSString *parseArgumentPart(NSString *part, NSString *name) {
                 noCache = true;
             } else if ([part isEqualToString:@"no-store"]) {
                 noStore = true;
-            } else if ([part containsString:@"maxage"]) {
-                maxAge = parseArgumentPart(part, @"s-maxage");
+            } else if ([part containsString:@"max-age"]) {
+                maxAge = parseArgumentPart(part, @"max-age");
             } else if ([part containsString:@"s-maxage"]) {
                 sharedMaxAge = parseArgumentPart(part, @"s-maxage");
             }
