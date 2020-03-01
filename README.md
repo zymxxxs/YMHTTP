@@ -26,13 +26,15 @@ pod 'YMHTTP'
 * 移除 YMURLSessionDataTask 以及 YMURLSessionUploadTask 的概念，只保留了 YMURLSessionTask（delegate 中的命名以及对象命名） [待考虑是否继续保留还是移除]
 * conformsToProtocol 考虑是否移除
 * ~~statusheader == [3] 解析错误~~
-* cache 待解决
+* ~~cache 待解决~~
 * download 不支持断点续传 待解决
 * taskhandle
 * ~~fatalError~~
 * YMURLSessionTaskProtocolState 需要重新命名
 * YMURLSessionTaskProtocolStateInvalidated 可能无用
 * 多次 resume、suspend 之后 crash
+* 先异步获取 cache，后判断 cacheProxy，目前已经实现，相对逻辑简单，比较好控制（或者先判断 cacheProxy 然后根据实际情况获取 cache，以及后续操作，待操作）
+* 目前需要在获取 response 以及 receive data 之后记录数据
 
 
 # 待预研
