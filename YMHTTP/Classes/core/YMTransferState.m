@@ -61,6 +61,7 @@
             [data appendData:bodyData];
             YMDataDrain *dataDrain = [[YMDataDrain alloc] init];
             dataDrain.type = YMDataDrainInMemory;
+            dataDrain.data = data;
             return [[YMTransferState alloc] initWithURL:_url
                                    parsedResponseHeader:_parsedResponseHeader
                                                response:_response

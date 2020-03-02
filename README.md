@@ -32,9 +32,11 @@ pod 'YMHTTP'
 * ~~fatalError~~
 * YMURLSessionTaskProtocolState 需要重新命名
 * YMURLSessionTaskProtocolStateInvalidated 可能无用
-* 多次 resume、suspend 之后 crash
-* 先异步获取 cache，后判断 cacheProxy，目前已经实现，相对逻辑简单，比较好控制（或者先判断 cacheProxy 然后根据实际情况获取 cache，以及后续操作，待操作）
-* 目前需要在获取 response 以及 receive data 之后记录数据
+* ~~多次 resume、suspend 之后 crash~~
+    * resume, respend 需要配对
+* ~~先异步获取 cache，后判断 cacheProxy，目前已经实现，相对逻辑简单，比较好控制（或者先判断 cacheProxy 然后根据实际情况获取 cache，以及后续操作，待操作）~~
+* ~~目前需要在获取 response 以及 receive data 之后记录数据~~
+* 待验证目前 cache 逻辑
 
 
 # 待预研
