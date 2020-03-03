@@ -110,6 +110,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 @property (readwrite) int64_t countOfBytesExpectedToReceive;
 
 @property BOOL hasTriggeredResume;
+@property BOOL isDownloadTask;
 
 @end
 
@@ -691,11 +692,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
 }
 
-- (BOOL)isDownloadTask {
-//    return [self isKindOfClass:[YMURLSessionDownloadTask class]];
-    return true;
-}
-
 - (BOOL)isDataTask {
     return ![self isDownloadTask];
 }
@@ -928,6 +924,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingToURL:self.tempFileURL error:nil];
         [fileHandle seekToEndOfFile];
         [fileHandle writeData:data];
+        
         self.countOfBytesReceived += [data length];
         [self.session.delegateQueue addOperationWithBlock:^{
             id<YMURLSessionDownloadDelegate> d = (id<YMURLSessionDownloadDelegate>)delegate;
@@ -1191,9 +1188,18 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)notifyDelegateAboutReveiveChallenge:(NSURLAuthenticationChallenge *)challenge {
+    
 }
 
-- (void)notifyDelegateAboutUploadedDataCount:(int64_t)cout {
+- (void)notifyDelegateAboutUploadedDataCount:(int64_t)count {
+    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate && [self.session.delegate respondsToSelector:@selector(YMURLSession:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)]) {
+        self.countOfBytesSent+=count;
+        [self.session.delegateQueue addOperationWithBlock:^{
+            id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
+            [d YMURLSession:self.session task:self didSendBodyData:count totalBytesSent:self.countOfBytesSent totalBytesExpectedToSend:self.countOfBytesExpectedToSend];
+        }];
+    }
 }
 
 - (void)notifyDelegateAboutReceiveResponse:(NSHTTPURLResponse *)response {

@@ -238,18 +238,25 @@ NS_INLINE int nextSessionIdentifier() {
 
 - (YMURLSessionTask *)taskWithDownloadURL:(NSURL *)url {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
-    return [self taskWithRequest:url behaviour:b];
+    YMURLSessionTask *task =  [self taskWithRequest:url behaviour:b];
+    // TODO: this is ugly, need to fix it
+    [task setValue:[NSNumber numberWithBool:true] forKey:@"isDownloadTask"];
+    return task;
 }
 
 - (YMURLSessionTask *)taskWithDownloadRequest:(NSURLRequest *)request {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
-    return [self taskWithRequest:request behaviour:b];
+    YMURLSessionTask *task =  [self taskWithRequest:request behaviour:b];
+    [task setValue:[NSNumber numberWithBool:true] forKey:@"isDownloadTask"];
+    return task;
 }
 
 - (YMURLSessionTask *)taskWithDownloadURL:(NSURL *)url
       completionHandler:(void (^)(NSURL *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDownloadTaskCompeltion:completionHandler];
-    return [self taskWithRequest:url behaviour:b];
+    YMURLSessionTask *task =  [self taskWithRequest:url behaviour:b];
+    [task setValue:[NSNumber numberWithBool:true] forKey:@"isDownloadTask"];
+    return task;
 }
 
 - (YMURLSessionTask *)taskWithDownloadRequest:(NSURLRequest *)request
@@ -257,7 +264,9 @@ NS_INLINE int nextSessionIdentifier() {
                                                                 NSURLResponse *_Nullable,
                                                                 NSError *_Nullable))completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDownloadTaskCompeltion:completionHandler];
-    return [self taskWithRequest:request behaviour:b];
+    YMURLSessionTask *task =  [self taskWithRequest:request behaviour:b];
+    [task setValue:[NSNumber numberWithBool:true] forKey:@"isDownloadTask"];
+    return task;
 }
 
 - (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task {
