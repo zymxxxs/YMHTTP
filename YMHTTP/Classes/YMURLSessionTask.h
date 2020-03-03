@@ -24,10 +24,15 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
 @interface YMURLSessionTask : NSObject
 
 @property (readonly) NSUInteger taskIdentifier;
+
 @property (nullable, readonly, copy) NSURLRequest *originalRequest;
+
 @property (nullable, readonly, copy) NSURLRequest *currentRequest;
+
 @property (nullable, readonly, copy) NSHTTPURLResponse *response;
+
 @property (nullable, readonly, copy) NSError *error;
+
 @property (readonly) YMURLSessionTaskState state;
 
 @property (readonly) int64_t countOfBytesReceived;
@@ -48,12 +53,14 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
                            body:(nullable YMURLSessionTaskBody *)body;
 
 - (void)suspend;
+
 - (void)resume;
+
 - (void)cancel;
 
 #pragma mark - Private
 
-@property (readonly, getter=isSuspendedAfterResume) BOOL isSuspendedAfterResume;
+@property (readonly) BOOL isSuspendedAfterResume;
 
 @end
 

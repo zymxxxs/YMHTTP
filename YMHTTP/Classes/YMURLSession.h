@@ -13,7 +13,6 @@
 @class YMURLSessionTask;
 @class YMEasyHandle;
 @class YMTaskRegistry;
-@class YMURLSessionDownloadTask;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -77,16 +76,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (YMURLSessionTask *)taskWithStreamedRequest:(NSURLRequest *)request;
 
-- (YMURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request;
+- (YMURLSessionTask *)taskWithDownloadRequest:(NSURLRequest *)request;
 
-- (YMURLSessionDownloadTask *)downloadTaskWithURL:(NSURL *)url;
+- (YMURLSessionTask *)taskWithDownloadURL:(NSURL *)url;
 
-- (YMURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
+- (YMURLSessionTask *)taskWithDownloadRequest:(NSURLRequest *)request
                                     completionHandler:(void (^)(NSURL *_Nullable location,
                                                                 NSURLResponse *_Nullable response,
                                                                 NSError *_Nullable error))completionHandler;
 
-- (YMURLSessionDownloadTask *)downloadTaskWithURL:(NSURL *)url
+- (YMURLSessionTask *)taskWithDownloadURL:(NSURL *)url
                                 completionHandler:(void (^)(NSURL *_Nullable location,
                                                             NSURLResponse *_Nullable response,
                                                             NSError *_Nullable error))completionHandler;

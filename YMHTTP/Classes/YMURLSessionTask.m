@@ -18,7 +18,6 @@
 #import "YMURLSessionAuthenticationChallengeSender.h"
 #import "YMURLSessionConfiguration.h"
 #import "YMURLSessionDelegate.h"
-#import "YMURLSessionDownloadTask.h"
 #import "YMURLSessionTaskBehaviour.h"
 #import "YMURLSessionTaskBody.h"
 #import "YMURLSessionTaskBodySource.h"
@@ -98,9 +97,13 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 @property (nonatomic, strong) NSURL *tempFileURL;
 
+@property (readwrite) NSUInteger taskIdentifier;
+@property (nullable, readwrite, copy) NSURLRequest *originalRequest;
+@property (nullable, readwrite, copy) NSURLRequest *currentRequest;
+@property (nullable, readwrite, copy) NSHTTPURLResponse *response;
 @property (nullable, readwrite, copy) NSError *error;
 @property (atomic, readwrite) YMURLSessionTaskState state;
-@property (nullable, readwrite, copy) NSHTTPURLResponse *response;
+
 @property (readwrite) int64_t countOfBytesReceived;
 @property (readwrite) int64_t countOfBytesSent;
 @property (readwrite) int64_t countOfBytesExpectedToSend;
@@ -138,24 +141,25 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     self = [super init];
     if (self) {
         [self setupProps];
-        _session = session;
-        _workQueue = dispatch_queue_create_with_target(
-            "com.zymxxxs.URLSessionTask.WrokQueue", DISPATCH_QUEUE_SERIAL, session.workQueue);
-        _taskIdentifier = taskIdentifier;
-        _originalRequest = request;
-        _knownBody = body;
-        _currentRequest = request;
+        
+        self.session = session;
+        self.workQueue = dispatch_queue_create_with_target(
+            "com.zymxxxs.YMURLSessionTask.WrokQueue", DISPATCH_QUEUE_SERIAL, session.workQueue);
+        self.taskIdentifier = taskIdentifier;
+        self.originalRequest = request;
+        self.knownBody = body;
+        self.currentRequest = request;
     }
     return self;
 }
 
 - (void)setupProps {
     self.state = YMURLSessionTaskStateSuspended;
-    _suspendCount = 1;
-    _previousFailureCount = 0;
+    self.suspendCount = 1;
+    self.previousFailureCount = 0;
 
-    _protocolLock = [[NSLock alloc] init];
-    _protocolState = YMURLSessionTaskProtocolStateToBeCreate;
+    self.protocolLock = [[NSLock alloc] init];
+    self.protocolState = YMURLSessionTaskProtocolStateToBeCreate;
 }
 
 - (void)resume {
@@ -523,6 +527,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         [_easyHandle setUpload:false];
         [_easyHandle setRequestBodyLength:0];
     } else if (bodySize != nil) {
+        self.countOfBytesExpectedToSend = bodySize.longLongValue;
         [_easyHandle setUpload:true];
         [_easyHandle setRequestBodyLength:bodySize.unsignedLongLongValue];
     } else if (bodySize == nil) {
@@ -687,7 +692,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (BOOL)isDownloadTask {
-    return [self isKindOfClass:[NSURLSessionDownloadTask class]];
+//    return [self isKindOfClass:[YMURLSessionDownloadTask class]];
+    return true;
 }
 
 - (BOOL)isDataTask {
@@ -919,7 +925,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         [delegate respondsToSelector:@selector(YMURLSession:
                                                downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)];
     if (conformsToDownloadDelegate && [self isDownloadTask]) {
-        YMURLSessionDownloadTask *downloadTask = (YMURLSessionDownloadTask *)self;
         NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingToURL:self.tempFileURL error:nil];
         [fileHandle seekToEndOfFile];
         [fileHandle writeData:data];
@@ -927,7 +932,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         [self.session.delegateQueue addOperationWithBlock:^{
             id<YMURLSessionDownloadDelegate> d = (id<YMURLSessionDownloadDelegate>)delegate;
             [d YMURLSession:self.session
-                             downloadTask:downloadTask
+                             downloadTask:self
                              didWriteData:[data length]
                         totalBytesWritten:self.countOfBytesReceived
                 totalBytesExpectedToWrite:self.countOfBytesExpectedToReceive];
@@ -1100,10 +1105,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             if ([self isDownloadTask] &&
                 [self.session.delegate respondsToSelector:@selector(YMURLSession:
                                                                     downloadTask:didFinishDownloadingToURL:)]) {
-                YMURLSessionDownloadTask *downloadTask = (YMURLSessionDownloadTask *)self;
                 id<YMURLSessionDownloadDelegate> d = (id<YMURLSessionDownloadDelegate>)self.session.delegate;
                 [self.session.delegateQueue addOperationWithBlock:^{
-                    [d YMURLSession:self.session downloadTask:downloadTask didFinishDownloadingToURL:self.tempFileURL];
+                    [d YMURLSession:self.session downloadTask:self didFinishDownloadingToURL:self.tempFileURL];
                 }];
             }
 
