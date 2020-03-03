@@ -18,9 +18,12 @@
 #import "YMURLSessionAuthenticationChallengeSender.h"
 #import "YMURLSessionConfiguration.h"
 #import "YMURLSessionDelegate.h"
+#import "YMURLSessionDownloadTask.h"
 #import "YMURLSessionTaskBehaviour.h"
 #import "YMURLSessionTaskBody.h"
 #import "YMURLSessionTaskBodySource.h"
+
+const int64_t YMURLSessionTransferSizeUnknown = -1;
 
 typedef NS_ENUM(NSUInteger, YMURLSessionTaskInternalState) {
     /// Task has been created, but nothing has been done, yet
@@ -93,9 +96,16 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 @property (nonatomic, strong) NSURLCredential *lastCredential;
 @property (nonatomic, assign) NSInteger previousFailureCount;
 
+@property (nonatomic, strong) NSURL *tempFileURL;
+
 @property (nullable, readwrite, copy) NSError *error;
 @property (atomic, readwrite) YMURLSessionTaskState state;
 @property (nullable, readwrite, copy) NSHTTPURLResponse *response;
+@property (readwrite) int64_t countOfBytesReceived;
+@property (readwrite) int64_t countOfBytesSent;
+@property (readwrite) int64_t countOfBytesExpectedToSend;
+@property (readwrite) int64_t countOfBytesExpectedToReceive;
+
 @property BOOL hasTriggeredResume;
 
 @end
@@ -404,6 +414,15 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     return self.hasTriggeredResume && (self.state == YMURLSessionTaskStateSuspended);
 }
 
+- (NSURL *)tempFileURL {
+    if (!_tempFileURL) {
+        NSString *filePath = [NSString stringWithFormat:@"%@%@.tmp", NSTemporaryDirectory(), [NSUUID UUID].UUIDString];
+        [[NSFileManager defaultManager] createFileAtPath:filePath contents:nil attributes:nil];
+        _tempFileURL = [NSURL fileURLWithPath:filePath];
+    }
+    return _tempFileURL;
+}
+
 #pragma mark - Private Methods
 
 - (void)updateTaskState {
@@ -592,11 +611,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             dd.data = nil;
             return dd;
         case YMURLSessionTaskBehaviourTypeDownloadHandler:
-            // TODO: Download
-            break;
+            dd.type = YMDataDrainTypeToFile;
+            dd.fileHandle = [NSFileHandle fileHandleForWritingToURL:self.tempFileURL error:nil];
+            dd.fileURL = self.tempFileURL;
+            return dd;
     }
-
-    return nil;
 }
 
 - (NSInteger)errorCodeFromFileSystemError:(NSError *)error {
@@ -647,9 +666,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         }
         self.responseData = data;
     } else if (bodyData.type == YMDataDrainTypeToFile) {
-        // TODO:
-    } else if (true) {
-        // TODO: downloadn task
+        [bodyData.fileHandle closeFile];
+    } else if ([self isDownloadTask]) {
+        NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingToURL:self.tempFileURL error:nil];
+        [fileHandle closeFile];
     }
 
     [self notifyDelegateAboutFinishLoading];
@@ -664,6 +684,14 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
     _easyHandle.timeoutTimer = nil;
     self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
+}
+
+- (BOOL)isDownloadTask {
+    return [self isKindOfClass:[NSURLSessionDownloadTask class]];
+}
+
+- (BOOL)isDataTask {
+    return ![self isDownloadTask];
 }
 
 #pragma mark - Redirect Methods
@@ -871,7 +899,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     if (self.cacheableData) {
         [self.cacheableData addObject:data];
     }
-    
+
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
     if (b.type != YMURLSessionTaskBehaviourTypeTaskDelegate) return;
 
@@ -879,14 +907,32 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
     BOOL conformsToDataDelegate = delegate && [delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)] &&
                                   [delegate respondsToSelector:@selector(YMURLSession:task:didReceiveData:)];
-    if (conformsToDataDelegate && [self isKindOfClass:[YMURLSessionTask class]]) {
+    if (conformsToDataDelegate && [self isDataTask]) {
         [_session.delegateQueue addOperationWithBlock:^{
             id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)delegate;
             [d YMURLSession:self.session task:self didReceiveData:data];
         }];
     };
 
-    // TODO: Download task
+    BOOL conformsToDownloadDelegate =
+        delegate && [delegate conformsToProtocol:@protocol(YMURLSessionDownloadDelegate)] &&
+        [delegate respondsToSelector:@selector(YMURLSession:
+                                               downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)];
+    if (conformsToDownloadDelegate && [self isDownloadTask]) {
+        YMURLSessionDownloadTask *downloadTask = (YMURLSessionDownloadTask *)self;
+        NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingToURL:self.tempFileURL error:nil];
+        [fileHandle seekToEndOfFile];
+        [fileHandle writeData:data];
+        self.countOfBytesReceived += [data length];
+        [self.session.delegateQueue addOperationWithBlock:^{
+            id<YMURLSessionDownloadDelegate> d = (id<YMURLSessionDownloadDelegate>)delegate;
+            [d YMURLSession:self.session
+                             downloadTask:downloadTask
+                             didWriteData:[data length]
+                        totalBytesWritten:self.countOfBytesReceived
+                totalBytesExpectedToWrite:self.countOfBytesExpectedToReceive];
+        }];
+    }
 }
 
 - (void)notifyDelegateAboutError:(NSError *)error {
@@ -1018,15 +1064,13 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     //        }
     //    }
 
-    // TODO: check YMURLSessionTask
-    if (self.session.configuration.URLCache && self.cacheableData && self.cacheableResponse &&
-        [self isKindOfClass:[YMURLSessionTask class]]) {
+    if (self.session.configuration.URLCache && self.cacheableData && self.cacheableResponse && [self isDataTask]) {
         NSMutableData *data = [NSMutableData data];
         for (NSData *d in self.cacheableData) {
             [data appendData:d];
         }
-        NSCachedURLResponse *cacheable =
-            [[NSCachedURLResponse alloc] initWithResponse:self.cacheableResponse data:data];
+        NSCachedURLResponse *cacheable = [[NSCachedURLResponse alloc] initWithResponse:self.cacheableResponse
+                                                                                  data:data];
         BOOL protocolAllows = [YMURLCacheHelper canCacheResponse:cacheable request:self.currentRequest];
         if (protocolAllows) {
             id<YMURLSessionDelegate> delegate = self.session.delegate;
@@ -1053,9 +1097,17 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
     switch (b.type) {
         case YMURLSessionTaskBehaviourTypeTaskDelegate: {
-            // TODO: DownloadTask
+            if ([self isDownloadTask] &&
+                [self.session.delegate respondsToSelector:@selector(YMURLSession:
+                                                                    downloadTask:didFinishDownloadingToURL:)]) {
+                YMURLSessionDownloadTask *downloadTask = (YMURLSessionDownloadTask *)self;
+                id<YMURLSessionDownloadDelegate> d = (id<YMURLSessionDownloadDelegate>)self.session.delegate;
+                [self.session.delegateQueue addOperationWithBlock:^{
+                    [d YMURLSession:self.session downloadTask:downloadTask didFinishDownloadingToURL:self.tempFileURL];
+                }];
+            }
 
-            [_session.delegateQueue addOperationWithBlock:^{
+            [self.session.delegateQueue addOperationWithBlock:^{
                 if (self.state == YMURLSessionTaskStateCompleted) return;
                 if ([self.session.delegate respondsToSelector:@selector(YMURLSession:task:didCompleteWithError:)]) {
                     id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
@@ -1097,8 +1149,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                 if (self.state == YMURLSessionTaskStateCompleted) return;
                 self->_state = YMURLSessionTaskStateCompleted;
                 if (b.downloadCompletion) {
-                    // TODO: location download
-                    NSURL *location = nil;
+                    NSURL *location = self.tempFileURL;
                     b.downloadCompletion(location, self.response, nil);
                 }
                 dispatch_async(self.workQueue, ^{
@@ -1143,8 +1194,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 - (void)notifyDelegateAboutReceiveResponse:(NSHTTPURLResponse *)response {
     self.response = response;
-    // TODO: check URLSessionDataTask
-    
+
+    if (![self isDataTask]) return;
+
     NSCachedURLResponse *cachedResponse = [[NSCachedURLResponse alloc] initWithResponse:response data:[NSData data]];
     BOOL isNeedStoreCache = [YMURLCacheHelper canCacheResponse:cachedResponse request:self.currentRequest];
     if (self.session.configuration.URLCache && isNeedStoreCache) {
@@ -1211,14 +1263,15 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
 
     self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
-    _transferState = newTS;
+    self.transferState = newTS;
 
     if (!ts.isHeaderComplete && newTS.isHeaderComplete) {
         NSHTTPURLResponse *response = newTS.response;
         NSString *contentEncoding = response.allHeaderFields[@"Content-Encoding"];
-        // TODO: countOfBytesExpectedToReceive
         if (![contentEncoding isEqualToString:@"identify"]) {
+            self.countOfBytesExpectedToReceive = YMURLSessionTransferSizeUnknown;
         } else {
+            self.countOfBytesExpectedToReceive = contentLength > 0 ?: YMURLSessionTransferSizeUnknown;
         }
         [self didReceiveResponse];
     }
@@ -1227,34 +1280,25 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)didReceiveResponse {
-    
-    // TODO: NSURLSessonTask not download
-    
+    if (![self isDataTask]) return;
+
     if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
         YM_FATALERROR(@"Transfer not in progress.");
     }
     if (!_transferState.response) {
         YM_FATALERROR(@"Header complete, but not URL response.");
     }
-    
-    NSHTTPURLResponse *response = self.transferState.response;
 
-    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
-    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
-        switch (_transferState.response.statusCode) {
-            case 301:
-            case 302:
-            case 303:
-            case 307:
-                break;
-            default:
-                [self notifyDelegateAboutReceiveResponse:response];
-        }
-    }
-    
-    if (b.type == YMURLSessionTaskBehaviourTypeDataHandler) {
-        // 调用 notifyDelegateAboutReceiveResponse 使用其相关缓存逻辑
-        [self notifyDelegateAboutReceiveResponse:response];
+    NSHTTPURLResponse *response = self.transferState.response;
+    switch (self.transferState.response.statusCode) {
+        case 301:
+        case 302:
+        case 303:
+        case 307:
+            break;
+        default:
+            // 调用 notifyDelegateAboutReceiveResponse 缓存逻辑以及 askDelegateHowToProceedAfterCompleteResponse 逻辑
+            [self notifyDelegateAboutReceiveResponse:response];
     }
 }
 

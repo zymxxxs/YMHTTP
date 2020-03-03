@@ -68,9 +68,12 @@
                                              bodySource:_requestBodySource
                                           bodyDataDrain:dataDrain];
         }
-        case YMDataDrainTypeToFile:
-            // TODO: upload
+        case YMDataDrainTypeToFile: {
+            NSFileHandle *fileHandle = self.bodyDataDrain.fileHandle;
+            [fileHandle seekToEndOfFile];
+            [fileHandle writeData:bodyData];
             return self;
+        }
         case YMDataDrainTypeIgnore:
             return self;
     }

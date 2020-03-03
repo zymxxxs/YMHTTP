@@ -10,6 +10,8 @@
 @class YMURLSession;
 @class YMURLSessionTaskBody;
 
+FOUNDATION_EXPORT const int64_t YMURLSessionTransferSizeUnknown;
+
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
@@ -27,6 +29,14 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
 @property (nullable, readonly, copy) NSHTTPURLResponse *response;
 @property (nullable, readonly, copy) NSError *error;
 @property (readonly) YMURLSessionTaskState state;
+
+@property (readonly) int64_t countOfBytesReceived;
+
+@property (readonly) int64_t countOfBytesSent;
+
+@property (readonly) int64_t countOfBytesExpectedToSend;
+
+@property (readonly) int64_t countOfBytesExpectedToReceive;
 
 - (instancetype)initWithSession:(YMURLSession *)session
                         reqeust:(NSURLRequest *)request

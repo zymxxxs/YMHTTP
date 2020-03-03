@@ -10,6 +10,7 @@
 #import "YMMultiHandle.h"
 #import "YMTaskRegistry.h"
 #import "YMURLSessionConfiguration.h"
+#import "YMURLSessionDownloadTask.h"
 #import "YMURLSessionTask.h"
 #import "YMURLSessionTaskBehaviour.h"
 #import "YMURLSessionTaskBody.h"
@@ -201,18 +202,14 @@ NS_INLINE int nextSessionIdentifier() {
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request fromFile:(NSURL *)fileURL {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
     b.type = YMURLSessionTaskBehaviourTypeTaskDelegate;
-
     YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithFileURL:fileURL];
-
     return [self taskWithRequest:request body:body behaviour:b];
 }
 
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request fromData:(NSData *)bodyData {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
     b.type = YMURLSessionTaskBehaviourTypeTaskDelegate;
-
     YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithData:bodyData];
-
     return [self taskWithRequest:request body:body behaviour:b];
 }
 
@@ -220,11 +217,8 @@ NS_INLINE int nextSessionIdentifier() {
                              fromData:(NSData *)bodyData
                     completionHandler:
                         (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
-    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
-    b.type = YMURLSessionTaskBehaviourTypeDataHandler;
-
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDataTaskCompeltion:completionHandler];
     YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithData:bodyData];
-
     return [self taskWithRequest:request body:body behaviour:b];
 }
 
@@ -232,20 +226,40 @@ NS_INLINE int nextSessionIdentifier() {
                              fromFile:(NSURL *)fileURL
                     completionHandler:
                         (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
-    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
-    b.type = YMURLSessionTaskBehaviourTypeDataHandler;
-    b.dataTaskCompeltion = completionHandler;
-
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDataTaskCompeltion:completionHandler];
     YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithFileURL:fileURL];
-
     return [self taskWithRequest:request body:body behaviour:b];
 }
 
 - (YMURLSessionTask *)taskWithStreamedRequest:(NSURLRequest *)request {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
     b.type = YMURLSessionTaskBehaviourTypeTaskDelegate;
-
     return [self taskWithRequest:request body:nil behaviour:b];
+}
+
+- (YMURLSessionDownloadTask *)downloadTaskWithURL:(NSURL *)url {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    return [self downloadTaskWithRequest:url behaviour:b];
+}
+
+- (YMURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    return [self downloadTaskWithRequest:request behaviour:b];
+}
+
+- (YMURLSessionDownloadTask *)
+    downloadTaskWithURL:(NSURL *)url
+      completionHandler:(void (^)(NSURL *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDownloadTaskCompeltion:completionHandler];
+    return [self downloadTaskWithRequest:url behaviour:b];
+}
+
+- (YMURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
+                                    completionHandler:(void (^)(NSURL *_Nullable,
+                                                                NSURLResponse *_Nullable,
+                                                                NSError *_Nullable))completionHandler {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDownloadTaskCompeltion:completionHandler];
+    return [self downloadTaskWithRequest:request behaviour:b];
 }
 
 - (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task {
@@ -290,6 +304,19 @@ NS_INLINE int nextSessionIdentifier() {
     NSURLRequest *r = [self createConfiguredRequestFrom:request];
     NSUInteger i = [self createNextTaskIdentifier];
     YMURLSessionTask *task = [[YMURLSessionTask alloc] initWithSession:self reqeust:r taskIdentifier:i body:body];
+    dispatch_async(_workQueue, ^{
+        [self.taskRegistry addWithTask:task behaviour:behaviour];
+    });
+    return task;
+}
+
+- (YMURLSessionDownloadTask *)downloadTaskWithRequest:(id)request behaviour:(YMURLSessionTaskBehaviour *)behaviour {
+    if (_invalidated) {
+        YM_FATALERROR(@"Session invalidated");
+    }
+    NSURLRequest *r = [self createConfiguredRequestFrom:request];
+    NSUInteger i = [self createNextTaskIdentifier];
+    YMURLSessionDownloadTask *task = [[YMURLSessionDownloadTask alloc] initWithSession:self reqeust:r taskIdentifier:i];
     dispatch_async(_workQueue, ^{
         [self.taskRegistry addWithTask:task behaviour:behaviour];
     });

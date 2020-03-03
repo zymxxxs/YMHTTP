@@ -9,6 +9,7 @@
 
 @class YMURLSessionTask;
 @class YMURLSession;
+@class YMURLSessionDownloadTask;
 
 typedef NS_ENUM(NSInteger, YMURLSessionResponseDisposition) {
     YMURLSessionResponseCancel = 0, /* Cancel the load, this is the same as -[task cancel] */
@@ -57,6 +58,22 @@ NS_ASSUME_NONNULL_BEGIN
     completionHandler:(void (^)(NSCachedURLResponse *_Nullable cachedResponse))completionHandler;
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveData:(NSData *)data;
+
+@end
+
+@protocol YMURLSessionDownloadDelegate <YMURLSessionTaskDelegate>
+
+- (void)YMURLSession:(YMURLSession *)session
+                 downloadTask:(YMURLSessionDownloadTask *)downloadTask
+    didFinishDownloadingToURL:(NSURL *)location;
+
+@optional
+/* Sent periodically to notify the delegate of download progress. */
+- (void)YMURLSession:(YMURLSession *)session
+                 downloadTask:(YMURLSessionDownloadTask *)downloadTask
+                 didWriteData:(int64_t)bytesWritten
+            totalBytesWritten:(int64_t)totalBytesWritten
+    totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite;
 
 @end
 

@@ -51,6 +51,7 @@ typedef NS_ENUM(NSUInteger, YMDataDrainType) {
 @property (nonatomic, assign) YMDataDrainType type;
 @property (nullable, nonatomic, strong) NSData *data;
 @property (nullable, nonatomic, strong) NSURL *fileURL;
+@property (nullable, nonatomic, strong) NSFileHandle *fileHandle;
 
 @end
 
