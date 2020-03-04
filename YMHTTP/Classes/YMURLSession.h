@@ -48,12 +48,22 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (YMURLSessionTask *)taskWithURL:(NSURL *)url;
 
+- (YMURLSessionTask *)taskWithURL:(NSURL *)url connectToHost:(NSString *)host;
+
+- (YMURLSessionTask *)taskWithURL:(NSURL *)url connectToHost:(NSString *)host connectToPort:(NSInteger)port;
+
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
                     completionHandler:(void (^)(NSData *_Nullable data,
                                                 NSURLResponse *_Nullable response,
                                                 NSError *_Nullable error))completionHandler;
 
 - (YMURLSessionTask *)taskWithURL:(NSURL *)url
+                completionHandler:(void (^)(NSData *_Nullable data,
+                                            NSURLResponse *_Nullable response,
+                                            NSError *_Nullable error))completionHandler;
+
+- (YMURLSessionTask *)taskWithURL:(NSURL *)url
+                    connectToHost:(NSString *)host
                 completionHandler:(void (^)(NSData *_Nullable data,
                                             NSURLResponse *_Nullable response,
                                             NSError *_Nullable error))completionHandler;

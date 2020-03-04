@@ -6,6 +6,7 @@
 //
 
 #import "YMURLSession.h"
+#import "NSURLRequest+YMCategory.h"
 #import "YMMacro.h"
 #import "YMMultiHandle.h"
 #import "YMTaskRegistry.h"
@@ -175,6 +176,18 @@ NS_INLINE int nextSessionIdentifier() {
     return [self taskWithRequest:url behaviour:b];
 }
 
+- (YMURLSessionTask *)taskWithURL:(NSURL *)url connectToHost:(NSString *)host {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    NSURLRequest *r = [[NSURLRequest alloc] initWithURL:url connectToHost:host];
+    return [self taskWithRequest:r behaviour:b];
+}
+
+- (YMURLSessionTask *)taskWithURL:(NSURL *)url connectToHost:(NSString *)host connectToPort:(NSInteger)port {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    NSURLRequest *r = [[NSURLRequest alloc] initWithURL:url connectToHost:host connectToPort:port];
+    return [self taskWithRequest:r behaviour:b];
+}
+
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
     return [self taskWithRequest:request behaviour:b];
@@ -187,6 +200,17 @@ NS_INLINE int nextSessionIdentifier() {
     b.type = YMURLSessionTaskBehaviourTypeDataHandler;
     b.dataTaskCompeltion = completionHandler;
     return [self taskWithRequest:url behaviour:b];
+}
+
+- (YMURLSessionTask *)taskWithURL:(NSURL *)url
+                    connectToHost:(NSString *)host
+                completionHandler:
+                    (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+    YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
+    b.type = YMURLSessionTaskBehaviourTypeDataHandler;
+    b.dataTaskCompeltion = completionHandler;
+    NSURLRequest *r = [[NSURLRequest alloc] initWithURL:url connectToHost:host];
+    return [self taskWithRequest:r behaviour:b];
 }
 
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
