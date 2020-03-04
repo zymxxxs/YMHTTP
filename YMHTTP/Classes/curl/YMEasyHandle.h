@@ -125,6 +125,8 @@ typedef void *YMURLSessionEasyHandle;
 
 - (void)setTimeout:(NSInteger)timeout;
 
+- (void)setProxy;
+
 - (double)getTimeoutIntervalSpent;
 
 - (void)pauseReceive;

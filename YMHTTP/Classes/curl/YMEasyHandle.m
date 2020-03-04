@@ -208,6 +208,27 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_TIMEOUT, (long)timeout));
 }
 
+- (void)setProxy {
+    CFDictionaryRef dicRef = CFNetworkCopySystemProxySettings();
+    const CFStringRef proxyString = (const CFStringRef)CFDictionaryGetValue(dicRef, (const void*)kCFNetworkProxiesHTTPProxy);
+    const CFNumberRef portNum = (const CFNumberRef)CFDictionaryGetValue(dicRef, (const void*)kCFNetworkProxiesHTTPPort);
+    
+    NSNumber *port = (__bridge NSNumber *)portNum;
+    NSString *proxy = (__bridge NSString *)proxyString;
+    
+    if (proxy && port) {
+        const char *ip = [proxy UTF8String];
+        NSInteger p = [port longValue];
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_PROXY, ip));
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_PROXYPORT, p));
+        
+        // TODO: https 下无效
+//        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SSL_VERIFYHOST, 0));
+//        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SSL_VERIFYPEER, 0));
+    }
+}
+
+
 - (void)updatePauseState:(YMEasyHandlePauseState)pauseState {
     NSUInteger send = pauseState & YMEasyHandlePauseStateSend;
     NSUInteger receive = pauseState & YMEasyHandlePauseStateReceive;

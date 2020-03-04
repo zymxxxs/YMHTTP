@@ -573,6 +573,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     if ([request.HTTPMethod isEqualToString:@"HEAD"]) {
         [_easyHandle setNoBody:true];
     }
+    [_easyHandle setProxy];
 }
 
 - (YMTransferState *)createTransferStateWithURL:(NSURL *)url
