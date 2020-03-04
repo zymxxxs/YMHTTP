@@ -10,17 +10,33 @@
 
 @implementation YMURLCacheHelper
 
-NS_INLINE NSDateFormatter *dateFormatter() {
-    static NSDateFormatter *_df;
-    if (!_df) {
-        _df = [[NSDateFormatter alloc] init];
-        _df.locale = [NSLocale systemLocale];
-        _df.dateFormat = @"EEE',' dd' 'MMM' 'yyyy HH':'mm':'ss zzz";
+NS_INLINE NSDate *dateFromString(NSString *v) {
+    // https://tools.ietf.org/html/rfc2616#section-3.3.1
+
+    static NSDateFormatter *df;
+    if (!df) {
+        df = [[NSDateFormatter alloc] init];
     }
-    return _df;
+
+    // RFC 822
+    df.dateFormat = @"EEE, dd MMM yyyy HH:mm:ss zzz";
+    NSDate *d1 = [df dateFromString:v];
+    if (d1) return d1;
+
+    // RFC 850
+    df.dateFormat = @"EEEE, dd-MMM-yy HH:mm:ss zzz";
+    NSDate *d2 = [df dateFromString:v];
+    if (d2) return d2;
+
+    // ANSI C's asctime() format
+    df.dateFormat = @"EEE MMM dd HH:mm:ss yy";
+    NSDate *d3 = [df dateFromString:v];
+    if (d3) return d3;
+
+    return nil;
 }
 
-NS_INLINE NSString *parseArgumentPart(NSString *part, NSString *name) {
+NS_INLINE NSInteger parseArgumentPart(NSString *part, NSString *name) {
     NSString *prefix = [NSString stringWithFormat:@"%@=", name];
     if ([part hasPrefix:prefix]) {
         NSArray *split = [part componentsSeparatedByString:@"="];
@@ -30,11 +46,11 @@ NS_INLINE NSString *parseArgumentPart(NSString *part, NSString *name) {
                 if ([argument length] >= 2) {
                     NSRange range = NSMakeRange(1, [argument length] - 2);
                     argument = [argument substringWithRange:range];
-                    return argument;
+                    return [argument integerValue];
                 } else
                     return 0;
             } else {
-                return argument;
+                return [argument integerValue];
             }
         }
     }
@@ -79,10 +95,12 @@ NS_INLINE NSString *parseArgumentPart(NSString *part, NSString *name) {
 
     NSString *dateString = httpResponse.allHeaderFields[@"Date"];
     if (dateString) {
-        expirationStart = [dateFormatter() dateFromString:dateString];
+        expirationStart = dateFromString(dateString);
     } else {
-        // TODO: maybe date is null
-        NSLog(@"--------------------no date header");
+        // TODO: maybe date is null, return false
+        // 暂时这么处理
+        NSLog(@"--------------------the header field Date is null------------------");
+        return false;
     }
 
     if (httpResponse.allHeaderFields[@"WWW-Authenticate"] || httpResponse.allHeaderFields[@"Proxy-Authenticate"] ||
@@ -105,27 +123,24 @@ NS_INLINE NSString *parseArgumentPart(NSString *part, NSString *name) {
     BOOL hasMaxAge = false;
     NSString *cacheControl = httpResponse.allHeaderFields[@"cache-control"];
     if (cacheControl) {
-        __block BOOL maxAge;
-        __block BOOL sharedMaxAge;
-        __block BOOL noCache = false;
-        __block BOOL noStore = false;
-        [self getCacheControlDeirectivesFromHeaderValue:cacheControl
-                                             completion:^(NSString *maxAgeValue,
-                                                          NSString *sharedMaxAgeValue,
-                                                          BOOL noCacheValue,
-                                                          BOOL noStoreValue) {
-                                                 maxAge = maxAgeValue ? true : false;
-                                                 sharedMaxAge = sharedMaxAgeValue ? true : false;
-                                                 noCache = noCacheValue;
-                                                 noStore = noStoreValue;
-                                             }];
+        NSInteger maxAge = 0;
+        NSInteger sharedMaxAge;
+        BOOL noCache = false;
+        BOOL noStore = false;
 
-        if (maxAge) {
+        [self getCacheControlDeirectivesFromHeaderValue:cacheControl
+                                                 maxAge:&maxAge
+                                           sharedMaxAge:&sharedMaxAge
+                                                noCache:&noCache
+                                                noStore:&noStore];
+
+        if (maxAge > 0) {
             hasMaxAge = true;
 
             NSDate *expiration = [expirationStart dateByAddingTimeInterval:maxAge];
-            NSComparisonResult result = [expiration compare:now];
-            if (result == NSOrderedDescending) return false;
+            if ([now timeIntervalSince1970] >= [expiration timeIntervalSince1970]) {
+                return false;
+            }
         }
 
         if (sharedMaxAge) hasMaxAge = true;
@@ -147,43 +162,35 @@ NS_INLINE NSString *parseArgumentPart(NSString *part, NSString *name) {
 
     NSString *expires = httpResponse.allHeaderFields[@"Expires"];
     if (!hasMaxAge && expires) {
-        NSDate *expiration = [dateFormatter() dateFromString:expires];
+        NSDate *expiration = dateFromString(expires);
         if (!expiration) return false;
 
-        NSComparisonResult result = [now compare:expiration];
-        if (NSOrderedAscending == result || NSOrderedSame == result) {
+        if ([now timeIntervalSince1970] >= [expiration timeIntervalSince1970]) {
             return false;
         }
     }
 
     return true;
 }
-
 + (void)getCacheControlDeirectivesFromHeaderValue:(NSString *)headerValue
-                                       completion:(void (^)(NSString *maxAge,
-                                                            NSString *sharedMaxAge,
-                                                            BOOL noCache,
-                                                            BOOL noStore))completion {
-    __block NSString *maxAge;
-    __block NSString *sharedMaxAge;
-    __block BOOL noCache = false;
-    __block BOOL noStore = false;
-
-    [[headerValue componentsSeparatedByString:@","]
-        enumerateObjectsUsingBlock:^(NSString *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
-            NSString *part = [obj stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-            part = [part lowercaseStringWithLocale:[NSLocale systemLocale]];
-            if ([part isEqualToString:@"no-cache"]) {
-                noCache = true;
-            } else if ([part isEqualToString:@"no-store"]) {
-                noStore = true;
-            } else if ([part containsString:@"max-age"]) {
-                maxAge = parseArgumentPart(part, @"max-age");
-            } else if ([part containsString:@"s-maxage"]) {
-                sharedMaxAge = parseArgumentPart(part, @"s-maxage");
-            }
-        }];
-    completion(maxAge, sharedMaxAge, noCache, noStore);
+                                           maxAge:(NSInteger *)maxAge
+                                     sharedMaxAge:(NSInteger *)sharedMaxAge
+                                          noCache:(BOOL *)noCache
+                                          noStore:(BOOL *)noStore {
+    NSArray *components = [headerValue componentsSeparatedByString:@","];
+    for (NSString *obj in components) {
+        NSString *part = [obj stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        part = [part lowercaseStringWithLocale:[NSLocale systemLocale]];
+        if ([part isEqualToString:@"no-cache"]) {
+            *noCache = true;
+        } else if ([part isEqualToString:@"no-store"]) {
+            *noStore = true;
+        } else if ([part containsString:@"max-age"]) {
+            *maxAge = parseArgumentPart(part, @"max-age");
+        } else if ([part containsString:@"s-maxage"]) {
+            *sharedMaxAge = parseArgumentPart(part, @"s-maxage");
+        }
+    }
 }
 
 @end

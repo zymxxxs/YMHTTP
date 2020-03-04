@@ -102,7 +102,6 @@
             return nil;
         }
 
-        // TODO: 可能 Date 为空，需要加上，待测试
         YMParsedResponseHeader *ph = [[YMParsedResponseHeader alloc] init];
         YMTransferState *ts = [[YMTransferState alloc] initWithURL:_url
                                               parsedResponseHeader:ph
