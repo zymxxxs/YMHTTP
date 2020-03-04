@@ -8,6 +8,7 @@
 #import "YMURLSessionTask.h"
 #import "NSInputStream+YMCategory.h"
 #import "NSURLCache+YMCategory.h"
+#import "NSURLRequest+YMCategory.h"
 #import "YMEasyHandle.h"
 #import "YMMacro.h"
 #import "YMTaskRegistry.h"
@@ -142,7 +143,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     self = [super init];
     if (self) {
         [self setupProps];
-        
+
         self.session = session;
         self.workQueue = dispatch_queue_create_with_target(
             "com.zymxxxs.YMURLSessionTask.WrokQueue", DISPATCH_QUEUE_SERIAL, session.workQueue);
@@ -509,6 +510,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         YM_FATALERROR(@"No URL in request.");
     }
     [_easyHandle setURL:request.URL];
+
+    if (request.ym_connectToHost) {
+        [_easyHandle setConnectToHost:request.ym_connectToHost port:request.ym_connectToPort];
+    }
     [_easyHandle setSessionConfig:_session.configuration];
     [_easyHandle setAllowedProtocolsToHTTPAndHTTPS];
     [_easyHandle setPreferredReceiveBufferSize:NSIntegerMax];
@@ -925,7 +930,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingToURL:self.tempFileURL error:nil];
         [fileHandle seekToEndOfFile];
         [fileHandle writeData:data];
-        
+
         self.countOfBytesReceived += [data length];
         [self.session.delegateQueue addOperationWithBlock:^{
             id<YMURLSessionDownloadDelegate> d = (id<YMURLSessionDownloadDelegate>)delegate;
@@ -1189,16 +1194,21 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)notifyDelegateAboutReveiveChallenge:(NSURLAuthenticationChallenge *)challenge {
-    
 }
 
 - (void)notifyDelegateAboutUploadedDataCount:(int64_t)count {
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
-    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate && [self.session.delegate respondsToSelector:@selector(YMURLSession:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)]) {
-        self.countOfBytesSent+=count;
+    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate &&
+        [self.session.delegate respondsToSelector:@selector
+                               (YMURLSession:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)]) {
+        self.countOfBytesSent += count;
         [self.session.delegateQueue addOperationWithBlock:^{
             id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
-            [d YMURLSession:self.session task:self didSendBodyData:count totalBytesSent:self.countOfBytesSent totalBytesExpectedToSend:self.countOfBytesExpectedToSend];
+            [d YMURLSession:self.session
+                                    task:self
+                         didSendBodyData:count
+                          totalBytesSent:self.countOfBytesSent
+                totalBytesExpectedToSend:self.countOfBytesExpectedToSend];
         }];
     }
 }

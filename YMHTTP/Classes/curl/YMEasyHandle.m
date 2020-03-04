@@ -157,6 +157,22 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     }
 }
 
+-(void)setConnectToHost:(NSString *)host port:(NSInteger)port {
+    if (host) {
+        NSString *originHost = self.url.host;
+        NSString *value = nil;
+        if (port == 0) {
+            value = [NSString stringWithFormat:@"%@::%@", originHost, host];
+        } else {
+            value = [NSString stringWithFormat:@"%@:%@:%@", originHost, @(port), host];
+        }
+        
+        struct curl_slist *connect_to = NULL;
+        connect_to = curl_slist_append(NULL, [value UTF8String]);
+        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_CONNECT_TO, connect_to));
+    }
+}
+
 - (void)setSessionConfig:(YMURLSessionConfiguration *)config {
     _config = config;
 }
@@ -208,7 +224,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_TIMEOUT, (long)timeout));
 }
 
-- (void)setProxy {
+- (void)setProxy {    
     CFDictionaryRef dicRef = CFNetworkCopySystemProxySettings();
     const CFStringRef proxyString = (const CFStringRef)CFDictionaryGetValue(dicRef, (const void*)kCFNetworkProxiesHTTPProxy);
     const CFNumberRef portNum = (const CFNumberRef)CFDictionaryGetValue(dicRef, (const void*)kCFNetworkProxiesHTTPPort);

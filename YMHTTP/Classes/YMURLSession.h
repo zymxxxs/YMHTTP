@@ -81,14 +81,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (YMURLSessionTask *)taskWithDownloadURL:(NSURL *)url;
 
 - (YMURLSessionTask *)taskWithDownloadRequest:(NSURLRequest *)request
-                                    completionHandler:(void (^)(NSURL *_Nullable location,
-                                                                NSURLResponse *_Nullable response,
-                                                                NSError *_Nullable error))completionHandler;
+                            completionHandler:(void (^)(NSURL *_Nullable location,
+                                                        NSURLResponse *_Nullable response,
+                                                        NSError *_Nullable error))completionHandler;
 
 - (YMURLSessionTask *)taskWithDownloadURL:(NSURL *)url
-                                completionHandler:(void (^)(NSURL *_Nullable location,
-                                                            NSURLResponse *_Nullable response,
-                                                            NSError *_Nullable error))completionHandler;
+                        completionHandler:(void (^)(NSURL *_Nullable location,
+                                                    NSURLResponse *_Nullable response,
+                                                    NSError *_Nullable error))completionHandler;
 
 #pragma mark - Private
 

@@ -86,6 +86,8 @@ typedef void *YMURLSessionEasyHandle;
 /// - SeeAlso: https://curl.haxx.se/libcurl/c/CURLOPT_URL.html
 - (void)setURL:(NSURL *)URL;
 
+- (void)setConnectToHost:(NSString *)host port:(NSInteger)port;
+
 - (void)setSessionConfig:(YMURLSessionConfiguration *)config;
 
 /// Set allowed protocols

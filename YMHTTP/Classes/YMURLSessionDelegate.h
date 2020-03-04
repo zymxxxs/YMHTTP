@@ -36,10 +36,11 @@ NS_ASSUME_NONNULL_BEGIN
                     newRequest:(NSURLRequest *)request
              completionHandler:(void (^)(NSURLRequest *_Nullable))completionHandler;
 
-- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task
-         didSendBodyData:(int64_t)bytesSent
-          totalBytesSent:(int64_t)totalBytesSent
-totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend;
+- (void)YMURLSession:(YMURLSession *)session
+                        task:(YMURLSessionTask *)task
+             didSendBodyData:(int64_t)bytesSent
+              totalBytesSent:(int64_t)totalBytesSent
+    totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend;
 
 - (void)YMURLSession:(YMURLSession *)session
                     task:(YMURLSessionTask *)task

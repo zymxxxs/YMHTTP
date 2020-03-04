@@ -59,7 +59,7 @@ NS_INLINE int nextSessionIdentifier() {
         }
         _delegateQueue.maxConcurrentOperationCount = 1;
         _delegate = delegate;
-        _configuration = [configuration copy];
+        _configuration = configuration;
         _multiHandle = [[YMMultiHandle alloc] initWithConfiguration:_configuration WorkQueue:_workQueue];
     }
     return self;
@@ -238,7 +238,7 @@ NS_INLINE int nextSessionIdentifier() {
 
 - (YMURLSessionTask *)taskWithDownloadURL:(NSURL *)url {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
-    YMURLSessionTask *task =  [self taskWithRequest:url behaviour:b];
+    YMURLSessionTask *task = [self taskWithRequest:url behaviour:b];
     // TODO: this is ugly, need to fix it
     [task setValue:[NSNumber numberWithBool:true] forKey:@"isDownloadTask"];
     return task;
@@ -246,25 +246,25 @@ NS_INLINE int nextSessionIdentifier() {
 
 - (YMURLSessionTask *)taskWithDownloadRequest:(NSURLRequest *)request {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
-    YMURLSessionTask *task =  [self taskWithRequest:request behaviour:b];
+    YMURLSessionTask *task = [self taskWithRequest:request behaviour:b];
     [task setValue:[NSNumber numberWithBool:true] forKey:@"isDownloadTask"];
     return task;
 }
 
 - (YMURLSessionTask *)taskWithDownloadURL:(NSURL *)url
-      completionHandler:(void (^)(NSURL *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+                        completionHandler:(void (^)(NSURL *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))
+                                              completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDownloadTaskCompeltion:completionHandler];
-    YMURLSessionTask *task =  [self taskWithRequest:url behaviour:b];
+    YMURLSessionTask *task = [self taskWithRequest:url behaviour:b];
     [task setValue:[NSNumber numberWithBool:true] forKey:@"isDownloadTask"];
     return task;
 }
 
 - (YMURLSessionTask *)taskWithDownloadRequest:(NSURLRequest *)request
-                                    completionHandler:(void (^)(NSURL *_Nullable,
-                                                                NSURLResponse *_Nullable,
-                                                                NSError *_Nullable))completionHandler {
+                            completionHandler:(void (^)(NSURL *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))
+                                                  completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDownloadTaskCompeltion:completionHandler];
-    YMURLSessionTask *task =  [self taskWithRequest:request behaviour:b];
+    YMURLSessionTask *task = [self taskWithRequest:request behaviour:b];
     [task setValue:[NSNumber numberWithBool:true] forKey:@"isDownloadTask"];
     return task;
 }

@@ -5,6 +5,7 @@
 //  Created by zymxxxs on 2020/2/7.
 //
 
+#import <objc/runtime.h>
 #import "NSURLCache+YMCategory.h"
 #import "YMURLSessionTask.h"
 
