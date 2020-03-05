@@ -121,7 +121,7 @@ NS_INLINE NSInteger parseArgumentPart(NSString *part, NSString *name) {
     // Cache-Control: https://tools.ietf.org/html/rfc7234#section-5.2
     BOOL hasCacheControl = false;
     BOOL hasMaxAge = false;
-    NSString *cacheControl = httpResponse.allHeaderFields[@"cache-control"];
+    NSString *cacheControl = httpResponse.allHeaderFields[@"Cache-Control"];
     if (cacheControl) {
         NSInteger maxAge = 0;
         NSInteger sharedMaxAge;
@@ -133,7 +133,8 @@ NS_INLINE NSInteger parseArgumentPart(NSString *part, NSString *name) {
                                            sharedMaxAge:&sharedMaxAge
                                                 noCache:&noCache
                                                 noStore:&noStore];
-
+        if (noCache || noStore) return false;
+        
         if (maxAge > 0) {
             hasMaxAge = true;
 
@@ -147,7 +148,7 @@ NS_INLINE NSInteger parseArgumentPart(NSString *part, NSString *name) {
         hasCacheControl = true;
     }
 
-    NSString *pragma = httpResponse.allHeaderFields[@"pragma"];
+    NSString *pragma = httpResponse.allHeaderFields[@"Pragma"];
     if (!hasCacheControl && pragma) {
         NSArray *components = [pragma componentsSeparatedByString:@","];
         components = [components ym_map:^id _Nonnull(NSString *_Nonnull obj) {
@@ -169,6 +170,8 @@ NS_INLINE NSInteger parseArgumentPart(NSString *part, NSString *name) {
             return false;
         }
     }
+    
+    if (!hasCacheControl) return false;
 
     return true;
 }
