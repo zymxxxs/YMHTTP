@@ -343,6 +343,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     [self.protocolLock unlock];
 }
 
+- (id)copyWithZone:(NSZone *)zone {
+    return self;
+}
+
 #pragma mark - Setter Getter Methods
 
 - (void)setInternalState:(YMURLSessionTaskInternalState)internalState {
@@ -1094,7 +1098,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                             [cache ym_storeCachedResponse:cacheable forDataTask:self];
                         }
                     }];
-
             } else {
                 NSURLCache *cache = self.session.configuration.URLCache;
                 [cache ym_storeCachedResponse:cacheable forDataTask:self];

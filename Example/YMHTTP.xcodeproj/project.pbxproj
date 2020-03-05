@@ -21,8 +21,11 @@
 		6003F5B1195388D20070C39A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6003F58D195388D20070C39A /* Foundation.framework */; };
 		6003F5B2195388D20070C39A /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6003F591195388D20070C39A /* UIKit.framework */; };
 		6003F5BA195388D20070C39A /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6003F5B8195388D20070C39A /* InfoPlist.strings */; };
-		6003F5BC195388D20070C39A /* Tests.m in Sources */ = {isa = PBXBuildFile; fileRef = 6003F5BB195388D20070C39A /* Tests.m */; };
 		71719F9F1E33DC2100824A3D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 71719F9D1E33DC2100824A3D /* LaunchScreen.storyboard */; };
+		7AB642C624101D4F006F0FA4 /* YMURLSessionTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AB642C524101D4F006F0FA4 /* YMURLSessionTests.m */; };
+		7AB642C924101ECA006F0FA4 /* YMDataTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AB642C824101ECA006F0FA4 /* YMDataTask.m */; };
+		7AB642CD2410D8AF006F0FA4 /* YMDownloadTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AB642CB2410D848006F0FA4 /* YMDownloadTask.m */; };
+		7AB642D02410FD5A006F0FA4 /* YMSessionDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AB642CF2410FD5A006F0FA4 /* YMSessionDelegate.m */; };
 		7AD4B1B123F86CE000633B05 /* aaa.txt in Resources */ = {isa = PBXBuildFile; fileRef = 7AD4B1B023F86CE000633B05 /* aaa.txt */; };
 		873B8AEB1B1F5CCA007FD442 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 873B8AEA1B1F5CCA007FD442 /* Main.storyboard */; };
 /* End PBXBuildFile section */
@@ -58,10 +61,16 @@
 		6003F5AF195388D20070C39A /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
 		6003F5B7195388D20070C39A /* Tests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Tests-Info.plist"; sourceTree = "<group>"; };
 		6003F5B9195388D20070C39A /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		6003F5BB195388D20070C39A /* Tests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Tests.m; sourceTree = "<group>"; };
 		606FC2411953D9B200FFA9A0 /* Tests-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Tests-Prefix.pch"; sourceTree = "<group>"; };
 		704C120713E5C4BD7AB61265 /* Pods-YMHTTP_Tests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YMHTTP_Tests.release.xcconfig"; path = "Target Support Files/Pods-YMHTTP_Tests/Pods-YMHTTP_Tests.release.xcconfig"; sourceTree = "<group>"; };
 		71719F9E1E33DC2100824A3D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		7AB642C524101D4F006F0FA4 /* YMURLSessionTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMURLSessionTests.m; sourceTree = "<group>"; };
+		7AB642C724101ECA006F0FA4 /* YMDataTask.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMDataTask.h; sourceTree = "<group>"; };
+		7AB642C824101ECA006F0FA4 /* YMDataTask.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMDataTask.m; sourceTree = "<group>"; };
+		7AB642CA2410D848006F0FA4 /* YMDownloadTask.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMDownloadTask.h; sourceTree = "<group>"; };
+		7AB642CB2410D848006F0FA4 /* YMDownloadTask.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMDownloadTask.m; sourceTree = "<group>"; };
+		7AB642CE2410FD5A006F0FA4 /* YMSessionDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMSessionDelegate.h; sourceTree = "<group>"; };
+		7AB642CF2410FD5A006F0FA4 /* YMSessionDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMSessionDelegate.m; sourceTree = "<group>"; };
 		7AD4B1B023F86CE000633B05 /* aaa.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = aaa.txt; sourceTree = "<group>"; };
 		873B8AEA1B1F5CCA007FD442 /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = Main.storyboard; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		8DBFDA45763A100B587356A0 /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = LICENSE; path = ../LICENSE; sourceTree = "<group>"; };
@@ -162,8 +171,14 @@
 		6003F5B5195388D20070C39A /* Tests */ = {
 			isa = PBXGroup;
 			children = (
-				6003F5BB195388D20070C39A /* Tests.m */,
 				6003F5B6195388D20070C39A /* Supporting Files */,
+				7AB642C524101D4F006F0FA4 /* YMURLSessionTests.m */,
+				7AB642CE2410FD5A006F0FA4 /* YMSessionDelegate.h */,
+				7AB642CF2410FD5A006F0FA4 /* YMSessionDelegate.m */,
+				7AB642C724101ECA006F0FA4 /* YMDataTask.h */,
+				7AB642C824101ECA006F0FA4 /* YMDataTask.m */,
+				7AB642CA2410D848006F0FA4 /* YMDownloadTask.h */,
+				7AB642CB2410D848006F0FA4 /* YMDownloadTask.m */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -361,7 +376,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6003F5BC195388D20070C39A /* Tests.m in Sources */,
+				7AB642C924101ECA006F0FA4 /* YMDataTask.m in Sources */,
+				7AB642C624101D4F006F0FA4 /* YMURLSessionTests.m in Sources */,
+				7AB642CD2410D8AF006F0FA4 /* YMDownloadTask.m in Sources */,
+				7AB642D02410FD5A006F0FA4 /* YMSessionDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -21,7 +21,7 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
     YMURLSessionTaskStateCompleted = 3,
 };
 
-@interface YMURLSessionTask : NSObject
+@interface YMURLSessionTask : NSObject<NSCopying>
 
 @property (readonly) NSUInteger taskIdentifier;
 

@@ -9,15 +9,19 @@
 #import "YMViewController.h"
 #import <YMHTTP/YMHTTP.h>
 #import <CFNetwork/CFNetwork.h>
+#import <Security/Security.h>
+#import <objc/runtime.h>
+#import "NSURLRequest+YMCategory.h"
 
 typedef NS_OPTIONS(NSUInteger, YMState) {
     YMStateReceive = 1 << 0,
     YMStateSend = 1 << 1
 };
 
-@interface YMViewController ()<YMURLSessionDataDelegate>
+@interface YMViewController ()<YMURLSessionDataDelegate, NSURLSessionTaskDelegate>
 
 @property (nonatomic, strong) YMURLSession *s;
+@property (strong) NSURLRequest *request;
 
 @end
 
@@ -27,106 +31,50 @@ typedef NS_OPTIONS(NSUInteger, YMState) {
 {
     [super viewDidLoad];
     
-    _s = [YMURLSession sessionWithConfiguration:[YMURLSessionConfiguration defaultSessionConfiguration]
+    
+    YMURLSessionConfiguration *c = [YMURLSessionConfiguration defaultSessionConfiguration];
+    self.s = [YMURLSession sessionWithConfiguration:c
                                        delegate:self
                                   delegateQueue:nil];
-    //    YMURLSessionTask *d = [s dataTaskWithRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"http://www.baidu.com"]]];
-    //    [d resume];
+
+//    YMURLSessionTask *task = [self.s taskWithURL:[NSURL URLWithString:@"http://httpbin.org/cache/20"]
+//                                           connectToHost:@"45.117.101.166"
+//                                       completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+//        NSLog(@"%@", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
+//        NSLog(@"%@", response);
+//    }];
+//    [task resume];
     
-    //        __block YMURLSessionTask *task = [self runWithURL:[NSURL URLWithString:@"https://httpbin.org/post"]];
-    //        [task resume];
-    
-    //    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-    //        [task suspend];
-    //        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-    //            [task resume];
-    //        });
-    //    });
-    //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
-    //    [[self runWithURL:[NSURL URLWithString:@"http://61.135.169.125"]] resume];
-    //    [[self runWithURL:[NSURL URLWithString:@"https://www.tmall.com"]] resume];
-    //    [[self runWithURL:[NSURL URLWithString:@"http://www.baidu.com"]] resume];
-    //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
-    //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
-    //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
-    //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
-    //    [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
-    
-    //    int i = 0;
-    //    while (i<50) {
-    //        [[self runWithURL:[NSURL URLWithString:@"http://gank.io/api/today"]] resume];
-    //        i++;
-    //    }
-    
-    //    NSURLRequest *r = [NSURLRequest requestWithURL:[NSURL URLWithString:@"https://61.135.169.125"]];
-    //    NSURLSessionTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:r completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-    //
-    //    }];
-    //    [task resume];
-    
-//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-//        char *c1 = (char *)malloc(sizeof(char)*4096*1000);
-//        char *c2 = (char *)malloc(sizeof(char)*4096*1000);
-//        memset(c1, 1, sizeof(char)*4096*1000);
-//        memset(c2, 1, sizeof(char)*4096*1000);
-//        
-//        dispatch_data_t d1 = dispatch_data_create(c1, sizeof(char)*4096*500, nil, DISPATCH_DATA_DESTRUCTOR_FREE);
+    YMURLSessionTask *task = [self.s taskWithURL:[NSURL URLWithString:@"http://httpbin.org/cache/20"]];
+    [task resume];
+
+
+//    NSMutableURLRequest *r = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"http://httpbin.org/cache/20"]];
+//    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+//    config.requestCachePolicy = NSURLRequestUseProtocolCachePolicy;
+//    NSURLSession *session = [NSURLSession sessionWithConfiguration:config
+//                                  delegate:self
+//                             delegateQueue:nil];
+//    NSURLSessionTask *t = [session dataTaskWithRequest:r];
+//    [t resume];
 //
-//        dispatch_data_t d2 = dispatch_data_create(c2, sizeof(char)*4096*500, nil, DISPATCH_DATA_DESTRUCTOR_FREE);
 //
-//        dispatch_data_t d3 = dispatch_data_create_concat(d1, d2);
-//
-//        dispatch_data_t d4 = dispatch_data_create_subrange(d3, sizeof(char)*4096*250, sizeof(char)*4096*500);
-//
-//        dispatch_data_apply(d4, ^bool(dispatch_data_t  _Nonnull region, size_t offset, const void * _Nonnull buffer, size_t size) {
-//            NSLog(@"%@", region);
-//            NSLog(@"%@", @(offset));
-//            NSLog(@"%@", [NSString stringWithUTF8String:buffer]);
-//            NSLog(@"%@", @(size));
-//            return  YES;
-//        });
+//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+//        <#code to be executed after a specified delay#>
 //    });
     
-    
-    
-    //    NSString *s = @"123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789";
-    //    NSData *data = [NSData dataWithBytes:[s UTF8String] length:s.length];
-    //
-    //    while (data) {
-    //        NSData *head = [data subdataWithRange:NSMakeRange(0, 1)];
-    //        NSLog(@"%@", [[NSString alloc] initWithData:head encoding:NSUTF8StringEncoding]);
-    //        if (data.length == 1) return;
-    //        data = [data subdataWithRange:NSMakeRange(1, data.length-1)];
-    //    }
-    
-    //    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-    //        for (int i=0; i<1000; i++) {
-    //            char a[4096*sizeof(char *)*100];
-    //            strcpy(a, "aaadfadfdasfasdjfasdkjfa;dskjfas;d");
-    //        }
-    //    });
+//    [[NSURLCache sharedURLCache] getCachedResponseForDataTask:t completionHandler:^(NSCachedURLResponse * _Nullable cachedResponse) {
+//
+//    }];
 }
 
-
-
-- (YMURLSessionTask *)runWithURL:(NSURL *)URL {
-    
-    NSMutableURLRequest *r = [[NSMutableURLRequest alloc] initWithURL:URL];
-    NSURL *b = [[NSBundle mainBundle] URLForResource:@"aaa" withExtension:@"txt"];
-    NSString *a = [NSString stringWithContentsOfURL:b
-                                           encoding:NSUTF8StringEncoding
-                                              error:nil];
-    r.HTTPBody = [a dataUsingEncoding:NSUTF8StringEncoding];
-    [r setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
-    r.HTTPBodyStream = [[NSInputStream alloc] initWithData:[a dataUsingEncoding:NSUTF8StringEncoding]];
-    r.HTTPMethod = @"POST";
-    //        [r.HTTPBodyStream open];
-    return [_s taskWithRequest:r fromFile:b];
+-(void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveResponse:(NSURLResponse *)response completionHandler:(void (^)(YMURLSessionResponseDisposition))completionHandler {
+    completionHandler(YMURLSessionResponseAllow);
 }
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didCompleteWithError:(NSError *)error {
     NSLog(@"didCompleteWithError");
-    NSLog(@"%@", task.response);
+    NSLog(@"%@", task.response.allHeaderFields);
     NSLog(@"%@", error);
 }
 
@@ -135,13 +83,49 @@ typedef NS_OPTIONS(NSUInteger, YMState) {
     NSLog(@"%@", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
 }
 
+- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task willCacheResponse:(NSCachedURLResponse *)proposedResponse completionHandler:(void (^)(NSCachedURLResponse * _Nullable))completionHandler {
+    completionHandler(proposedResponse);
+}
 
-//- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveResponse:(NSURLResponse *)response completionHandler:(void (^)(YMURLSessionResponseDisposition))completionHandler {
-//    NSLog(@"didReceiveResponse");
-////    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-//        completionHandler(YMURLSessionResponseAllow);
-////    });
-//}
+
+-(void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didSendBodyData:(int64_t)bytesSent totalBytesSent:(int64_t)totalBytesSent totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend {
+    NSLog(@"%@ %@ %@", @(bytesSent), @(totalBytesSent), @(totalBytesExpectedToSend));
+}
+
+- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask
+    didReceiveData:(NSData *)data {
+    NSLog(@"didReceiveData");
+    NSLog(@"%@", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
+}
+
+- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask
+didReceiveResponse:(NSURLResponse *)response
+ completionHandler:(void (^)(NSURLSessionResponseDisposition disposition))completionHandler {
+//    completionHandler(NSURLSessionResponseAllow);
+//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        completionHandler(NSURLSessionResponseAllow);
+//    });
+}
+
+
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
+    NSLog(@"didCompleteWithError");
+    NSLog(@"%@", task.response);
+    NSLog(@"%@", error);
+}
+
+
+
+- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask
+willCacheResponse:(NSCachedURLResponse *)proposedResponse
+ completionHandler:(void (^)(NSCachedURLResponse * _Nullable cachedResponse))completionHandler {
+//    completionHandler(proposedResponse);
+}
+
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task willPerformHTTPRedirection:(NSHTTPURLResponse *)response newRequest:(NSURLRequest *)request completionHandler:(void (^)(NSURLRequest * _Nullable))completionHandler {
+    completionHandler(request);
+}
+
 
 
 

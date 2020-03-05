@@ -36,7 +36,11 @@ pod 'YMHTTP'
     * resume, respend 需要配对
 * ~~先异步获取 cache，后判断 cacheProxy，目前已经实现，相对逻辑简单，比较好控制（或者先判断 cacheProxy 然后根据实际情况获取 cache，以及后续操作，待操作）~~
 * ~~目前需要在获取 response 以及 receive data 之后记录数据~~
-* 待验证目前 cache 逻辑
+* 待验证目前 cache 逻辑，cache 逻辑存在大量错误
+* 相应缓存以及可以缓存应该调整为不同的逻辑
+* ugly code 需要调整
+* didReceiveResponse 在有缓存的情况下会crash
+* 移除 delegatequeue 参数
 
 
 # 待预研
