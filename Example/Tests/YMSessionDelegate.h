@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface YMSessionDelegate : NSObject <YMURLSessionDelegate>
 
-@property (nonnull, nonatomic, strong) XCTestExpectation *invalidateExpectation;
+@property (nonnull, atomic, strong) XCTestExpectation *invalidateExpectation;
 
 @end
 

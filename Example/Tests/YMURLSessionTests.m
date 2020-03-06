@@ -544,4 +544,285 @@
     [self waitForExpectationsWithTimeout:30 handler:nil];
 }
 
+- (void)emptyCookieStorage:(NSHTTPCookieStorage *)cookieStorage {
+    if (cookieStorage && cookieStorage.cookies) {
+        for (NSHTTPCookie *cookie in cookieStorage.cookies) {
+            [cookieStorage deleteCookie:cookie];
+        }
+    }
+}
+
+- (void)testDisableCookiesStorage {
+    XCTestExpectation *expect = [self expectationWithDescription:@"test testDisableCookiesStorage"];
+    
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 5;
+    config.HTTPCookieAcceptPolicy = NSHTTPCookieAcceptPolicyNever;
+    
+    [self emptyCookieStorage:config.HTTPCookieStorage];
+    XCTAssertEqual(config.HTTPCookieStorage.cookies.count, 0);
+    
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    NSString *urlString = @"https://httpbin.org/response-headers?Set-Cookie=a=bbbb&Set-Cookie=a=bbbb1&Set-Cookie=b=bbbb2";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
+    req.HTTPMethod = @"POST";
+    
+    YMURLSessionTask *task = [session taskWithRequest:req completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        XCTAssertNotNil(data);
+        XCTAssertNil(error);
+        NSHTTPURLResponse *httpresponse = (NSHTTPURLResponse *)response;
+        XCTAssertNotNil(httpresponse.allHeaderFields[@"Set-Cookie"]);
+        [expect fulfill];
+    }];
+    [task resume];
+    [self waitForExpectationsWithTimeout:30 handler:nil];
+    XCTAssertEqual([NSHTTPCookieStorage sharedHTTPCookieStorage].cookies.count, 0);
+}
+
+- (void)testCookiesStorage {
+    XCTestExpectation *expect = [self expectationWithDescription:@"test testCookiesStorage"];
+    
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 5;
+    
+    [self emptyCookieStorage:config.HTTPCookieStorage];
+    XCTAssertEqual(config.HTTPCookieStorage.cookies.count, 0);
+    
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    NSString *urlString = @"https://httpbin.org/response-headers?Set-Cookie=a=bbbb&Set-Cookie=a=bbbb1&Set-Cookie=b=bbbb2&Set-Cookie=b=bbbb2";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
+    req.HTTPMethod = @"POST";
+    
+    YMURLSessionTask *task = [session taskWithRequest:req completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        XCTAssertNotNil(data);
+        XCTAssertNil(error);
+        NSHTTPURLResponse *httpresponse = (NSHTTPURLResponse *)response;
+        XCTAssertNotNil(httpresponse.allHeaderFields[@"Set-Cookie"]);
+        [expect fulfill];
+    }];
+    [task resume];
+    [self waitForExpectationsWithTimeout:30 handler:nil];
+    XCTAssertEqual([NSHTTPCookieStorage sharedHTTPCookieStorage].cookies.count, 2);
+}
+
+- (void)testPreviouslySetCookiesAreSentInLaterRequests {
+    XCTestExpectation *expect1 = [self expectationWithDescription:@"test1 testPreviouslySetCookiesAreSentInLaterRequests"];
+    XCTestExpectation *expect2 = [self expectationWithDescription:@"test2 testPreviouslySetCookiesAreSentInLaterRequests"];
+    
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 5;
+    
+    [self emptyCookieStorage:config.HTTPCookieStorage];
+    XCTAssertEqual(config.HTTPCookieStorage.cookies.count, 0);
+    
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    NSString *urlString = @"https://httpbin.org/response-headers?Set-Cookie=a=bbbb&Set-Cookie=a=bbbb1&Set-Cookie=b=bbbb2&Set-Cookie=b=bbbb2";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
+    req.HTTPMethod = @"POST";
+    __block YMURLSessionTask *task2 = nil;
+    
+    YMURLSessionTask *task1 = [session taskWithRequest:req completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        XCTAssertNotNil(data);
+        XCTAssertNil(error);
+        NSHTTPURLResponse *httpresponse = (NSHTTPURLResponse *)response;
+        XCTAssertNotNil(httpresponse.allHeaderFields[@"Set-Cookie"]);
+        XCTAssertEqual([NSHTTPCookieStorage sharedHTTPCookieStorage].cookies.count, 2);
+        
+        task2 = [session taskWithURL: [NSURL URLWithString:@"https://httpbin.org/cookies"] completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+            XCTAssertNotNil(data);
+            XCTAssertNil(error);
+            NSDictionary *result = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil];
+            XCTAssertNotNil(result[@"cookies"]);
+            NSDictionary *cookies = @{@"a": @"bbbb1", @"b": @"bbbb2"};
+            XCTAssertEqualObjects(result[@"cookies"], cookies);
+            [expect2 fulfill];
+        }];
+        [task2 resume];
+        [expect1 fulfill];
+    }];
+    [task1 resume];
+    [self waitForExpectationsWithTimeout:100 handler:nil];
+    XCTAssertEqual([NSHTTPCookieStorage sharedHTTPCookieStorage].cookies.count, 2);
+}
+
+//- (void)testBasicAuthRequest {
+//    NSString *urlString = @"https://httpbin.org/basic-auth/zymxxxs/zymxxxs";
+//    NSURL *url = [NSURL URLWithString:urlString];
+//    XCTestExpectation *te = [self expectationWithDescription:@"GET testBasicAuthRequest: with a delegate"];
+//    YMDataTask *d = [[YMDataTask alloc] initWithExpectation:te];
+//    [d runWithURL:url];
+//    [self waitForExpectationsWithTimeout:12 handler:nil];
+//}
+
+- (void)testBasicAuthWithUnauthorizedHeader {}
+
+- (void)testPostWithEmptyBody {
+    XCTestExpectation *te = [self expectationWithDescription:@"POST testPostWithEmptyBody: post with empty body"];
+
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 5;
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    
+    NSString *urlString = @"https://httpbin.org/post";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
+    req.HTTPMethod = @"POST";
+    
+    YMURLSessionTask *task = [session taskWithRequest:req
+                                    completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        XCTAssertNil(error);
+        if (![response isKindOfClass:[NSHTTPURLResponse class]]) return ;
+        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+        XCTAssertEqual(httpResponse.statusCode, 200, "HTTP response code is not 200");
+        [te fulfill];
+    }];
+    [task resume];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
+}
+
+- (void)testCheckErrorTypeAfterInvalidateAndCancel {
+    XCTestExpectation *expectation = [self expectationWithDescription:@"Check error code of tasks after invalidateAndCancel"];
+    
+    NSString *urlString = @"http://httpbin.org/delay/5";
+    NSURL *url = [NSURL URLWithString:urlString];
+    YMSessionDelegate *delegate = [YMSessionDelegate new];
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:delegate delegateQueue:nil];
+    YMURLSessionTask *task = [session taskWithURL:url completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        XCTAssertNotNil(error);
+        XCTAssertEqual(error.code, NSURLErrorCancelled);
+        [expectation fulfill];
+    }];
+    [task resume];
+    [session invalidateAndCancel];
+    [self waitForExpectationsWithTimeout:5 handler:nil];
+}
+
+- (void)testTaskCountAfterInvalidateAndCancel {
+    XCTestExpectation *expectation = [self expectationWithDescription:@"Check task count after invalidateAndCancel"];
+    
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    NSURL *url1 = [NSURL URLWithString:@"http://httpbin.org/delay/5"];
+    NSURL *url2 = [NSURL URLWithString:@"http://httpbin.org/delay/15"];
+    NSURL *url3 = [NSURL URLWithString:@"http://httpbin.org/delay/25"];
+    
+    YMURLSessionTask *task1 = [session taskWithURL:url1];
+    YMURLSessionTask *task2 = [session taskWithURL:url2];
+    YMURLSessionTask *task3 = [session taskWithURL:url3];
+    
+    [task1 resume];
+    [task2 resume];
+    [session invalidateAndCancel];
+    [session getAllTasksWithCompletionHandler:^(NSArray<__kindof YMURLSessionTask *> * _Nonnull tasksBeforeResume) {
+        XCTAssertEqual(tasksBeforeResume.count, 0);
+        
+        [task3 resume];
+        [session getAllTasksWithCompletionHandler:^(NSArray<__kindof YMURLSessionTask *> * _Nonnull tasksAfterResume) {
+            XCTAssertEqual(tasksAfterResume.count, 0);
+            [expectation fulfill];
+        }];
+    }];
+    [self waitForExpectationsWithTimeout:8 handler:nil];
+}
+
+- (void)testSessionDelegateAfterInvalidateAndCancel {
+    YMSessionDelegate *delegate = [YMSessionDelegate new];
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:delegate delegateQueue:nil];
+    [session invalidateAndCancel];
+    [NSThread sleepForTimeInterval:5];
+    XCTAssertNil(session.delegate);
+}
+
+- (void)testGetAllTasks {
+    XCTestExpectation *expectation = [self expectationWithDescription:@"Tasks URLSession.getAllTasks"];
+    
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    NSURL *url1 = [NSURL URLWithString:@"https://httpbin.org/delay/5"];
+    NSURL *url2 = [NSURL URLWithString:@"https://httpbin.org/delay/10"];
+    NSURL *url3 = [NSURL URLWithString:@"https://httpbin.org/delay/15"];
+    
+    YMURLSessionTask *task1 = [session taskWithURL:url1];
+    YMURLSessionTask *task2 = [session taskWithURL:url2];
+    YMURLSessionTask *task3 = [session taskWithURL:url3];
+    
+    [session getAllTasksWithCompletionHandler:^(NSArray<__kindof YMURLSessionTask *> * _Nonnull tasksBeforeResume) {
+        XCTAssertEqual(tasksBeforeResume.count, 0);
+        
+        [task1 cancel];
+        
+        [task2 resume];
+        [task2 suspend];
+        
+        [task3 suspend];
+        
+        [session getAllTasksWithCompletionHandler:^(NSArray<__kindof YMURLSessionTask *> * _Nonnull tasksAfterCancel) {
+            XCTAssertEqual(tasksAfterCancel.count, 1);
+            
+            [task3 resume];
+            [session getAllTasksWithCompletionHandler:^(NSArray<__kindof YMURLSessionTask *> * _Nonnull tasksAfterFirstResume) {
+                 XCTAssertEqual(tasksAfterFirstResume.count, 1);
+
+                [task3 resume];
+                [session getAllTasksWithCompletionHandler:^(NSArray<__kindof YMURLSessionTask *> * _Nonnull tasksAfterSecondResume) {
+                     XCTAssertEqual(tasksAfterSecondResume.count, 2);
+                    [expectation fulfill];
+                 }];
+             }];
+        }];
+    }];
+    [self waitForExpectationsWithTimeout:16 handler:nil];
+}
+
+- (void)testNoDoubleCallbackWhenCancellingAndProtocolFailsFast {
+    XCTestExpectation *callback1 = [self expectationWithDescription:@"Callback call #1"];
+    XCTestExpectation *callback2 = [self expectationWithDescription:@"Callback call #2"];
+    __block int callbackCount = 0;
+    [callback2 setInverted:YES];
+    
+    NSString *urlString = @"ftp://httpbin.org/get";
+    NSURL *url = [NSURL URLWithString:urlString];
+    YMSessionDelegate *delegate = [YMSessionDelegate new];
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:delegate delegateQueue:nil];
+    
+    YMURLSessionTask *task = [session taskWithURL:url completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        callbackCount += 1;
+        XCTAssertNotNil(error);
+        XCTAssertNotEqual(error.code, NSURLErrorCancelled);
+        XCTAssertEqual(error.code, NSURLErrorUnsupportedURL);
+        if (callbackCount == 1) {
+            [callback1 fulfill];
+        } else {
+            [callback2 fulfill];
+        }
+    }];
+    [task resume];
+    [session invalidateAndCancel];
+    [self waitForExpectationsWithTimeout:3 handler:nil];
+}
+
+- (void)testCancelledTasksCannotBeResumed {
+    NSString *urlString = @"http://httpbin.org/delay/5";
+    NSURL *url = [NSURL URLWithString:urlString];
+    YMSessionDelegate *delegate = [YMSessionDelegate new];
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:delegate delegateQueue:nil];
+    YMURLSessionTask *task = [session taskWithURL:url];
+    [task cancel];
+    [task resume];
+    
+    XCTestExpectation *expectation = [self expectationWithDescription:@"getAllTasks callback called"];
+    [session getAllTasksWithCompletionHandler:^(NSArray<__kindof YMURLSessionTask *> * _Nonnull tasks) {
+        XCTAssertEqual(tasks.count, 0);
+        [expectation fulfill];
+    }];
+    [self waitForExpectationsWithTimeout:1 handler:nil];
+}
+
 @end

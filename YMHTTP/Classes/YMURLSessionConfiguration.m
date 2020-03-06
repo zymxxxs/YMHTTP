@@ -45,11 +45,11 @@
     if (_HTTPShouldSetCookies) {
         if (_HTTPCookieStorage && request.URL) {
             NSArray *cookies = [_HTTPCookieStorage cookiesForURL:request.URL];
-            if (cookies) {
+            if (cookies && cookies.count) {
                 NSDictionary *cookiesHeaderFields = [NSHTTPCookie requestHeaderFieldsWithCookies:cookies];
-                NSString *cookieValue = cookiesHeaderFields[@"cookie"];
+                NSString *cookieValue = cookiesHeaderFields[@"Cookie"];
                 if (cookieValue && cookieValue.length) {
-                    [request setValue:cookieValue forKey:@"cookie"];
+                    [r setValue:cookieValue forHTTPHeaderField:@"Cookie"];
                 }
             }
         }

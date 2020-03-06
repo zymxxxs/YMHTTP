@@ -110,13 +110,13 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 - (void)invalidateAndCancel {
-    if (_sharedSession) return;
+    if (self == _sharedSession) return;
 
-    dispatch_sync(_workQueue, ^{
+    dispatch_sync(self.workQueue, ^{
         self.invalidated = true;
     });
 
-    for (YMURLSessionTask *task in _taskRegistry.allTasks) {
+    for (YMURLSessionTask *task in self.taskRegistry.allTasks) {
         [task cancel];
     }
 
@@ -164,7 +164,7 @@ NS_INLINE int nextSessionIdentifier() {
         [self.delegateQueue addOperationWithBlock:^{
             NSMutableArray *tasks = [[NSMutableArray alloc] init];
             for (YMURLSessionTask *task in self.taskRegistry.allTasks) {
-                if (task.state == YMURLSessionTaskStateRunning && task.isSuspendedAfterResume) {
+                if (task.state == YMURLSessionTaskStateRunning || task.isSuspendedAfterResume) {
                     [tasks addObject:task];
                 }
             }
@@ -353,8 +353,7 @@ NS_INLINE int nextSessionIdentifier() {
         r = [NSURLRequest requestWithURL:request];
     }
 
-    [_configuration configureRequest:r];
-    return r;
+    return [_configuration configureRequest:r];
 }
 
 - (NSUInteger)createNextTaskIdentifier {

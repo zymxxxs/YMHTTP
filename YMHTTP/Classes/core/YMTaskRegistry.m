@@ -31,7 +31,7 @@
 }
 
 - (BOOL)isEmpty {
-    return [_tasks count];
+    return [_tasks count] == 0;
 }
 
 - (void)notifyOnTasksCompletion:(void (^)(void))tasksCompletion {

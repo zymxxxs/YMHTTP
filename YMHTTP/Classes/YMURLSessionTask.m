@@ -1432,7 +1432,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                 currentInputStream = bodyStream;
                 dispatch_group_leave(group);
             }];
-        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 7 * NSEC_PER_SEC);
+        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC);
         dispatch_group_wait(group, timeout);
     }
 
