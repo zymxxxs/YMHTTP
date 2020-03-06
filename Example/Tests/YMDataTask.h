@@ -12,12 +12,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface YMDataTask : NSObject
+@interface YMDataTask : XCTestCase<YMURLSessionDataDelegate>
 
 @property (copy) NSDictionary *result;
 @property (copy) NSDictionary *args;
 @property (strong) XCTestExpectation *responseReceivedExpectation;
 @property (strong) XCTestExpectation *cancelExpectation;
+@property (strong) XCTestExpectation *dataTaskExpectation;
 @property (copy) YMURLSessionTask *task;
 @property  BOOL error;
 

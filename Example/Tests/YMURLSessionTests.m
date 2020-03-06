@@ -10,7 +10,9 @@
 #import "YMDataTask.h"
 #import "YMDownloadTask.h"
 #import <YMHTTP/YMHTTP.h>
+#import "YMHTTPRedirectionDataTask.h"
 #import "YMSessionDelegate.h"
+#import "YMHTTPUploadDelegate.h"
 
 @interface YMURLSessionTests : XCTestCase
 
@@ -121,7 +123,6 @@
     }
     request.HTTPBodyStream = [[NSInputStream alloc] initWithData:data];
     [request.HTTPBodyStream open];
-    
     
     XCTestExpectation *te = [self expectationWithDescription:@"POST testDataTaskWithHttpInputStream: with HTTP Body as InputStream"];
     
@@ -298,6 +299,249 @@
     } else {
         XCTFail();
     }
+}
+
+- (void)testVerifyRequestHeaders {
+    XCTestExpectation *te = [self expectationWithDescription:@"POST testVerifyRequestHeaders: get request headers"];
+    
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    
+    NSString *urlString = @"http://httpbin.org/post";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    request.HTTPMethod = @"POST";
+    request.allHTTPHeaderFields = @{ @"header1": @"value1"};
+
+    YMURLSessionTask *task = [session taskWithRequest:request
+                                    completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        XCTAssertNotNil(data);
+        XCTAssertNil(error);
+        NSDictionary *value = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil];
+        XCTAssertNotNil(value[@"headers"][@"Header1"]);
+        [te fulfill];
+    }];
+    [task resume];
+    request.allHTTPHeaderFields = nil;
+    [self waitForExpectationsWithTimeout:30 handler:nil];
+}
+
+- (void)testVerifyHttpAdditionalHeaders {
+    XCTestExpectation *te = [self expectationWithDescription:@"POST testVerifyHttpAdditionalHeaders with additional headers"];
+    
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 5;
+    config.HTTPAdditionalHeaders = @{
+        @"header2":@"svalue2",
+        @"header3":@"svalue3",
+        @"header4":@"svalue4",
+    };
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    
+    NSString *urlString = @"http://httpbin.org/post";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    request.HTTPMethod = @"POST";
+    request.allHTTPHeaderFields = @{
+        @"HEAder2":@"rvalue2",
+        @"HeAder1":@"rvalue1",
+        @"Header4":@"rvalue4",
+    };
+    
+    YMURLSessionTask *task = [session taskWithRequest:request
+                                    completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        XCTAssertNotNil(data);
+        XCTAssertNil(error);
+        NSDictionary *value = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil];
+        NSDictionary *headers = value[@"headers"];
+        XCTAssertEqualObjects(headers[@"Header1"], @"rvalue1");
+        XCTAssertEqualObjects(headers[@"Header2"], @"rvalue2");
+        XCTAssertEqualObjects(headers[@"Header3"], @"svalue3");
+        XCTAssertEqualObjects(headers[@"Header4"], @"rvalue4");
+        [te fulfill];
+    }];
+    [task resume];
+    request.allHTTPHeaderFields = nil;
+    [self waitForExpectationsWithTimeout:30 handler:nil];
+}
+
+- (void)testTaskTimeOut {
+    XCTestExpectation *te = [self expectationWithDescription:@"GET testTaskTimeOut: will timeout"];
+    
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 5;
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    
+    NSString *urlString = @"http://httpbin.org/delay/10";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    
+    YMURLSessionTask *task = [session taskWithRequest:request
+                                    completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        XCTAssertNotNil(error);
+        XCTAssertEqual(error.code, NSURLErrorTimedOut);
+        [te fulfill];
+    }];
+    [task resume];
+    [self waitForExpectationsWithTimeout:30 handler:nil];
+}
+
+- (void)testConcurrentRequests {
+    NSMutableArray *dataTasks = @[].mutableCopy;
+    dispatch_queue_t syncQ = dispatch_queue_create("TEST_DATATASKWITHURL_SYNC_Q", NULL);
+    dispatch_group_t gourp = dispatch_group_create();
+    for (int i=0; i<10; i++) {
+        dispatch_group_enter(gourp);
+        NSString *urlString = [NSString stringWithFormat:@"http://httpbin.org/get?capital=testDataTaskWithURL%@", @(i)];
+        NSURL *url = [NSURL URLWithString:urlString];
+        XCTestExpectation *te = [self expectationWithDescription:[NSString stringWithFormat:@"GET testConcurrentRequests %@: with a delegate", @(i)]];
+        YMDataTask *d = [[YMDataTask alloc] initWithExpectation:te];
+        [d runWithURL:url];
+        dispatch_async(syncQ, ^{
+            [dataTasks addObject:d];
+            dispatch_group_leave(gourp);
+        });
+    }
+    [self waitForExpectationsWithTimeout:12 handler:nil];
+    dispatch_group_wait(gourp, DISPATCH_TIME_FOREVER);
+}
+
+- (void)testHttpRedirectionWithCompleteRelativePath {
+    NSString *urlString = @"http://httpbin.org/redirect-to?url=http%3A%2F%2Fhttpbin.org%2Fget";
+    NSURL *url = [NSURL URLWithString:urlString];
+    XCTestExpectation *te = [self expectationWithDescription:@"GET testHttpRedirectionWithCompleteRelativePath: with HTTP redirection"];
+    YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
+    [d runWithURL:url];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
+    if (!d.error) {
+        XCTAssertEqualObjects(d.result[@"url"], @"http://httpbin.org/get", @"testHttpRedirectionWithCompleteRelativePath returned an unexpected result");
+    }
+}
+
+- (void)testHttpRedirectionWithInCompleteRelativePath {
+    NSString *urlString = @"http://httpbin.org/redirect-to?url=%2Fget";
+    NSURL *url = [NSURL URLWithString:urlString];
+    XCTestExpectation *te = [self expectationWithDescription:@"GET testHttpRedirectionWithInCompleteRelativePath: with HTTP redirection"];
+    YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
+    [d runWithURL:url];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
+    if (!d.error) {
+        XCTAssertEqualObjects(d.result[@"url"], @"http://httpbin.org/get", @"testHttpRedirectionWithCompleteRelativePath returned an unexpected result");
+    }
+}
+
+- (void)testHttpRedirectionTimeout {
+    XCTestExpectation *te = [self expectationWithDescription:@"GET testHttpRedirectionTimeout: timeout with redirection"];
+
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 5;
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    
+    NSString *urlString = @"http://httpbin.org/redirect-to?url=%2Fdelay%2F20";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSURLRequest *req = [NSURLRequest requestWithURL:url];
+    
+    YMURLSessionTask *task = [session taskWithRequest:req
+                                    completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        if (!error) {
+            XCTFail("must fail");
+        } else {
+            XCTAssertEqual(error.code, NSURLErrorTimedOut, @"Unexpected error code");
+        }
+        [te fulfill];
+    }];
+    [task resume];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
+    
+}
+
+- (void)testOutOfRangeButCorrectlyFormattedHTTPCode {
+    XCTestExpectation *te = [self expectationWithDescription:@"GET testOutOfRangeButCorrectlyFormattedHTTPCode: out of range HTTP code"];
+
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 8;
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    
+    NSString *urlString = @"http://httpbin.org/status/999";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSURLRequest *req = [NSURLRequest requestWithURL:url];
+    
+    YMURLSessionTask *task = [session taskWithRequest:req
+                                    completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        XCTAssertNotNil(data);
+        XCTAssertNotNil(response);
+        XCTAssertNil(error);
+        NSHTTPURLResponse *httpresponse = (NSHTTPURLResponse *)response;
+        XCTAssertEqual(httpresponse.statusCode, 999, @"Unexpected error code");
+        [te fulfill];
+    }];
+    [task resume];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
+}
+
+- (void)testMissingContentLengthButStillABody {
+    XCTestExpectation *te = [self expectationWithDescription:@"GET testMissingContentLengthButStillABody"];
+
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 8;
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+    
+    NSString *urlString = @"https://httpbin.org/stream-bytes/10";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSURLRequest *req = [NSURLRequest requestWithURL:url];
+    
+    YMURLSessionTask *task = [session taskWithRequest:req
+                                    completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        XCTAssertNotNil(data);
+        XCTAssertNotNil(response);
+        XCTAssertNil(error);
+        NSHTTPURLResponse *httpresponse = (NSHTTPURLResponse *)response;
+        XCTAssertEqual(httpresponse.statusCode, 200, @"HTTP response code is not 200");
+        [te fulfill];
+    }];
+    [task resume];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
+}
+
+- (void)testSimpleUploadWithDelegate {
+    YMHTTPUploadDelegate *delegate = [[YMHTTPUploadDelegate alloc] init];
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 8;
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:delegate delegateQueue:nil];
+    
+    delegate.uploadCompletedExpectation = [self expectationWithDescription:@"PUT testSimpleUploadWithDelegate"];
+    
+    NSString *urlString = @"https://httpbin.org/put";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
+    req.HTTPMethod = @"PUT";
+    
+    NSData *data = [[NSData alloc] initWithBytes:"123" length:1024*1];
+    YMURLSessionTask *task = [session taskWithRequest:req fromData:data];
+    [task resume];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
+}
+
+- (void)testSimpleUploadWithDelegateProvidingInputStream {
+    YMHTTPUploadDelegate *delegate = [[YMHTTPUploadDelegate alloc] init];
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 8;
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:delegate delegateQueue:nil];
+    
+    delegate.uploadCompletedExpectation = [self expectationWithDescription:@"PUT testSimpleUploadWithDelegateProvidingInputStream"];
+    
+    NSString *urlString = @"http://httpbin.org/put";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
+    req.HTTPMethod = @"PUT";
+    
+    NSData *data = [[NSData alloc] initWithBytes:"123" length:1024*1];
+    NSInputStream *stream = [[NSInputStream alloc] initWithData:data];
+    [stream open];
+    delegate.streamToProvideOnRequest = stream;
+    YMURLSessionTask *task = [session taskWithStreamedRequest:req];
+    [task resume];
+    [self waitForExpectationsWithTimeout:30 handler:nil];
 }
 
 @end

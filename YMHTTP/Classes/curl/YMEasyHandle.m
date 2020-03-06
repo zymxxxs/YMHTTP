@@ -326,11 +326,12 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
         case YMEasyHandleActionProceed:
             return size * nmemb;
         case YMEasyHandleActionAbort: {
-            _pauseState = _pauseState | YMEasyHandlePauseStateReceive;
             return 0;
         }
-        case YMEasyHandleActionPause:
+        case YMEasyHandleActionPause: {
+            self.pauseState = self.pauseState | YMEasyHandlePauseStateReceive;
             return CURL_WRITEFUNC_PAUSE;
+        }
     }
 }
 

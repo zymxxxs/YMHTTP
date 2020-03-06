@@ -8,13 +8,6 @@
 
 #import "YMDataTask.h"
 
-
-@interface YMDataTask ()<YMURLSessionDataDelegate>
-
-@property (nonatomic, strong) XCTestExpectation *dataTaskExpectation;
-
-@end
-
 @implementation YMDataTask
 
 - (instancetype)initWithExpectation:(XCTestExpectation *)expectation {

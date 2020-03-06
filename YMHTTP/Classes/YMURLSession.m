@@ -37,6 +37,7 @@ NS_INLINE int nextSessionIdentifier() {
 @property (nonatomic, assign) BOOL invalidated;
 @property (nonatomic, assign) NSUInteger nextTaskIdentifier;
 @property (nullable, strong) id<YMURLSessionDelegate> delegate;
+@property (readwrite, strong) NSOperationQueue *delegateQueue;
 
 @end
 
@@ -49,10 +50,11 @@ NS_INLINE int nextSessionIdentifier() {
                         delegateQueue:(NSOperationQueue *)queue {
     self = [super init];
     if (self) {
-        _taskRegistry = [[YMTaskRegistry alloc] init];
+        self.taskRegistry = [[YMTaskRegistry alloc] init];
         ym_initializeLibcurl();
-        _identifier = nextSessionIdentifier();
-        _workQueue = dispatch_queue_create("", DISPATCH_QUEUE_SERIAL);
+        self.identifier = nextSessionIdentifier();
+        NSString *queueLabel = [NSString stringWithFormat:@"YMURLSession %@", @(self.identifier)];
+        self.workQueue = dispatch_queue_create([queueLabel UTF8String], DISPATCH_QUEUE_SERIAL);
         if (queue) {
             _delegateQueue = queue;
         } else {

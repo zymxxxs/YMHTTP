@@ -461,6 +461,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
 
     [self getBodyWithCompletion:^(YMURLSessionTaskBody *body) {
+        self.knownBody = body;
         self.internalState = YMURLSessionTaskInternalStateTransferReady;
         self.transferState = [self createTransferStateWithURL:request.URL body:body workQueue:self.workQueue];
         NSURLRequest *r = self.authRequest ?: request;
@@ -472,8 +473,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)getBodyWithCompletion:(void (^)(YMURLSessionTaskBody *body))completion {
-    if (_knownBody) {
-        completion(_knownBody);
+    if (self.knownBody) {
+        completion(self.knownBody);
         return;
     };
 
@@ -726,7 +727,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                                     newRequest:reqeust
                              completionHandler:^(NSURLRequest *_Nullable request) {
                                  dispatch_async(self.workQueue, ^{
-                                     if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
+                                     if (self.internalState != YMURLSessionTaskInternalStateWaitingForRedirectHandler) {
                                          YM_FATALERROR(@"Received callback for HTTP redirection, but we're not waiting "
                                                        @"for it. Was it called multiple times?");
                                      }
@@ -1203,7 +1204,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate &&
         [self.session.delegate respondsToSelector:@selector
-                               (YMURLSession:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)]) {
+                               (YMURLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)]) {
         self.countOfBytesSent += count;
         [self.session.delegateQueue addOperationWithBlock:^{
             id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
@@ -1520,9 +1521,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (NSArray *)curlHeadersToRemove {
-    if (_knownBody == nil) {
+    if (self.knownBody == nil) {
         return @[];
-    } else if (_knownBody.type == YMURLSessionTaskBodyTypeNone) {
+    } else if (self.knownBody.type == YMURLSessionTaskBodyTypeNone) {
         return @[];
     }
     return @[ @"Expect" ];

@@ -26,6 +26,8 @@
 		7AB642C924101ECA006F0FA4 /* YMDataTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AB642C824101ECA006F0FA4 /* YMDataTask.m */; };
 		7AB642CD2410D8AF006F0FA4 /* YMDownloadTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AB642CB2410D848006F0FA4 /* YMDownloadTask.m */; };
 		7AB642D02410FD5A006F0FA4 /* YMSessionDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AB642CF2410FD5A006F0FA4 /* YMSessionDelegate.m */; };
+		7AD395CD2411FFF900C3268C /* YMHTTPRedirectionDataTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AD395CC2411FFF900C3268C /* YMHTTPRedirectionDataTask.m */; };
+		7AD395D02412588C00C3268C /* YMHTTPUploadDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AD395CF2412588C00C3268C /* YMHTTPUploadDelegate.m */; };
 		7AD4B1B123F86CE000633B05 /* aaa.txt in Resources */ = {isa = PBXBuildFile; fileRef = 7AD4B1B023F86CE000633B05 /* aaa.txt */; };
 		873B8AEB1B1F5CCA007FD442 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 873B8AEA1B1F5CCA007FD442 /* Main.storyboard */; };
 /* End PBXBuildFile section */
@@ -71,6 +73,10 @@
 		7AB642CB2410D848006F0FA4 /* YMDownloadTask.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMDownloadTask.m; sourceTree = "<group>"; };
 		7AB642CE2410FD5A006F0FA4 /* YMSessionDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMSessionDelegate.h; sourceTree = "<group>"; };
 		7AB642CF2410FD5A006F0FA4 /* YMSessionDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMSessionDelegate.m; sourceTree = "<group>"; };
+		7AD395CB2411FFF900C3268C /* YMHTTPRedirectionDataTask.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMHTTPRedirectionDataTask.h; sourceTree = "<group>"; };
+		7AD395CC2411FFF900C3268C /* YMHTTPRedirectionDataTask.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMHTTPRedirectionDataTask.m; sourceTree = "<group>"; };
+		7AD395CE2412588C00C3268C /* YMHTTPUploadDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMHTTPUploadDelegate.h; sourceTree = "<group>"; };
+		7AD395CF2412588C00C3268C /* YMHTTPUploadDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMHTTPUploadDelegate.m; sourceTree = "<group>"; };
 		7AD4B1B023F86CE000633B05 /* aaa.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = aaa.txt; sourceTree = "<group>"; };
 		873B8AEA1B1F5CCA007FD442 /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = Main.storyboard; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		8DBFDA45763A100B587356A0 /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = LICENSE; path = ../LICENSE; sourceTree = "<group>"; };
@@ -175,8 +181,12 @@
 				7AB642C524101D4F006F0FA4 /* YMURLSessionTests.m */,
 				7AB642CE2410FD5A006F0FA4 /* YMSessionDelegate.h */,
 				7AB642CF2410FD5A006F0FA4 /* YMSessionDelegate.m */,
+				7AD395CE2412588C00C3268C /* YMHTTPUploadDelegate.h */,
+				7AD395CF2412588C00C3268C /* YMHTTPUploadDelegate.m */,
 				7AB642C724101ECA006F0FA4 /* YMDataTask.h */,
 				7AB642C824101ECA006F0FA4 /* YMDataTask.m */,
+				7AD395CB2411FFF900C3268C /* YMHTTPRedirectionDataTask.h */,
+				7AD395CC2411FFF900C3268C /* YMHTTPRedirectionDataTask.m */,
 				7AB642CA2410D848006F0FA4 /* YMDownloadTask.h */,
 				7AB642CB2410D848006F0FA4 /* YMDownloadTask.m */,
 			);
@@ -376,8 +386,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7AD395CD2411FFF900C3268C /* YMHTTPRedirectionDataTask.m in Sources */,
 				7AB642C924101ECA006F0FA4 /* YMDataTask.m in Sources */,
 				7AB642C624101D4F006F0FA4 /* YMURLSessionTests.m in Sources */,
+				7AD395D02412588C00C3268C /* YMHTTPUploadDelegate.m in Sources */,
 				7AB642CD2410D8AF006F0FA4 /* YMDownloadTask.m in Sources */,
 				7AB642D02410FD5A006F0FA4 /* YMSessionDelegate.m in Sources */,
 			);
