@@ -115,10 +115,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 @end
 
-@implementation YMURLSessionTask {
-    NSURLRequest *_currentRequest;
-    NSHTTPURLResponse *_response;
-}
+@implementation YMURLSessionTask
 
 /// Create a data task. If there is a httpBody in the URLRequest, use that as a parameter
 - (instancetype)initWithSession:(YMURLSession *)session
@@ -165,14 +162,14 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)resume {
-    dispatch_sync(_workQueue, ^{
+    dispatch_sync(self.workQueue, ^{
         if (self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
         self.suspendCount -= 1;
-        if (_suspendCount < 0) {
+        if (self.suspendCount < 0) {
             YM_FATALERROR(@"Resuming a task that's not suspended. Calls to resume() / suspend() need to be matched.");
         }
         [self updateTaskState];
-        if (_suspendCount == 0) {
+        if (self.suspendCount == 0) {
             self.hasTriggeredResume = true;
             [self getProtocolWithCompletion:^(BOOL isContinue) {
                 if (self.suspendCount != 0) return;
@@ -204,10 +201,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)suspend {
-    dispatch_sync(_workQueue, ^{
+    dispatch_sync(self.workQueue, ^{
         if (self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
         self.suspendCount += 1;
-        if (_suspendCount >= NSIntegerMax) {
+        if (self.suspendCount >= NSIntegerMax) {
             YM_FATALERROR(@"Task suspended too many times NSIntegerMax.");
         }
         [self updateTaskState];
@@ -224,8 +221,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)cancel {
-    dispatch_sync(_workQueue, ^{
-        if (_state == YMURLSessionTaskStateRunning || _state == YMURLSessionTaskStateSuspended) {
+    dispatch_sync(self.workQueue, ^{
+        if (self.state == YMURLSessionTaskStateRunning || self.state == YMURLSessionTaskStateSuspended) {
             self.state = YMURLSessionTaskStateCanceling;
             [self getProtocolWithCompletion:^(BOOL isContinue) {
                 dispatch_async(self.workQueue, ^{
@@ -352,12 +349,12 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 - (void)setInternalState:(YMURLSessionTaskInternalState)internalState {
     YMURLSessionTaskInternalState newValue = internalState;
     if (![self isEasyHandlePausedForState:_internalState] && [self isEasyHandlePausedForState:newValue]) {
-        [_easyHandle pauseReceive];
+        [self.easyHandle pauseReceive];
     }
 
     if ([self isEasyHandleAddedToMultiHandleForState:_internalState] &&
         ![self isEasyHandleAddedToMultiHandleForState:newValue]) {
-        [_session removeHandle:_easyHandle];
+        [self.session removeHandle:self.easyHandle];
     }
 
     // set
@@ -366,11 +363,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
     if (![self isEasyHandleAddedToMultiHandleForState:oldValue] &&
         [self isEasyHandleAddedToMultiHandleForState:_internalState]) {
-        [_session addHandle:_easyHandle];
+        [self.session addHandle:self.easyHandle];
     }
 
     if ([self isEasyHandlePausedForState:oldValue] && ![self isEasyHandlePausedForState:_internalState]) {
-        [_easyHandle unpauseReceive];
+        [self.easyHandle unpauseReceive];
     }
 }
 
@@ -478,10 +475,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         return;
     };
 
-    if (_session && _session.delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)] &&
-        [_session.delegate respondsToSelector:@selector(YMURLSession:task:needNewBodyStream:)]) {
-        id<YMURLSessionTaskDelegate> delegate = (id<YMURLSessionTaskDelegate>)_session.delegate;
-        [delegate YMURLSession:_session
+    if (self.session && self.session.delegate &&
+        [self.session.delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)] &&
+        [self.session.delegate respondsToSelector:@selector(YMURLSession:task:needNewBodyStream:)]) {
+        id<YMURLSessionTaskDelegate> delegate = (id<YMURLSessionTaskDelegate>)self.session.delegate;
+        [delegate YMURLSession:self.session
                           task:self
              needNewBodyStream:^(NSInputStream *_Nullable bodyStream) {
                  if (bodyStream) {
@@ -500,28 +498,28 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 - (void)configureEasyHandleForRequest:(NSURLRequest *)request body:(YMURLSessionTaskBody *)body {
     BOOL debugLibcurl = NSProcessInfo.processInfo.environment[@"URLSessionDebugLibcurl"];
-    [_easyHandle setVerboseMode:debugLibcurl];
+    [self.easyHandle setVerboseMode:debugLibcurl];
     BOOL debugOutput = NSProcessInfo.processInfo.environment[@"URLSessionDebug"];
-    [_easyHandle setDebugOutput:debugOutput task:self];
-    [_easyHandle setPassHeadersToDataStream:false];
-    [_easyHandle setProgressMeterOff:true];
-    [_easyHandle setSkipAllSignalHandling:true];
+    [self.easyHandle setDebugOutput:debugOutput task:self];
+    [self.easyHandle setPassHeadersToDataStream:false];
+    [self.easyHandle setProgressMeterOff:true];
+    [self.easyHandle setSkipAllSignalHandling:true];
 
     // Error Options:
-    [_easyHandle setErrorBuffer:NULL];
-    [_easyHandle setFailOnHTTPErrorCode:false];
+    [self.easyHandle setErrorBuffer:NULL];
+    [self.easyHandle setFailOnHTTPErrorCode:false];
 
     if (!request.URL) {
         YM_FATALERROR(@"No URL in request.");
     }
-    [_easyHandle setURL:request.URL];
+    [self.easyHandle setURL:request.URL];
 
     if (request.ym_connectToHost) {
-        [_easyHandle setConnectToHost:request.ym_connectToHost port:request.ym_connectToPort];
+        [self.easyHandle setConnectToHost:request.ym_connectToHost port:request.ym_connectToPort];
     }
-    [_easyHandle setSessionConfig:_session.configuration];
-    [_easyHandle setAllowedProtocolsToHTTPAndHTTPS];
-    [_easyHandle setPreferredReceiveBufferSize:NSIntegerMax];
+    [self.easyHandle setSessionConfig:self.session.configuration];
+    [self.easyHandle setAllowedProtocolsToHTTPAndHTTPS];
+    [self.easyHandle setPreferredReceiveBufferSize:NSIntegerMax];
 
     NSError *e = nil;
     NSNumber *bodySize = [body getBodyLengthWithError:&e];
@@ -535,25 +533,25 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         return;
     }
     if (body.type == YMURLSessionTaskBodyTypeNone) {
-        [_easyHandle setUpload:false];
-        [_easyHandle setRequestBodyLength:0];
+        [self.easyHandle setUpload:false];
+        [self.easyHandle setRequestBodyLength:0];
     } else if (bodySize != nil) {
         self.countOfBytesExpectedToSend = bodySize.longLongValue;
-        [_easyHandle setUpload:true];
-        [_easyHandle setRequestBodyLength:bodySize.unsignedLongLongValue];
+        [self.easyHandle setUpload:true];
+        [self.easyHandle setRequestBodyLength:bodySize.unsignedLongLongValue];
     } else if (bodySize == nil) {
-        [_easyHandle setUpload:true];
-        [_easyHandle setRequestBodyLength:-1];
+        [self.easyHandle setUpload:true];
+        [self.easyHandle setRequestBodyLength:-1];
     }
 
-    [_easyHandle setFollowLocation:false];
+    [self.easyHandle setFollowLocation:false];
 
     // The httpAdditionalHeaders from session configuration has to be added to the request.
     // The request.allHTTPHeaders can override the httpAdditionalHeaders elements. Add the
     // httpAdditionalHeaders from session configuration first and then append/update the
     // request.allHTTPHeaders so that request.allHTTPHeaders can override httpAdditionalHeaders.
     NSMutableDictionary *hh = [NSMutableDictionary dictionary];
-    NSDictionary *HTTPAdditionalHeaders = _session.configuration.HTTPAdditionalHeaders ?: @{};
+    NSDictionary *HTTPAdditionalHeaders = self.session.configuration.HTTPAdditionalHeaders ?: @{};
     NSDictionary *HTTPHeaders = request.allHTTPHeaderFields ?: @{};
     [hh addEntriesFromDictionary:[self transformLowercaseKeyForHTTPHeaders:HTTPAdditionalHeaders]];
     [hh addEntriesFromDictionary:[self transformLowercaseKeyForHTTPHeaders:HTTPHeaders]];
@@ -565,12 +563,12 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         [temp addObject:@"Content-Type:application/x-www-form-urlencoded"];
         curlHeaders = temp;
     }
-    [_easyHandle setCustomHeaders:curlHeaders];
+    [self.easyHandle setCustomHeaders:curlHeaders];
 
     // TODO: timeoutInterval set or get
     NSInteger timeoutInterval = [self.session.configuration timeoutIntervalForRequest] * 1000;
-    _easyHandle.timeoutTimer = [[YMTimeoutSource alloc]
-        initWithQueue:_workQueue
+    self.easyHandle.timeoutTimer = [[YMTimeoutSource alloc]
+        initWithQueue:self.workQueue
          milliseconds:timeoutInterval
               handler:^{
                   self.internalState = YMURLSessionTaskInternalStateTransferFailed;
@@ -578,12 +576,12 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                   [self completeTaskWithError:urlError];
                   [self notifyDelegateAboutError:urlError];
               }];
-    [_easyHandle setAutomaticBodyDecompression:true];
-    [_easyHandle setRequestMethod:request.HTTPMethod ?: @"GET"];
+    [self.easyHandle setAutomaticBodyDecompression:true];
+    [self.easyHandle setRequestMethod:request.HTTPMethod ?: @"GET"];
     if ([request.HTTPMethod isEqualToString:@"HEAD"]) {
-        [_easyHandle setNoBody:true];
+        [self.easyHandle setNoBody:true];
     }
-    [_easyHandle setProxy];
+    [self.easyHandle setProxy];
 }
 
 - (YMTransferState *)createTransferStateWithURL:(NSURL *)url
@@ -613,7 +611,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (YMDataDrain *)createTransferBodyDataDrain {
-    YMURLSession *s = _session;
+    YMURLSession *s = self.session;
     YMURLSessionTaskBehaviour *b = [s behaviourForTask:self];
     YMDataDrain *dd = [[YMDataDrain alloc] init];
     switch (b.type) {
@@ -699,7 +697,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         YM_FATALERROR(@"Trying to complete the task, but its transfer isn't complete / failed.");
     }
 
-    _easyHandle.timeoutTimer = nil;
+    self.easyHandle.timeoutTimer = nil;
     self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
 }
 
@@ -713,13 +711,13 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
         YM_FATALERROR(@"Trying to redirect, but the transfer is not complete.");
     }
-    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
-        BOOL isResponds = [_session.delegate
+        BOOL isResponds = [self.session.delegate
             respondsToSelector:@selector(YMURLSession:task:willPerformHTTPRedirection:newRequest:completionHandler:)];
         if (isResponds) {
             self.internalState = YMURLSessionTaskInternalStateWaitingForRedirectHandler;
-            [_session.delegateQueue addOperationWithBlock:^{
+            [self.session.delegateQueue addOperationWithBlock:^{
                 id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
                 [d YMURLSession:self.session
                                           task:self
@@ -741,11 +739,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                              }];
             }];
         } else {
-            NSURLRequest *configuredRequest = [_session.configuration configureRequest:reqeust];
+            NSURLRequest *configuredRequest = [self.session.configuration configureRequest:reqeust];
             [self startNewTransferByRequest:configuredRequest];
         }
     } else {
-        NSURLRequest *configuredRequest = [_session.configuration configureRequest:reqeust];
+        NSURLRequest *configuredRequest = [self.session.configuration configureRequest:reqeust];
         [self startNewTransferByRequest:configuredRequest];
     }
 }
@@ -808,7 +806,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
 
     request.URL = [NSURL URLWithString:urlString];
-    double timeSpent = [_easyHandle getTimeoutIntervalSpent];
+    double timeSpent = [self.easyHandle getTimeoutIntervalSpent];
     request.timeoutInterval = fromRequest.timeoutInterval - timeSpent;
     return request;
 }
@@ -817,7 +815,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 - (void)startLoading {
     if (self.internalState == YMURLSessionTaskInternalStateInitial) {
-        if (!_originalRequest) {
+        if (!self.originalRequest) {
             YM_FATALERROR(@"Task has no original request.");
         }
 
@@ -881,7 +879,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             case NSURLRequestReloadIgnoringLocalAndRemoteCacheData:
             case NSURLRequestReloadRevalidatingCacheData:
             default: {
-                [self startNewTransferByRequest:_originalRequest];
+                [self startNewTransferByRequest:self.originalRequest];
                 break;
             }
         }
@@ -913,15 +911,15 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         [self.cacheableData addObject:data];
     }
 
-    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
     if (b.type != YMURLSessionTaskBehaviourTypeTaskDelegate) return;
 
-    id<YMURLSessionDelegate> delegate = _session.delegate;
+    id<YMURLSessionDelegate> delegate = self.session.delegate;
 
     BOOL conformsToDataDelegate = delegate && [delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)] &&
                                   [delegate respondsToSelector:@selector(YMURLSession:task:didReceiveData:)];
     if (conformsToDataDelegate && [self isDataTask]) {
-        [_session.delegateQueue addOperationWithBlock:^{
+        [self.session.delegateQueue addOperationWithBlock:^{
             id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)delegate;
             [d YMURLSession:self.session task:self didReceiveData:data];
         }];
@@ -949,17 +947,17 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)notifyDelegateAboutError:(NSError *)error {
-    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
     switch (b.type) {
         case YMURLSessionTaskBehaviourTypeTaskDelegate: {
-            [_session.delegateQueue addOperationWithBlock:^{
+            [self.session.delegateQueue addOperationWithBlock:^{
                 if (self.state != YMURLSessionTaskStateCompleted) {
                     id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
                     if (d && [d respondsToSelector:@selector(YMURLSession:task:didCompleteWithError:)]) {
                         [d YMURLSession:self.session task:self didCompleteWithError:error];
                     }
 
-                    self->_state = YMURLSessionTaskStateCompleted;
+                    self.state = YMURLSessionTaskStateCompleted;
                     dispatch_async(self.workQueue, ^{
                         [self.session.taskRegistry removeWithTask:self];
                     });
@@ -969,7 +967,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         }
         case YMURLSessionTaskBehaviourTypeNoDelegate: {
             if (self.state != YMURLSessionTaskStateCompleted) {
-                self->_state = YMURLSessionTaskStateCompleted;
+                self.state = YMURLSessionTaskStateCompleted;
                 dispatch_async(self.workQueue, ^{
                     [self.session.taskRegistry removeWithTask:self];
                 });
@@ -977,10 +975,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             break;
         }
         case YMURLSessionTaskBehaviourTypeDataHandler: {
-            [_session.delegateQueue addOperationWithBlock:^{
+            [self.session.delegateQueue addOperationWithBlock:^{
                 if (self.state != YMURLSessionTaskStateCompleted) {
                     if (b.dataTaskCompeltion) b.dataTaskCompeltion(nil, nil, error);
-                    self->_state = YMURLSessionTaskStateCompleted;
+                    self.state = YMURLSessionTaskStateCompleted;
                     dispatch_async(self.workQueue, ^{
                         [self.session.taskRegistry removeWithTask:self];
                     });
@@ -989,10 +987,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             break;
         }
         case YMURLSessionTaskBehaviourTypeDownloadHandler: {
-            [_session.delegateQueue addOperationWithBlock:^{
+            [self.session.delegateQueue addOperationWithBlock:^{
                 if (self.state != YMURLSessionTaskStateCompleted) {
                     if (b.dataTaskCompeltion) b.downloadCompletion(nil, nil, error);
-                    self->_state = YMURLSessionTaskStateCompleted;
+                    self.state = YMURLSessionTaskStateCompleted;
                     dispatch_async(self.workQueue, ^{
                         [self.session.taskRegistry removeWithTask:self];
                     });
@@ -1011,8 +1009,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
     // TODO: AuthenticationChallenge
 
-    //    if (_response.statusCode == 401) {
-    //        NSURLProtectionSpace *protectionSpace = [self createProtectionSpaceWithResponse:_response];
+    //    if (self.response.statusCode == 401) {
+    //        NSURLProtectionSpace *protectionSpace = [self createProtectionSpaceWithResponse:self.response];
     //
     //        void (^proceedProposingCredential)(NSURLCredential *) = ^(NSURLCredential *credential) {
     //            NSURLCredential *proposedCredential = nil;
@@ -1042,7 +1040,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     //        };
     //
     //        if (protectionSpace) {
-    //            NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
+    //            NSURLCredentialStorage *storage = self.session.configuration.URLCredentialStorage;
     //            if (storage) {
     //                NSDictionary *credentials = storage.allCredentials[protectionSpace];
     //                if (credentials) {
@@ -1062,15 +1060,15 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     //        }
     //    }
     //
-    //    NSURLCredentialStorage *storage = _session.configuration.URLCredentialStorage;
+    //    NSURLCredentialStorage *storage = self.session.configuration.URLCredentialStorage;
     //    if (storage) {
     //        NSURLCredential *lastCredential = nil;
     //        NSURLProtectionSpace *lastProtectionSpace = nil;
     //
-    //        [_protocolLock lock];
+    //        [self.protocolLock lock];
     //        lastCredential = self.lastCredential;
     //        lastProtectionSpace = self.lastProtectionSpace;
-    //        [_protocolLock unlock];
+    //        [self.protocolLock unlock];
     //
     //        if (lastProtectionSpace && lastCredential) {
     //            [storage setCredential:lastCredential forProtectionSpace:lastProtectionSpace];
@@ -1106,7 +1104,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         }
     }
 
-    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
     switch (b.type) {
         case YMURLSessionTaskBehaviourTypeTaskDelegate: {
             if ([self isDownloadTask] &&
@@ -1124,7 +1122,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                     id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
                     [d YMURLSession:self.session task:self didCompleteWithError:nil];
                 }
-                self->_state = YMURLSessionTaskStateCompleted;
+                self.state = YMURLSessionTaskStateCompleted;
                 dispatch_async(self.workQueue, ^{
                     [self.session.taskRegistry removeWithTask:self];
                 });
@@ -1132,9 +1130,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             break;
         }
         case YMURLSessionTaskBehaviourTypeNoDelegate: {
-            [_session.delegateQueue addOperationWithBlock:^{
+            [self.session.delegateQueue addOperationWithBlock:^{
                 if (self.state == YMURLSessionTaskStateCompleted) return;
-                self->_state = YMURLSessionTaskStateCompleted;
+                self.state = YMURLSessionTaskStateCompleted;
                 dispatch_async(self.workQueue, ^{
                     [self.session.taskRegistry removeWithTask:self];
                 });
@@ -1142,9 +1140,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             break;
         }
         case YMURLSessionTaskBehaviourTypeDataHandler: {
-            [_session.delegateQueue addOperationWithBlock:^{
+            [self.session.delegateQueue addOperationWithBlock:^{
                 if (self.state == YMURLSessionTaskStateCompleted) return;
-                self->_state = YMURLSessionTaskStateCompleted;
+                self.state = YMURLSessionTaskStateCompleted;
                 if (b.dataTaskCompeltion) {
                     NSData *data = self.responseData ?: [NSData data];
                     b.dataTaskCompeltion(data, self.response, nil);
@@ -1156,9 +1154,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             break;
         }
         case YMURLSessionTaskBehaviourTypeDownloadHandler: {
-            [_session.delegateQueue addOperationWithBlock:^{
+            [self.session.delegateQueue addOperationWithBlock:^{
                 if (self.state == YMURLSessionTaskStateCompleted) return;
-                self->_state = YMURLSessionTaskStateCompleted;
+                self.state = YMURLSessionTaskStateCompleted;
                 if (b.downloadCompletion) {
                     NSURL *location = self.tempFileURL;
                     b.downloadCompletion(location, self.response, nil);
@@ -1201,7 +1199,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)notifyDelegateAboutUploadedDataCount:(int64_t)count {
-    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate &&
         [self.session.delegate
             respondsToSelector:@selector(YMURLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)]) {
@@ -1229,10 +1227,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         self.cacheableResponse = response;
     }
 
-    YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
+    YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
-        if (_session.delegate &&
-            [_session.delegate respondsToSelector:@selector(YMURLSession:task:didReceiveResponse:completionHandler:)]) {
+        if (self.session.delegate &&
+            [self.session.delegate respondsToSelector:@selector(YMURLSession:
+                                                                        task:didReceiveResponse:completionHandler:)]) {
             [self askDelegateHowToProceedAfterCompleteResponse:response];
         }
     }
@@ -1244,7 +1243,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
 
     self.internalState = YMURLSessionTaskInternalStateWaitingForResponseHandler;
-    [_session.delegateQueue addOperationWithBlock:^{
+    [self.session.delegateQueue addOperationWithBlock:^{
         id<YMURLSessionDataDelegate> delegate = (id<YMURLSessionDataDelegate>)self.session.delegate;
         [delegate YMURLSession:self.session
                           task:self
@@ -1382,7 +1381,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 - (void)fillWriteBufferLength:(NSInteger)length
                        result:(void (^)(YMEasyHandleWriteBufferResult, NSInteger, NSData *_Nullable))result {
-    if (_internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
         YM_FATALERROR(@"Requested to fill write buffer, but transfer isn't in progress.");
     }
 
@@ -1419,14 +1418,14 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 - (BOOL)seekInputStreamToPosition:(uint64_t)position {
     __block NSInputStream *currentInputStream = nil;
 
-    if (_session.delegate && [_session.delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)] &&
-        [_session.delegate respondsToSelector:@selector(YMURLSession:task:needNewBodyStream:)]) {
-        id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)_session.delegate;
+    if (self.session.delegate && [self.session.delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)] &&
+        [self.session.delegate respondsToSelector:@selector(YMURLSession:task:needNewBodyStream:)]) {
+        id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
 
         dispatch_group_t group = dispatch_group_create();
         dispatch_group_enter(group);
 
-        [d YMURLSession:_session
+        [d YMURLSession:self.session
                          task:self
             needNewBodyStream:^(NSInputStream *_Nullable bodyStream) {
                 currentInputStream = bodyStream;
@@ -1436,14 +1435,14 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         dispatch_group_wait(group, timeout);
     }
 
-    if (_originalRequest.URL && currentInputStream) {
+    if (self.originalRequest.URL && currentInputStream) {
         if (self.internalState == YMURLSessionTaskInternalStateTransferInProgress) {
             if ([_transferState.requestBodySource isKindOfClass:[YMBodyStreamSource class]]) {
                 BOOL result = [currentInputStream ym_seekToPosition:position];
                 if (!result) return false;
                 YMDataDrain *drain = [self createTransferBodyDataDrain];
                 YMBodyStreamSource *source = [[YMBodyStreamSource alloc] initWithInputStream:currentInputStream];
-                YMTransferState *ts = [[YMTransferState alloc] initWithURL:_originalRequest.URL
+                YMTransferState *ts = [[YMTransferState alloc] initWithURL:self.originalRequest.URL
                                                              bodyDataDrain:drain
                                                                 bodySource:source];
                 self.internalState = YMURLSessionTaskInternalStateTransferInProgress;

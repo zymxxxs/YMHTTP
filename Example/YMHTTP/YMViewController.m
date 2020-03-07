@@ -37,15 +37,16 @@ typedef NS_OPTIONS(NSUInteger, YMState) {
                                            delegate:self
                                       delegateQueue:nil];
     
-        YMURLSessionTask *task = [self.s taskWithURL:[NSURL URLWithString:@"http://httpbin.org/cache/20"]
-                                               connectToHost:@"45.117.101.166"
-                                           completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-            NSLog(@"%@", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
-            NSLog(@"%@", response);
-        }];
-//    [task resume];
-//    [task suspend];
-//    [task cancel];
+    YMURLSessionTask *task = [self.s taskWithURL:[NSURL URLWithString:@"http://httpbin.org/cache/20"]
+                                   connectToHost:@"34.230.193.231"
+                               completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        NSLog(@"%@", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
+        NSLog(@"%@", response);
+        NSLog(@"%@", error);
+    }];
+    [task resume];
+    //    [task suspend];
+    //    [task cancel];
     
     //    for (int i=0;i<10; i++) {
     //        YMURLSessionTask *task = [self.s taskWithURL:[NSURL URLWithString:@"http://httpbin.org/get"]];
@@ -53,21 +54,21 @@ typedef NS_OPTIONS(NSUInteger, YMState) {
     //    }
     
     
-//    NSMutableURLRequest *r = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"http://httpbin.org/cache/200"]];
-//    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
-//    config.requestCachePolicy = NSURLRequestUseProtocolCachePolicy;
-//    config.timeoutIntervalForRequest = 5.f;
-//    NSURLSession *session = [NSURLSession sessionWithConfiguration:config
-//                                                          delegate:self
-//                                                     delegateQueue:nil];
-//    NSURLSessionTask *t = [session dataTaskWithRequest:r];
-//    [t resume];
-//
-//    NSURLSessionTask *t1 = [session dataTaskWithRequest:r];
-//    [t1 resume];
-//
-//    NSURLSessionTask *t2 = [session dataTaskWithRequest:r];
-//    [t2 resume];
+    //    NSMutableURLRequest *r = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"http://httpbin.org/cache/200"]];
+    //    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+    //    config.requestCachePolicy = NSURLRequestUseProtocolCachePolicy;
+    //    config.timeoutIntervalForRequest = 5.f;
+    //    NSURLSession *session = [NSURLSession sessionWithConfiguration:config
+    //                                                          delegate:self
+    //                                                     delegateQueue:nil];
+    //    NSURLSessionTask *t = [session dataTaskWithRequest:r];
+    //    [t resume];
+    //
+    //    NSURLSessionTask *t1 = [session dataTaskWithRequest:r];
+    //    [t1 resume];
+    //
+    //    NSURLSessionTask *t2 = [session dataTaskWithRequest:r];
+    //    [t2 resume];
     
     
     
@@ -88,8 +89,8 @@ typedef NS_OPTIONS(NSUInteger, YMState) {
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didCompleteWithError:(NSError *)error {
     NSLog(@"didCompleteWithError");
-//    NSLog(@"%@", task.response.allHeaderFields);
-//    NSLog(@"%@", error);
+    //    NSLog(@"%@", task.response.allHeaderFields);
+    //    NSLog(@"%@", error);
 }
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveData:(NSData *)data {
@@ -98,7 +99,7 @@ typedef NS_OPTIONS(NSUInteger, YMState) {
 }
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task willCacheResponse:(NSCachedURLResponse *)proposedResponse completionHandler:(void (^)(NSCachedURLResponse * _Nullable))completionHandler {
-//    completionHandler(proposedResponse);
+    //    completionHandler(proposedResponse);
 }
 
 
@@ -116,15 +117,15 @@ typedef NS_OPTIONS(NSUInteger, YMState) {
 didReceiveResponse:(NSURLResponse *)response
  completionHandler:(void (^)(NSURLSessionResponseDisposition disposition))completionHandler {
     //        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        completionHandler(NSURLSessionResponseAllow);
+    completionHandler(NSURLSessionResponseAllow);
     //        });
 }
 
 
 - (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
     NSLog(@"didCompleteWithError");
-//    NSLog(@"%@", task.response);
-//    NSLog(@"%@", error);
+    //    NSLog(@"%@", task.response);
+    //    NSLog(@"%@", error);
 }
 
 
@@ -132,7 +133,7 @@ didReceiveResponse:(NSURLResponse *)response
 - (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask
  willCacheResponse:(NSCachedURLResponse *)proposedResponse
  completionHandler:(void (^)(NSCachedURLResponse * _Nullable cachedResponse))completionHandler {
-//    completionHandler(nil);
+    //    completionHandler(nil);
 }
 
 - (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task willPerformHTTPRedirection:(NSHTTPURLResponse *)response newRequest:(NSURLRequest *)request completionHandler:(void (^)(NSURLRequest * _Nullable))completionHandler {

@@ -21,10 +21,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskBehaviourType) {
 NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^YMDataTaskCompletion)(NSData *_Nullable data,
-                                     NSURLResponse *_Nullable response,
+                                     NSHTTPURLResponse *_Nullable response,
                                      NSError *_Nullable error);
 typedef void (^YMDownloadTaskCompletion)(NSURL *_Nullable location,
-                                         NSURLResponse *_Nullable response,
+                                         NSHTTPURLResponse *_Nullable response,
                                          NSError *_Nullable error);
 
 @interface YMURLSessionTaskBehaviour : NSObject

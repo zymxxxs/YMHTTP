@@ -21,7 +21,6 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 
 @property (nonatomic, strong) YMURLSessionConfiguration *config;
 @property (nonatomic, assign) YMEasyHandlePauseState pauseState;
-@property (nonatomic, strong) NSURL *URL;
 
 @end
 
@@ -32,54 +31,54 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 - (instancetype)initWithDelegate:(id<YMEasyHandleDelegate>)delegate {
     self = [super init];
     if (self) {
-        _rawHandle = curl_easy_init();
-        _delegate = delegate;
+        self.rawHandle = curl_easy_init();
+        self.delegate = delegate;
 
-        _errorBuffer = (char *)malloc(sizeof(char) * (CURL_ERROR_SIZE + 1));
-        memset(_errorBuffer, 0, sizeof(char) * (CURL_ERROR_SIZE + 1));
+        char *eb = (char *)malloc(sizeof(char) * (CURL_ERROR_SIZE + 1));
+        self.errorBuffer = memset(eb, 0, sizeof(char) * (CURL_ERROR_SIZE + 1));
         [self setupCallbacks];
     }
     return self;
 }
 
 - (void)dealloc {
-    curl_easy_cleanup(_rawHandle);
+    curl_easy_cleanup(self.rawHandle);
     curl_slist_free_all(_headerList);
-    free(_errorBuffer);
+    free(self.errorBuffer);
 }
 
 - (void)transferCompletedWithError:(NSError *)error {
-    [_delegate transferCompletedWithError:error];
+    [self.delegate transferCompletedWithError:error];
 }
 
 - (void)resetTimer {
     // simply create a new timer with the same queue, timeout and handler
     // this must cancel the old handler and reset the timer
-    _timeoutTimer = [[YMTimeoutSource alloc] initWithQueue:_timeoutTimer.queue
-                                              milliseconds:_timeoutTimer.milliseconds
-                                                   handler:_timeoutTimer.handler];
+    self.timeoutTimer = [[YMTimeoutSource alloc] initWithQueue:self.timeoutTimer.queue
+                                              milliseconds:self.timeoutTimer.milliseconds
+                                                   handler:self.timeoutTimer.handler];
 }
 
 - (void)setupCallbacks {
     // write
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_WRITEDATA, (__bridge void *)self));
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_WRITEFUNCTION, _curl_write_function));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_WRITEDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_WRITEFUNCTION, _curl_write_function));
 
     // read
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_READDATA, (__bridge void *)self));
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_READFUNCTION, _curl_read_function));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_READDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_READFUNCTION, _curl_read_function));
 
     // header
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HEADERDATA, (__bridge void *)self));
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HEADERFUNCTION, _curl_header_function));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_HEADERDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_HEADERFUNCTION, _curl_header_function));
 
     // socket options
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SOCKOPTDATA, (__bridge void *)self));
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SOCKOPTFUNCTION, _curl_socket_function));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SOCKOPTDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SOCKOPTFUNCTION, _curl_socket_function));
 
     // seeking in input stream
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SEEKDATA, (__bridge void *)self));
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SEEKFUNCTION, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SEEKDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SEEKFUNCTION, (__bridge void *)self));
 }
 
 #pragma mark - Public Methods
@@ -113,53 +112,53 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 }
 
 - (void)setVerboseMode:(BOOL)flag {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_VERBOSE, flag ? 1 : 0));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_VERBOSE, flag ? 1 : 0));
 }
 
 - (void)setDebugOutput:(BOOL)flag task:(YMURLSessionTask *)task {
     if (flag) {
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_DEBUGDATA, (__bridge void *)self));
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_DEBUGFUNCTION, _curl_debug_function));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_DEBUGDATA, (__bridge void *)self));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_DEBUGFUNCTION, _curl_debug_function));
     } else {
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_DEBUGDATA, NULL));
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_DEBUGFUNCTION, NULL));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_DEBUGDATA, NULL));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_DEBUGFUNCTION, NULL));
     }
 }
 
 - (void)setPassHeadersToDataStream:(BOOL)flag {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HEADER, flag ? 1 : 0));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_HEADER, flag ? 1 : 0));
 }
 
 - (void)setFollowLocation:(BOOL)flag {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_FOLLOWLOCATION, flag ? 1 : 0));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_FOLLOWLOCATION, flag ? 1 : 0));
 }
 
 - (void)setProgressMeterOff:(BOOL)flag {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_NOPROGRESS, flag ? 1 : 0));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_NOPROGRESS, flag ? 1 : 0));
 }
 
 - (void)setSkipAllSignalHandling:(BOOL)flag {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_NOSIGNAL, flag ? 1 : 0));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_NOSIGNAL, flag ? 1 : 0));
 }
 
 - (void)setErrorBuffer:(char *)buffer {
-    char *b = buffer ?: _errorBuffer;
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_ERRORBUFFER, b));
+    char *b = buffer ?: self.errorBuffer;
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_ERRORBUFFER, b));
 }
 
 - (void)setFailOnHTTPErrorCode:(BOOL)flag {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_FAILONERROR, flag ? 1 : 0));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_FAILONERROR, flag ? 1 : 0));
 }
 - (void)setURL:(NSURL *)URL {
-    _url = URL;
+    _URL = URL;
     if (URL.absoluteString) {
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_URL, [URL.absoluteString UTF8String]));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_URL, [URL.absoluteString UTF8String]));
     }
 }
 
 -(void)setConnectToHost:(NSString *)host port:(NSInteger)port {
     if (host) {
-        NSString *originHost = self.url.host;
+        NSString *originHost = self.URL.host;
         NSString *value = nil;
         if (port == 0) {
             value = [NSString stringWithFormat:@"%@::%@", originHost, host];
@@ -169,59 +168,59 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
         
         struct curl_slist *connect_to = NULL;
         connect_to = curl_slist_append(NULL, [value UTF8String]);
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_CONNECT_TO, connect_to));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_CONNECT_TO, connect_to));
     }
 }
 
 - (void)setSessionConfig:(YMURLSessionConfiguration *)config {
-    _config = config;
+    self.config = config;
 }
 
 - (void)setAllowedProtocolsToHTTPAndHTTPS {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS));
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS));
 }
 
 - (void)setPreferredReceiveBufferSize:(NSInteger)size {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_BUFFERSIZE, MIN(size, CURL_MAX_WRITE_SIZE)));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_BUFFERSIZE, MIN(size, CURL_MAX_WRITE_SIZE)));
 }
 
 - (void)setCustomHeaders:(NSArray<NSString *> *)headers {
     for (NSString *header in headers) {
         _headerList = curl_slist_append(_headerList, [header UTF8String]);
     }
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HTTPHEADER, _headerList));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_HTTPHEADER, _headerList));
 }
 
 - (void)setAutomaticBodyDecompression:(BOOL)flag {
     if (flag) {
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_ACCEPT_ENCODING, ""));
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HTTP_CONTENT_DECODING, 1));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_ACCEPT_ENCODING, ""));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_HTTP_CONTENT_DECODING, 1));
     } else {
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_ACCEPT_ENCODING, NULL));
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_HTTP_CONTENT_DECODING, 0));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_ACCEPT_ENCODING, NULL));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_HTTP_CONTENT_DECODING, 0));
     }
 }
 
 - (void)setRequestMethod:(NSString *)method {
     if ([method UTF8String] == NULL) return;
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_CUSTOMREQUEST, [method UTF8String]));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_CUSTOMREQUEST, [method UTF8String]));
 }
 
 - (void)setNoBody:(BOOL)flag {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_NOBODY, flag ? 1 : 0));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_NOBODY, flag ? 1 : 0));
 }
 
 - (void)setUpload:(BOOL)flag {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_UPLOAD, flag ? 1 : 0));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_UPLOAD, flag ? 1 : 0));
 }
 
 - (void)setRequestBodyLength:(int64_t)length {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_INFILESIZE_LARGE, length));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_INFILESIZE_LARGE, length));
 }
 
 - (void)setTimeout:(NSInteger)timeout {
-    YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_TIMEOUT, (long)timeout));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_TIMEOUT, (long)timeout));
 }
 
 - (void)setProxy {    
@@ -235,12 +234,12 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     if (proxy && port) {
         const char *ip = [proxy UTF8String];
         NSInteger p = [port longValue];
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_PROXY, ip));
-        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_PROXYPORT, p));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_PROXY, ip));
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_PROXYPORT, p));
         
         // TODO: https 下无效
-//        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SSL_VERIFYHOST, 0));
-//        YM_ECODE(curl_easy_setopt(_rawHandle, CURLOPT_SSL_VERIFYPEER, 0));
+//        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SSL_VERIFYHOST, 0));
+//        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SSL_VERIFYPEER, 0));
     }
 }
 
@@ -249,61 +248,61 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     NSUInteger send = pauseState & YMEasyHandlePauseStateSend;
     NSUInteger receive = pauseState & YMEasyHandlePauseStateReceive;
     int bitmask = 0 | (send ? CURLPAUSE_SEND : CURLPAUSE_SEND_CONT) | (receive ? CURLPAUSE_RECV : CURLPAUSE_RECV_CONT);
-    YM_ECODE(curl_easy_pause(_rawHandle, bitmask));
+    YM_ECODE(curl_easy_pause(self.rawHandle, bitmask));
 }
 
 - (double)getTimeoutIntervalSpent {
     double timeSpent;
-    curl_easy_getinfo(_rawHandle, CURLINFO_TOTAL_TIME, &timeSpent);
+    curl_easy_getinfo(self.rawHandle, CURLINFO_TOTAL_TIME, &timeSpent);
     return timeSpent / 1000;
 }
 
 - (long)connectFailureErrno {
     long _errno;
-    YM_ECODE(curl_easy_getinfo(_rawHandle, CURLINFO_OS_ERRNO, &_errno));
+    YM_ECODE(curl_easy_getinfo(self.rawHandle, CURLINFO_OS_ERRNO, &_errno));
     return _errno;
 }
 
 -(void)pauseSend {
-    if (_pauseState & YMEasyHandlePauseStateSend) return;
+    if (self.pauseState & YMEasyHandlePauseStateSend) return;
     
-    _pauseState = _pauseState | YMEasyHandlePauseStateSend;
-    [self updatePauseState:_pauseState];
+    self.pauseState = self.pauseState | YMEasyHandlePauseStateSend;
+    [self updatePauseState:self.pauseState];
 }
 - (void)unpauseSend {
-    if (!(_pauseState & YMEasyHandlePauseStateSend)) return;
+    if (!(self.pauseState & YMEasyHandlePauseStateSend)) return;
     
-    _pauseState = _pauseState ^ YMEasyHandlePauseStateSend;
-    [self updatePauseState:_pauseState];
+    self.pauseState = self.pauseState ^ YMEasyHandlePauseStateSend;
+    [self updatePauseState:self.pauseState];
 }
 
 -(void)pauseReceive {
-    if (_pauseState & YMEasyHandlePauseStateReceive) return;
+    if (self.pauseState & YMEasyHandlePauseStateReceive) return;
     
-    _pauseState = _pauseState | YMEasyHandlePauseStateReceive;
-    [self updatePauseState:_pauseState];
+    self.pauseState = self.pauseState | YMEasyHandlePauseStateReceive;
+    [self updatePauseState:self.pauseState];
 }
 
 - (void)unpauseReceive {
-    if (!(_pauseState & YMEasyHandlePauseStateReceive)) return;
+    if (!(self.pauseState & YMEasyHandlePauseStateReceive)) return;
     
-    _pauseState = _pauseState ^ YMEasyHandlePauseStateReceive;
-    [self updatePauseState:_pauseState];
+    self.pauseState = self.pauseState ^ YMEasyHandlePauseStateReceive;
+    [self updatePauseState:self.pauseState];
 }
 #pragma mark - Private Methods
 
 - (NSInteger)didReceiveData:(char *)data size:(NSInteger)size nmemb:(NSInteger)nmemb {
     NSData *buffer = [[NSData alloc] initWithBytes:data length:size * nmemb];
-    if (![_delegate respondsToSelector:@selector(didReceiveWithData:)]) return 0;
+    if (![self.delegate respondsToSelector:@selector(didReceiveWithData:)]) return 0;
 
-    YMEasyHandleAction action = [_delegate didReceiveWithData:buffer];
+    YMEasyHandleAction action = [self.delegate didReceiveWithData:buffer];
     switch (action) {
         case YMEasyHandleActionProceed:
             return size * nmemb;
         case YMEasyHandleActionAbort:
             return 0;
         case YMEasyHandleActionPause:
-            _pauseState = _pauseState | YMEasyHandlePauseStateReceive;
+            self.pauseState = self.pauseState | YMEasyHandlePauseStateReceive;
             return CURL_WRITEFUNC_PAUSE;
     }
     return 0;
@@ -317,11 +316,11 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 
     [self setCookiesWithHeaderData:buffer];
 
-    if (![_delegate respondsToSelector:@selector(didReceiveWithHeaderData:contentLength:)]) {
+    if (![self.delegate respondsToSelector:@selector(didReceiveWithHeaderData:contentLength:)]) {
         return 0;
     }
 
-    YMEasyHandleAction action = [_delegate didReceiveWithHeaderData:buffer contentLength:(int64_t)contentLength];
+    YMEasyHandleAction action = [self.delegate didReceiveWithHeaderData:buffer contentLength:(int64_t)contentLength];
     switch (action) {
         case YMEasyHandleActionProceed:
             return size * nmemb;
@@ -337,7 +336,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 
 - (NSInteger)fillWriteBuffer:(char *)buffer size:(NSInteger)size nmemb:(NSInteger)nmemb {
     __block NSInteger d;
-    [_delegate fillWriteBufferLength:size * nmemb
+    [self.delegate fillWriteBufferLength:size * nmemb
                               result:^(YMEasyHandleWriteBufferResult result, NSInteger length, NSData *data) {
                                   switch (result) {
                                       case YMEasyHandleWriteBufferResultPause:
@@ -362,7 +361,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
         YM_FATALERROR(@"Unexpected 'origin' in seek.");
     }
 
-    BOOL r = [_delegate seekInputStreamToPosition:offset];
+    BOOL r = [self.delegate seekInputStreamToPosition:offset];
     if (r) {
         return CURL_SEEKFUNC_OK;
     } else {
@@ -371,7 +370,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 }
 
 - (void)setCookiesWithHeaderData:(NSData *)data {
-    if (_config && _config.HTTPCookieAcceptPolicy != NSHTTPCookieAcceptPolicyNever && _config.HTTPCookieStorage) {
+    if (self.config && self.config.HTTPCookieAcceptPolicy != NSHTTPCookieAcceptPolicyNever && self.config.HTTPCookieStorage) {
         NSString *headerLine = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
         if (headerLine.length == 0) return;
 
@@ -385,9 +384,9 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
             NSString *value = [tail stringByTrimmingCharactersInSet:set];
 
             if (key && value) {
-                NSArray *cookies = [NSHTTPCookie cookiesWithResponseHeaderFields:@{key : value} forURL:_url];
+                NSArray *cookies = [NSHTTPCookie cookiesWithResponseHeaderFields:@{key : value} forURL:self.URL];
                 if ([cookies count] == 0) return;
-                [_config.HTTPCookieStorage setCookies:cookies forURL:_url mainDocumentURL:nil];
+                [self.config.HTTPCookieStorage setCookies:cookies forURL:self.URL mainDocumentURL:nil];
             }
         }
     }

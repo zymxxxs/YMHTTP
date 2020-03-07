@@ -50,7 +50,7 @@ typedef void *YMURLSessionEasyHandle;
 @property (nonatomic, assign) char *errorBuffer;
 @property (nullable, nonatomic, weak) id<YMEasyHandleDelegate> delegate;
 @property (nullable, nonatomic, strong) YMTimeoutSource *timeoutTimer;
-@property (nullable, nonatomic, strong) NSURL *url;
+@property (nonatomic, strong) NSURL *URL;
 
 - (instancetype)initWithDelegate:(id<YMEasyHandleDelegate>)delegate;
 

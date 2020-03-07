@@ -20,22 +20,22 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _tasks = [[NSMutableDictionary alloc] init];
-        _behaviours = [[NSMutableDictionary alloc] init];
+        self.tasks = [[NSMutableDictionary alloc] init];
+        self.behaviours = [[NSMutableDictionary alloc] init];
     }
     return self;
 }
 
 - (NSArray *)allTasks {
-    return [_tasks allValues];
+    return [self.tasks allValues];
 }
 
 - (BOOL)isEmpty {
-    return [_tasks count] == 0;
+    return [self.tasks count] == 0;
 }
 
 - (void)notifyOnTasksCompletion:(void (^)(void))tasksCompletion {
-    _tasksCompletion = tasksCompletion;
+    self.tasksCompletion = tasksCompletion;
 }
 
 - (void)addWithTask:(YMURLSessionTask *)task behaviour:(YMURLSessionTaskBehaviour *)behaviour {
@@ -44,16 +44,16 @@
         YM_FATALERROR(@"Invalid task identifier");
     }
     NSString *identifier = @(taskIdentifier).stringValue;
-    if (_tasks[identifier]) {
-        if ([_tasks[identifier] isEqual:task]) {
+    if (self.tasks[identifier]) {
+        if ([self.tasks[identifier] isEqual:task]) {
             YM_FATALERROR(@"Trying to re-insert a task that's already in the registry.");
         } else {
             YM_FATALERROR(
                 @"Trying to insert a task, but a different task with the same identifier is already in the registry.");
         }
     }
-    _tasks[identifier] = task;
-    _behaviours[identifier] = behaviour;
+    self.tasks[identifier] = task;
+    self.behaviours[identifier] = behaviour;
 }
 
 - (void)removeWithTask:(YMURLSessionTask *)task {
@@ -62,25 +62,25 @@
         YM_FATALERROR(@"Invalid task identifier");
     }
     NSString *identifier = @(taskIdentifier).stringValue;
-    if (!_tasks[identifier]) {
+    if (!self.tasks[identifier]) {
         YM_FATALERROR(@"Trying to remove task, but it's not in the registry.");
     }
-    [_tasks removeObjectForKey:identifier];
+    [self.tasks removeObjectForKey:identifier];
 
-    if (!_behaviours[identifier]) {
+    if (!self.behaviours[identifier]) {
         YM_FATALERROR(@"Trying to remove task's behaviour, but it's not in the registry.");
     }
-    [_behaviours removeObjectForKey:identifier];
+    [self.behaviours removeObjectForKey:identifier];
 
-    if (_tasksCompletion && [self isEmpty]) {
-        _tasksCompletion();
+    if (self.tasksCompletion && [self isEmpty]) {
+        self.tasksCompletion();
     }
 }
 
 - (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task {
     NSString *identifier = @(task.taskIdentifier).stringValue;
-    if (_behaviours[identifier])
-        return _behaviours[identifier];
+    if (self.behaviours[identifier])
+        return self.behaviours[identifier];
     else {
         YM_FATALERROR(@"Trying to access a behaviour for a task that in not in the registry.");
     }

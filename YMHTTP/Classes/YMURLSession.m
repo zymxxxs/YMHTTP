@@ -61,9 +61,9 @@ NS_INLINE int nextSessionIdentifier() {
             _delegateQueue = [[NSOperationQueue alloc] init];
         }
         _delegateQueue.maxConcurrentOperationCount = 1;
-        _delegate = delegate;
+        self.delegate = delegate;
         _configuration = configuration;
-        _multiHandle = [[YMMultiHandle alloc] initWithConfiguration:_configuration WorkQueue:_workQueue];
+        self.multiHandle = [[YMMultiHandle alloc] initWithConfiguration:_configuration WorkQueue:self.workQueue];
     }
     return self;
 }
@@ -88,7 +88,7 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 - (void)finishTasksAndInvalidate {
-    dispatch_async(_workQueue, ^{
+    dispatch_async(self.workQueue, ^{
         self.invalidated = true;
 
         void (^invalidateSessionCallback)(void) = ^{
@@ -120,7 +120,7 @@ NS_INLINE int nextSessionIdentifier() {
         [task cancel];
     }
 
-    dispatch_async(_workQueue, ^{
+    dispatch_async(self.workQueue, ^{
         if (!self.delegate) return;
         [self.delegateQueue addOperationWithBlock:^{
             if ([self.delegate respondsToSelector:@selector(YMURLSession:didBecomeInvalidWithError:)]) {
@@ -160,7 +160,7 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 - (void)getAllTasksWithCompletionHandler:(void (^)(NSArray<__kindof YMURLSessionTask *> *_Nonnull))completionHandler {
-    dispatch_async(_workQueue, ^{
+    dispatch_async(self.workQueue, ^{
         [self.delegateQueue addOperationWithBlock:^{
             NSMutableArray *tasks = [[NSMutableArray alloc] init];
             for (YMURLSessionTask *task in self.taskRegistry.allTasks) {
@@ -197,7 +197,7 @@ NS_INLINE int nextSessionIdentifier() {
 
 - (YMURLSessionTask *)taskWithURL:(NSURL *)url
                 completionHandler:
-                    (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+                    (void (^)(NSData *_Nullable, NSHTTPURLResponse *_Nullable, NSError *_Nullable))completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
     b.type = YMURLSessionTaskBehaviourTypeDataHandler;
     b.dataTaskCompeltion = completionHandler;
@@ -207,7 +207,7 @@ NS_INLINE int nextSessionIdentifier() {
 - (YMURLSessionTask *)taskWithURL:(NSURL *)url
                     connectToHost:(NSString *)host
                 completionHandler:
-                    (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+                    (void (^)(NSData *_Nullable, NSHTTPURLResponse *_Nullable, NSError *_Nullable))completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
     b.type = YMURLSessionTaskBehaviourTypeDataHandler;
     b.dataTaskCompeltion = completionHandler;
@@ -216,8 +216,8 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
-                    completionHandler:
-                        (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+                    completionHandler:(void (^)(NSData *_Nullable, NSHTTPURLResponse *_Nullable, NSError *_Nullable))
+                                          completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] init];
     b.type = YMURLSessionTaskBehaviourTypeDataHandler;
     b.dataTaskCompeltion = completionHandler;
@@ -240,8 +240,8 @@ NS_INLINE int nextSessionIdentifier() {
 
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
                              fromData:(NSData *)bodyData
-                    completionHandler:
-                        (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+                    completionHandler:(void (^)(NSData *_Nullable, NSHTTPURLResponse *_Nullable, NSError *_Nullable))
+                                          completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDataTaskCompeltion:completionHandler];
     YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithData:bodyData];
     return [self taskWithRequest:request body:body behaviour:b];
@@ -249,8 +249,8 @@ NS_INLINE int nextSessionIdentifier() {
 
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
                              fromFile:(NSURL *)fileURL
-                    completionHandler:
-                        (void (^)(NSData *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))completionHandler {
+                    completionHandler:(void (^)(NSData *_Nullable, NSHTTPURLResponse *_Nullable, NSError *_Nullable))
+                                          completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDataTaskCompeltion:completionHandler];
     YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithFileURL:fileURL];
     return [self taskWithRequest:request body:body behaviour:b];
@@ -278,7 +278,7 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 - (YMURLSessionTask *)taskWithDownloadURL:(NSURL *)url
-                        completionHandler:(void (^)(NSURL *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))
+                        completionHandler:(void (^)(NSURL *_Nullable, NSHTTPURLResponse *_Nullable, NSError *_Nullable))
                                               completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDownloadTaskCompeltion:completionHandler];
     YMURLSessionTask *task = [self taskWithRequest:url behaviour:b];
@@ -287,8 +287,9 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 - (YMURLSessionTask *)taskWithDownloadRequest:(NSURLRequest *)request
-                            completionHandler:(void (^)(NSURL *_Nullable, NSURLResponse *_Nullable, NSError *_Nullable))
-                                                  completionHandler {
+                            completionHandler:(void (^)(NSURL *_Nullable,
+                                                        NSHTTPURLResponse *_Nullable,
+                                                        NSError *_Nullable))completionHandler {
     YMURLSessionTaskBehaviour *b = [[YMURLSessionTaskBehaviour alloc] initWithDownloadTaskCompeltion:completionHandler];
     YMURLSessionTask *task = [self taskWithRequest:request behaviour:b];
     [task setValue:[NSNumber numberWithBool:true] forKey:@"isDownloadTask"];
@@ -298,7 +299,7 @@ NS_INLINE int nextSessionIdentifier() {
 - (YMURLSessionTaskBehaviour *)behaviourForTask:(YMURLSessionTask *)task {
     YMURLSessionTaskBehaviour *b = [_taskRegistry behaviourForTask:task];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
-        if (!(_delegate && [_delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)])) {
+        if (!(self.delegate && [self.delegate conformsToProtocol:@protocol(YMURLSessionTaskDelegate)])) {
             b.type = YMURLSessionTaskBehaviourTypeNoDelegate;
         }
     }
@@ -306,23 +307,23 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 - (void)addHandle:(YMEasyHandle *)handle {
-    [_multiHandle addHandle:handle];
+    [self.multiHandle addHandle:handle];
 }
 
 - (void)removeHandle:(YMEasyHandle *)handle {
-    [_multiHandle removeHandle:handle];
+    [self.multiHandle removeHandle:handle];
 }
 
 #pragma mark - Private Methods
 
 - (YMURLSessionTask *)taskWithRequest:(id)request behaviour:(YMURLSessionTaskBehaviour *)behaviour {
-    if (_invalidated) {
+    if (self.invalidated) {
         YM_FATALERROR(@"Session invalidated");
     }
     NSURLRequest *r = [self createConfiguredRequestFrom:request];
     NSUInteger i = [self createNextTaskIdentifier];
     YMURLSessionTask *task = [[YMURLSessionTask alloc] initWithSession:self reqeust:r taskIdentifier:i];
-    dispatch_async(_workQueue, ^{
+    dispatch_async(self.workQueue, ^{
         [self.taskRegistry addWithTask:task behaviour:behaviour];
     });
     return task;
@@ -331,13 +332,13 @@ NS_INLINE int nextSessionIdentifier() {
 - (YMURLSessionTask *)taskWithRequest:(id)request
                                  body:(YMURLSessionTaskBody *)body
                             behaviour:(YMURLSessionTaskBehaviour *)behaviour {
-    if (_invalidated) {
+    if (self.invalidated) {
         YM_FATALERROR(@"Session invalidated");
     }
     NSURLRequest *r = [self createConfiguredRequestFrom:request];
     NSUInteger i = [self createNextTaskIdentifier];
     YMURLSessionTask *task = [[YMURLSessionTask alloc] initWithSession:self reqeust:r taskIdentifier:i body:body];
-    dispatch_async(_workQueue, ^{
+    dispatch_async(self.workQueue, ^{
         [self.taskRegistry addWithTask:task behaviour:behaviour];
     });
     return task;
@@ -357,11 +358,11 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 - (NSUInteger)createNextTaskIdentifier {
-    dispatch_sync(_workQueue, ^{
-        if (_nextTaskIdentifier == 0) _nextTaskIdentifier = 1;
-        _nextTaskIdentifier += 1;
+    dispatch_sync(self.workQueue, ^{
+        if (self.nextTaskIdentifier == 0) self.nextTaskIdentifier = 1;
+        self.nextTaskIdentifier += 1;
     });
-    return _nextTaskIdentifier;
+    return self.nextTaskIdentifier;
 }
 
 @end

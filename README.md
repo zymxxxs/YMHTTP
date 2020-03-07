@@ -27,7 +27,7 @@ pod 'YMHTTP'
 * conformsToProtocol 考虑是否移除
 * ~~statusheader == [3] 解析错误~~
 * ~~cache 待解决~~
-* download 不支持断点续传 待解决
+* ~~download 不支持断点续传 待解决~~
 * taskhandle
 * ~~fatalError~~
 * YMURLSessionTaskProtocolState 需要重新命名

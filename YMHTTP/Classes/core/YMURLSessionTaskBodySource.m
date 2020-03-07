@@ -28,13 +28,13 @@
              completionHandler:(void (^)(YMBodySourceDataChunk, NSData *_Nullable))completionHandler {
     if (!completionHandler) return;
 
-    if (![_inputStream hasBytesAvailable]) {
+    if (![self.inputStream hasBytesAvailable]) {
         completionHandler(YMBodySourceDataChunkDone, nil);
         return;
     }
 
     uint8_t buffer[length];
-    NSInteger readBytes = [_inputStream read:buffer maxLength:length];
+    NSInteger readBytes = [self.inputStream read:buffer maxLength:length];
     if (readBytes > 0) {
         NSData *data = [[NSData alloc] initWithBytes:buffer length:readBytes];
         completionHandler(YMBodySourceDataChunkData, data);
@@ -58,7 +58,7 @@
 - (instancetype)initWithData:(NSData *)data {
     self = [super init];
     if (self) {
-        _data = data;
+        self.data = data;
     }
     return self;
 }
@@ -66,17 +66,17 @@
 - (void)getNextChunkWithLength:(NSInteger)length
              completionHandler:(nonnull void (^)(YMBodySourceDataChunk, NSData *_Nullable))completionHandler {
     if (!completionHandler) return;
-    NSUInteger remaining = _data.length;
+    NSUInteger remaining = self.data.length;
     if (remaining == 0) {
         completionHandler(YMBodySourceDataChunkDone, nil);
     } else if (remaining <= length) {
-        NSData *r = [[NSData alloc] initWithData:_data];
-        _data = nil;
+        NSData *r = [[NSData alloc] initWithData:self.data];
+        self.data = nil;
         completionHandler(YMBodySourceDataChunkData, r);
     } else {
-        NSData *chunk = [_data subdataWithRange:NSMakeRange(0, length)];
-        NSData *remainder = [_data subdataWithRange:NSMakeRange(length - 1, _data.length - length)];
-        _data = remainder;
+        NSData *chunk = [self.data subdataWithRange:NSMakeRange(0, length)];
+        NSData *remainder = [self.data subdataWithRange:NSMakeRange(length - 1, self.data.length - length)];
+        self.data = remainder;
         completionHandler(YMBodySourceDataChunkData, chunk);
     }
 }
@@ -114,18 +114,18 @@ typedef NS_ENUM(NSUInteger, YMBodyFileSourceChunk) {
     if (self) {
         if (![fileURL isFileURL]) YM_FATALERROR(@"The body data URL must be a file URL.");
 
-        _fileURL = fileURL;
-        _workQueue = workQueue;
-        _dataAvailableHandler = dataAvailableHandler;
+        self.fileURL = fileURL;
+        self.workQueue = workQueue;
+        self.dataAvailableHandler = dataAvailableHandler;
 
         const char *fileSystemRepresentation = fileURL.fileSystemRepresentation;
         if (fileSystemRepresentation != NULL) {
             int fd = open(fileSystemRepresentation, O_RDONLY);
-            _channel = dispatch_io_create(DISPATCH_IO_STREAM,
-                                          fd,
-                                          workQueue,
-                                          ^(int error){
-                                          });
+            self.channel = dispatch_io_create(DISPATCH_IO_STREAM,
+                                              fd,
+                                              workQueue,
+                                              ^(int error){
+                                              });
         } else {
             YM_FATALERROR(@"Can't create DispatchIO channel");
         }
@@ -139,64 +139,65 @@ typedef NS_ENUM(NSUInteger, YMBodyFileSourceChunk) {
     // try to keep 3 x of that around in the `chunk` buffer.
     if (self.availableByteCount >= self.desiredBufferLength) return;
 
-    if (_hasActiveReadHandler) return;
-    _hasActiveReadHandler = true;
+    if (self.hasActiveReadHandler) return;
+    self.hasActiveReadHandler = true;
 
     NSInteger lengthToRead = self.desiredBufferLength - self.availableByteCount;
-    dispatch_io_read(_channel, 0, lengthToRead, _workQueue, ^(bool done, dispatch_data_t _Nullable data, int error) {
-        BOOL wasEmpty = self.availableByteCount == 0;
+    dispatch_io_read(
+        self.channel, 0, lengthToRead, self.workQueue, ^(bool done, dispatch_data_t _Nullable data, int error) {
+            BOOL wasEmpty = self.availableByteCount == 0;
 
-        self.hasActiveReadHandler = !done;
+            self.hasActiveReadHandler = !done;
 
-        if (done == true && error != 0) {
-            self.availableChunk = YMBodyFileSourceChunkErrorDetected;
-        } else if (done == true && error == 0) {
-            if (dispatch_data_get_size(data) == 0) {
-                [self appendData:data endOfFile:true];
-            } else {
+            if (done == true && error != 0) {
+                self.availableChunk = YMBodyFileSourceChunkErrorDetected;
+            } else if (done == true && error == 0) {
+                if (dispatch_data_get_size(data) == 0) {
+                    [self appendData:data endOfFile:true];
+                } else {
+                    [self appendData:data endOfFile:false];
+                }
+            } else if (done == false && error == 0) {
                 [self appendData:data endOfFile:false];
+            } else {
+                YM_FATALERROR(@"Invalid arguments to read(3) callback.");
             }
-        } else if (done == false && error == 0) {
-            [self appendData:data endOfFile:false];
-        } else {
-            YM_FATALERROR(@"Invalid arguments to read(3) callback.");
-        }
 
-        if (wasEmpty && self.availableByteCount >= 0) {
-            self.dataAvailableHandler();
-        }
-    });
+            if (wasEmpty && self.availableByteCount >= 0) {
+                self.dataAvailableHandler();
+            }
+        });
 }
 
 - (void)appendData:(dispatch_data_t)data endOfFile:(BOOL)endOfFile {
-    if (_availableChunk == YMBodyFileSourceChunkEmpty) {
-        _availableData = data;
+    if (self.availableChunk == YMBodyFileSourceChunkEmpty) {
+        self.availableData = data;
         if (endOfFile) {
-            _availableChunk = YMBodyFileSourceChunkDone;
+            self.availableChunk = YMBodyFileSourceChunkDone;
         } else {
-            _availableChunk = YMBodyFileSourceChunkData;
+            self.availableChunk = YMBodyFileSourceChunkData;
         }
         return;
     }
 
-    if (_availableChunk == YMBodyFileSourceChunkData) {
-        dispatch_data_t newData = dispatch_data_create_concat(_availableData, data);
-        _availableData = newData;
+    if (self.availableChunk == YMBodyFileSourceChunkData) {
+        dispatch_data_t newData = dispatch_data_create_concat(self.availableData, data);
+        self.availableData = newData;
         if (endOfFile) {
             _availableChunk = YMBodyFileSourceChunkDone;
         } else {
-            _availableChunk = YMBodyFileSourceChunkData;
+            self.availableChunk = YMBodyFileSourceChunkData;
         }
         return;
     }
 
-    if (_availableChunk == YMBodyFileSourceChunkDone) {
+    if (self.availableChunk == YMBodyFileSourceChunkDone) {
         YM_FATALERROR(@"Trying to append data, but end-of-file was already detected.");
     }
 }
 
 - (NSInteger)availableByteCount {
-    switch (_availableChunk) {
+    switch (self.availableChunk) {
         case YMBodyFileSourceChunkEmpty:
             return 0;
         case YMBodyFileSourceChunkErrorDetected:
@@ -205,7 +206,7 @@ typedef NS_ENUM(NSUInteger, YMBodyFileSourceChunk) {
             return dispatch_data_get_size(_availableData);
             ;
         case YMBodyFileSourceChunkDone: {
-            if (_availableData == nil) {
+            if (self.availableData == nil) {
                 return 0;
             } else {
                 return dispatch_data_get_size(_availableData);
@@ -220,7 +221,7 @@ typedef NS_ENUM(NSUInteger, YMBodyFileSourceChunk) {
 
 - (void)getNextChunkWithLength:(NSInteger)length
              completionHandler:(void (^)(YMBodySourceDataChunk, NSData *_Nullable))completionHandler {
-    switch (_availableChunk) {
+    switch (self.availableChunk) {
         case YMBodyFileSourceChunkEmpty: {
             [self readNextChunk];
             completionHandler(YMBodySourceDataChunkRetryLater, nil);
@@ -237,10 +238,10 @@ typedef NS_ENUM(NSUInteger, YMBodyFileSourceChunk) {
             dispatch_data_t tail = dispatch_data_create_subrange(_availableData, p - 1, l - p);
 
             if (dispatch_data_get_size(tail) == 0) {
-                _availableChunk = YMBodyFileSourceChunkEmpty;
+                self.availableChunk = YMBodyFileSourceChunkEmpty;
             } else {
-                _availableChunk = YMBodyFileSourceChunkData;
-                _availableData = tail;
+                self.availableChunk = YMBodyFileSourceChunkData;
+                self.availableData = tail;
             }
             [self readNextChunk];
 
@@ -255,23 +256,23 @@ typedef NS_ENUM(NSUInteger, YMBodyFileSourceChunk) {
             break;
         }
         case YMBodyFileSourceChunkDone: {
-            if (_availableData == nil) {
+            if (self.availableData == nil) {
                 completionHandler(YMBodySourceDataChunkDone, nil);
                 break;
             }
 
-            NSInteger l = dispatch_data_get_size(_availableData);
-            NSInteger p = MIN(length, dispatch_data_get_size(_availableData));
+            NSInteger l = dispatch_data_get_size(self.availableData);
+            NSInteger p = MIN(length, dispatch_data_get_size(self.availableData));
 
-            dispatch_data_t head = dispatch_data_create_subrange(_availableData, 0, p);
-            dispatch_data_t tail = dispatch_data_create_subrange(_availableData, p - 1, l - p);
+            dispatch_data_t head = dispatch_data_create_subrange(self.availableData, 0, p);
+            dispatch_data_t tail = dispatch_data_create_subrange(self.availableData, p - 1, l - p);
 
             if (dispatch_data_get_size(tail) == 0) {
-                _availableChunk = YMBodyFileSourceChunkDone;
-                _availableData = nil;
+                self.availableChunk = YMBodyFileSourceChunkDone;
+                self.availableData = nil;
             } else {
-                _availableChunk = YMBodyFileSourceChunkDone;
-                _availableData = tail;
+                self.availableChunk = YMBodyFileSourceChunkDone;
+                self.availableData = tail;
             }
 
             size_t headCount = dispatch_data_get_size(head);

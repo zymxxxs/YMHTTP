@@ -15,11 +15,11 @@
 - (instancetype)initWithURL:(NSURL *)url bodyDataDrain:(YMDataDrain *)bodyDataDrain {
     self = [super init];
     if (self) {
-        _url = url;
-        _parsedResponseHeader = [[YMParsedResponseHeader alloc] init];
-        _response = nil;
-        _requestBodySource = nil;
-        _bodyDataDrain = bodyDataDrain;
+        self.url = url;
+        self.parsedResponseHeader = [[YMParsedResponseHeader alloc] init];
+        self.response = nil;
+        self.requestBodySource = nil;
+        self.bodyDataDrain = bodyDataDrain;
     }
     return self;
 }
@@ -29,11 +29,11 @@
                  bodySource:(id<YMURLSessionTaskBodySource>)bodySource {
     self = [super init];
     if (self) {
-        _url = url;
-        _parsedResponseHeader = [[YMParsedResponseHeader alloc] init];
-        _response = nil;
-        _requestBodySource = bodySource;
-        _bodyDataDrain = bodyDataDrain;
+        self.url = url;
+        self.parsedResponseHeader = [[YMParsedResponseHeader alloc] init];
+        self.response = nil;
+        self.requestBodySource = bodySource;
+        self.bodyDataDrain = bodyDataDrain;
     }
     return self;
 }
@@ -45,27 +45,28 @@
               bodyDataDrain:(YMDataDrain *)bodyDataDrain {
     self = [super init];
     if (self) {
-        _url = url;
-        _parsedResponseHeader = parsedResponseHeader;
-        _response = response;
-        _requestBodySource = bodySource;
-        _bodyDataDrain = bodyDataDrain;
+        self.url = url;
+        self.parsedResponseHeader = parsedResponseHeader;
+        self.response = response;
+        self.requestBodySource = bodySource;
+        self.bodyDataDrain = bodyDataDrain;
     }
     return self;
 }
 
 - (instancetype)byAppendingBodyData:(NSData *)bodyData {
-    switch (_bodyDataDrain.type) {
+    switch (self.bodyDataDrain.type) {
         case YMDataDrainInMemory: {
-            NSMutableData *data = _bodyDataDrain.data ? [_bodyDataDrain.data mutableCopy] : [NSMutableData data];
+            NSMutableData *data =
+                self.bodyDataDrain.data ? [self.bodyDataDrain.data mutableCopy] : [NSMutableData data];
             [data appendData:bodyData];
             YMDataDrain *dataDrain = [[YMDataDrain alloc] init];
             dataDrain.type = YMDataDrainInMemory;
             dataDrain.data = data;
-            return [[YMTransferState alloc] initWithURL:_url
-                                   parsedResponseHeader:_parsedResponseHeader
-                                               response:_response
-                                             bodySource:_requestBodySource
+            return [[YMTransferState alloc] initWithURL:self.url
+                                   parsedResponseHeader:self.parsedResponseHeader
+                                               response:self.response
+                                             bodySource:self.requestBodySource
                                           bodyDataDrain:dataDrain];
         }
         case YMDataDrainTypeToFile: {
@@ -80,7 +81,7 @@
 }
 
 - (instancetype)byAppendingHTTPHeaderLineData:(NSData *)data error:(NSError **)error {
-    YMParsedResponseHeader *h = [_parsedResponseHeader byAppendingHeaderLine:data];
+    YMParsedResponseHeader *h = [self.parsedResponseHeader byAppendingHeaderLine:data];
     if (!h) {
         if (error != NULL) {
             *error = [NSError errorWithDomain:NSURLErrorDomain
@@ -91,7 +92,7 @@
     }
 
     if (h.type == YMParsedResponseHeaderTypeComplete) {
-        NSHTTPURLResponse *response = [h createHTTPURLResponseForURL:_url];
+        NSHTTPURLResponse *response = [h createHTTPURLResponseForURL:self.url];
         if (response == nil) {
             if (error != NULL) {
                 *error = [NSError errorWithDomain:NSURLErrorDomain
@@ -103,24 +104,24 @@
         }
 
         YMParsedResponseHeader *ph = [[YMParsedResponseHeader alloc] init];
-        YMTransferState *ts = [[YMTransferState alloc] initWithURL:_url
+        YMTransferState *ts = [[YMTransferState alloc] initWithURL:self.url
                                               parsedResponseHeader:ph
                                                           response:response
-                                                        bodySource:_requestBodySource
-                                                     bodyDataDrain:_bodyDataDrain];
+                                                        bodySource:self.requestBodySource
+                                                     bodyDataDrain:self.bodyDataDrain];
         return ts;
     } else {
-        YMTransferState *ts = [[YMTransferState alloc] initWithURL:_url
+        YMTransferState *ts = [[YMTransferState alloc] initWithURL:self.url
                                               parsedResponseHeader:h
                                                           response:nil
-                                                        bodySource:_requestBodySource
-                                                     bodyDataDrain:_bodyDataDrain];
+                                                        bodySource:self.requestBodySource
+                                                     bodyDataDrain:self.bodyDataDrain];
         return ts;
     }
 }
 
 - (BOOL)isHeaderComplete {
-    return _response != nil;
+    return self.response != nil;
 }
 
 @end
@@ -134,8 +135,8 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _type = YMParsedResponseHeaderTypePartial;
-        _lines = [[NSMutableArray alloc] init];
+        self.type = YMParsedResponseHeaderTypePartial;
+        self.lines = [[NSMutableArray alloc] init];
     }
     return self;
 }
@@ -159,11 +160,11 @@
 }
 
 - (NSHTTPURLResponse *)createHTTPURLResponseForURL:(NSURL *)URL {
-    NSString *head = [_lines firstObject];
+    NSString *head = [self.lines firstObject];
     if (!head) return nil;
 
-    if ([_lines count] <= 1) return nil;
-    NSArray *tail = [_lines subarrayWithRange:NSMakeRange(1, [_lines count] - 1)];
+    if ([self.lines count] <= 1) return nil;
+    NSArray *tail = [self.lines subarrayWithRange:NSMakeRange(1, [self.lines count] - 1)];
 
     NSArray *startline = [self statusLineFromLine:head];
     if (!startline) return nil;
@@ -228,10 +229,10 @@
 - (instancetype)_byAppendingHeaderLine:(NSString *)line {
     YMParsedResponseHeader *header = [[YMParsedResponseHeader alloc] init];
     if (line.length == 0) {
-        switch (_type) {
+        switch (self.type) {
             case YMParsedResponseHeaderTypePartial: {
                 header.type = YMParsedResponseHeaderTypeComplete;
-                header.lines = _lines;
+                header.lines = self.lines;
                 return header;
             }
             case YMParsedResponseHeaderTypeComplete:
@@ -249,12 +250,12 @@
 }
 
 - (NSArray *)partialResponseHeader {
-    switch (_type) {
+    switch (self.type) {
         case YMParsedResponseHeaderTypeComplete:
             return [NSArray array];
 
         case YMParsedResponseHeaderTypePartial:
-            return _lines;
+            return self.lines;
     }
 }
 

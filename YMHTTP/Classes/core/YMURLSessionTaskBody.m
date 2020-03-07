@@ -7,12 +7,21 @@
 
 #import "YMURLSessionTaskBody.h"
 
+@interface YMURLSessionTaskBody ()
+
+@property (readwrite, nonatomic, assign) YMURLSessionTaskBodyType type;
+@property (readwrite, nonatomic, strong) NSData *data;
+@property (readwrite, nonatomic, strong) NSURL *fileURL;
+@property (readwrite, nonatomic, strong) NSInputStream *inputStream;
+
+@end
+
 @implementation YMURLSessionTaskBody
 
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _type = YMURLSessionTaskBodyTypeNone;
+        self.type = YMURLSessionTaskBodyTypeNone;
     }
     return self;
 }
@@ -20,8 +29,8 @@
 - (instancetype)initWithData:(NSData *)data {
     self = [super init];
     if (self) {
-        _type = YMURLSessionTaskBodyTypeData;
-        _data = data;
+        self.type = YMURLSessionTaskBodyTypeData;
+        self.data = data;
     }
     return self;
 }
@@ -29,8 +38,8 @@
 - (instancetype)initWithFileURL:(NSURL *)fileURL {
     self = [super init];
     if (self) {
-        _type = YMURLSessionTaskBodyTypeFile;
-        _fileURL = fileURL;
+        self.type = YMURLSessionTaskBodyTypeFile;
+        self.fileURL = fileURL;
     }
     return self;
 }
@@ -38,20 +47,20 @@
 - (instancetype)initWithInputStream:(NSInputStream *)InputStream {
     self = [super init];
     if (self) {
-        _type = YMURLSessionTaskBodyTypeStream;
-        _inputStream = InputStream;
+        self.type = YMURLSessionTaskBodyTypeStream;
+        self.inputStream = InputStream;
     }
     return self;
 }
 
 - (NSNumber *)getBodyLengthWithError:(NSError **)error {
-    switch (_type) {
+    switch (self.type) {
         case YMURLSessionTaskBodyTypeNone:
             return @(0);
         case YMURLSessionTaskBodyTypeData:
-            return [NSNumber numberWithUnsignedInteger:[_data length]];
+            return [NSNumber numberWithUnsignedInteger:[self.data length]];
         case YMURLSessionTaskBodyTypeFile: {
-            NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:_fileURL.path
+            NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:self.fileURL.path
                                                                                         error:error];
             if (!error) {
                 NSNumber *size = attributes[NSFileSize];

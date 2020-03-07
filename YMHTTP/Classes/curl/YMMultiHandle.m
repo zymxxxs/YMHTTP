@@ -26,9 +26,9 @@
                             WorkQueue:(dispatch_queue_t)workQueque {
     self = [super init];
     if (self) {
-        _rawHandle = curl_multi_init();
-        _easyHandles = [[NSMutableArray alloc] init];
-        _queue = dispatch_queue_create_with_target("YMMutilHandle.isolation", DISPATCH_QUEUE_SERIAL, workQueque);
+        self.rawHandle = curl_multi_init();
+        self.easyHandles = [[NSMutableArray alloc] init];
+        self.queue = dispatch_queue_create_with_target("YMMutilHandle.isolation", DISPATCH_QUEUE_SERIAL, workQueque);
         [self setupCallbacks];
         [self configureWithConfiguration:configuration];
     }
@@ -36,7 +36,7 @@
 }
 
 - (void)dealloc {
-    [_easyHandles enumerateObjectsUsingBlock:^(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+    [self.easyHandles enumerateObjectsUsingBlock:^(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
         curl_multi_remove_handle(_rawHandle, obj.rawHandle);
     }];
     curl_multi_cleanup(_rawHandle);
@@ -102,7 +102,7 @@
     // readiness.
     BOOL needsTimeout = false;
     if ([_easyHandles count] == 0) needsTimeout = YES;
-    [_easyHandles addObject:handle];
+    [self.easyHandles addObject:handle];
 
     YM_MCODE(curl_multi_add_handle(_rawHandle, handle.rawHandle));
     if (needsTimeout) [self timeoutTimerFired];
@@ -110,7 +110,7 @@
 
 - (void)removeHandle:(YMEasyHandle *)handle {
     NSUInteger idx =
-        [_easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+        [self.easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
             if (obj.rawHandle == handle.rawHandle) {
                 *stop = YES;
                 return YES;
@@ -123,7 +123,7 @@
         return;
     }
 
-    [_easyHandles removeObjectAtIndex:idx];
+    [self.easyHandles removeObjectAtIndex:idx];
     YM_MCODE(curl_multi_remove_handle(_rawHandle, handle.rawHandle));
 }
 
@@ -186,7 +186,7 @@ YM_FATALERROR(nil);
 
 - (void)completedTransferForEasyHandle:(YMURLSessionEasyHandle)handle easyCode:(int)easyCode {
     NSUInteger idx =
-        [_easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+        [self.easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
             if (obj.rawHandle == handle) {
                 *stop = YES;
                 return YES;
@@ -198,7 +198,7 @@ YM_FATALERROR(nil);
         YM_FATALERROR(@"Transfer completed for easy handle, but it is not in the list of added handles.");
         return;
     }
-    YMEasyHandle *easyHandle = _easyHandles[idx];
+    YMEasyHandle *easyHandle = self.easyHandles[idx];
     NSError *err = nil;
     int errCode = [easyHandle urlErrorCodeWithEasyCode:easyCode];
     if (errCode != 0) {
@@ -227,16 +227,16 @@ CURLMsg *mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue)
     //    A timeout_ms value of -1 passed to this callback means you should delete the timer. All other values are valid
     //    expire times in number of milliseconds.
     if (value == -1)
-        _timeoutSource = nil;
+        self.timeoutSource = nil;
     else if (value == 0) {
-        _timeoutSource = nil;
-        dispatch_async(_queue, ^{
+        self.timeoutSource = nil;
+        dispatch_async(self.queue, ^{
             [self timeoutTimerFired];
         });
     } else {
-        if (_timeoutSource == nil || _timeoutSource.milliseconds != value) {
+        if (self.timeoutSource == nil || self.timeoutSource.milliseconds != value) {
             __weak typeof(self) _wself = self;
-            _timeoutSource = [[YMTimeoutSource alloc] initWithQueue:_queue
+            self.timeoutSource = [[YMTimeoutSource alloc] initWithQueue:self.queue
                                                        milliseconds:value
                                                             handler:^{
                                                                 [_wself timeoutTimerFired];
@@ -247,6 +247,12 @@ CURLMsg *mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue)
 
 @end
 
+@interface YMSocketRegisterAction ()
+
+@property (readwrite, nonatomic, assign) YMSocketRegisterActionType type;
+
+@end
+
 @implementation YMSocketRegisterAction
 
 - (instancetype)initWithRawValue:(int)rawValue {
@@ -254,19 +260,19 @@ CURLMsg *mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue)
     if (self) {
         switch (rawValue) {
             case CURL_POLL_NONE:
-                _type = YMSocketRegisterActionTypeNone;
+                self.type = YMSocketRegisterActionTypeNone;
                 break;
             case CURL_POLL_IN:
-                _type = YMSocketRegisterActionTypeRegisterRead;
+                self.type = YMSocketRegisterActionTypeRegisterRead;
                 break;
             case CURL_POLL_OUT:
-                _type = YMSocketRegisterActionTypeRegisterWrite;
+                self.type = YMSocketRegisterActionTypeRegisterWrite;
                 break;
             case CURL_POLL_INOUT:
-                _type = YMSocketRegisterActionTypeRegisterReadAndWrite;
+                self.type = YMSocketRegisterActionTypeRegisterReadAndWrite;
                 break;
             case CURL_POLL_REMOVE:
-                _type = YMSocketRegisterActionTypeUnregister;
+                self.type = YMSocketRegisterActionTypeUnregister;
                 break;
             default:
                 YM_FATALERROR(@"Invalid CURL_POLL value.");
@@ -278,7 +284,7 @@ CURLMsg *mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue)
 
 /// Should a libdispatch source be registered for **read** readiness?
 - (BOOL)needsReadSource {
-    switch (_type) {
+    switch (self.type) {
         case YMSocketRegisterActionTypeNone:
             return false;
         case YMSocketRegisterActionTypeRegisterRead:
@@ -294,7 +300,7 @@ CURLMsg *mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue)
 
 /// Should a libdispatch source be registered for **write** readiness?
 - (BOOL)needsWriteSource {
-    switch (_type) {
+    switch (self.type) {
         case YMSocketRegisterActionTypeNone:
             return false;
         case YMSocketRegisterActionTypeRegisterRead:

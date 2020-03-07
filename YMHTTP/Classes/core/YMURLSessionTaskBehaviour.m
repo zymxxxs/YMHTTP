@@ -12,7 +12,7 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _type = YMURLSessionTaskBehaviourTypeTaskDelegate;
+        self.type = YMURLSessionTaskBehaviourTypeTaskDelegate;
     }
     return self;
 }
@@ -20,8 +20,8 @@
 - (instancetype)initWithDataTaskCompeltion:(YMDataTaskCompletion)dataTaskCompeltion {
     self = [super init];
     if (self) {
-        _type = YMURLSessionTaskBehaviourTypeDataHandler;
-        _dataTaskCompeltion = dataTaskCompeltion;
+        self.type = YMURLSessionTaskBehaviourTypeDataHandler;
+        self.dataTaskCompeltion = dataTaskCompeltion;
     }
     return self;
 }
@@ -29,8 +29,8 @@
 - (instancetype)initWithDownloadTaskCompeltion:(YMDownloadTaskCompletion)downloadTaskCompeltion {
     self = [super init];
     if (self) {
-        _type = YMURLSessionTaskBehaviourTypeDownloadHandler;
-        _downloadCompletion = downloadTaskCompeltion;
+        self.type = YMURLSessionTaskBehaviourTypeDownloadHandler;
+        self.downloadCompletion = downloadTaskCompeltion;
     }
     return self;
 }

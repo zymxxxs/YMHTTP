@@ -54,18 +54,18 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
                     completionHandler:(void (^)(NSData *_Nullable data,
-                                                NSURLResponse *_Nullable response,
+                                                NSHTTPURLResponse *_Nullable response,
                                                 NSError *_Nullable error))completionHandler;
 
 - (YMURLSessionTask *)taskWithURL:(NSURL *)url
                 completionHandler:(void (^)(NSData *_Nullable data,
-                                            NSURLResponse *_Nullable response,
+                                            NSHTTPURLResponse *_Nullable response,
                                             NSError *_Nullable error))completionHandler;
 
 - (YMURLSessionTask *)taskWithURL:(NSURL *)url
                     connectToHost:(NSString *)host
                 completionHandler:(void (^)(NSData *_Nullable data,
-                                            NSURLResponse *_Nullable response,
+                                            NSHTTPURLResponse *_Nullable response,
                                             NSError *_Nullable error))completionHandler;
 
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request fromFile:(NSURL *)fileURL;
@@ -75,13 +75,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
                              fromFile:(NSURL *)fileURL
                     completionHandler:(void (^)(NSData *_Nullable data,
-                                                NSURLResponse *_Nullable response,
+                                                NSHTTPURLResponse *_Nullable response,
                                                 NSError *_Nullable error))completionHandler;
 
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
                              fromData:(nullable NSData *)bodyData
                     completionHandler:(void (^)(NSData *_Nullable data,
-                                                NSURLResponse *_Nullable response,
+                                                NSHTTPURLResponse *_Nullable response,
                                                 NSError *_Nullable error))completionHandler;
 
 - (YMURLSessionTask *)taskWithStreamedRequest:(NSURLRequest *)request;
@@ -92,12 +92,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (YMURLSessionTask *)taskWithDownloadRequest:(NSURLRequest *)request
                             completionHandler:(void (^)(NSURL *_Nullable location,
-                                                        NSURLResponse *_Nullable response,
+                                                        NSHTTPURLResponse *_Nullable response,
                                                         NSError *_Nullable error))completionHandler;
 
 - (YMURLSessionTask *)taskWithDownloadURL:(NSURL *)url
                         completionHandler:(void (^)(NSURL *_Nullable location,
-                                                    NSURLResponse *_Nullable response,
+                                                    NSHTTPURLResponse *_Nullable response,
                                                     NSError *_Nullable error))completionHandler;
 
 #pragma mark - Private

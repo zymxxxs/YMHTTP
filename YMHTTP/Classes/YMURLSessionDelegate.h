@@ -73,7 +73,6 @@ NS_ASSUME_NONNULL_BEGIN
     didFinishDownloadingToURL:(NSURL *)location;
 
 @optional
-/* Sent periodically to notify the delegate of download progress. */
 - (void)YMURLSession:(YMURLSession *)session
                  downloadTask:(YMURLSessionTask *)downloadTask
                  didWriteData:(int64_t)bytesWritten
