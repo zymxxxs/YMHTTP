@@ -34,8 +34,8 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
         self.rawHandle = curl_easy_init();
         self.delegate = delegate;
 
-        char *eb = (char *)malloc(sizeof(char) * (CURL_ERROR_SIZE + 1));
-        self.errorBuffer = memset(eb, 0, sizeof(char) * (CURL_ERROR_SIZE + 1));
+        self.errorBuffer = (char *)malloc(sizeof(char) * (CURL_ERROR_SIZE + 1));
+        memset(self.errorBuffer, 0, sizeof(char) * (CURL_ERROR_SIZE + 1));
         [self setupCallbacks];
     }
     return self;
@@ -142,8 +142,10 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 }
 
 - (void)setErrorBuffer:(char *)buffer {
-    char *b = buffer ?: self.errorBuffer;
-    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_ERRORBUFFER, b));
+    if (buffer != NULL) {
+        _errorBuffer = buffer;
+        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_ERRORBUFFER, _errorBuffer));
+    }
 }
 
 - (void)setFailOnHTTPErrorCode:(BOOL)flag {

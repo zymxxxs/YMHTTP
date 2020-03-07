@@ -163,7 +163,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 - (void)resume {
     dispatch_sync(self.workQueue, ^{
-        if (self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
+        BOOL isCanResumeFromState = (self.state != YMURLSessionTaskStateCanceling && self.state != YMURLSessionTaskStateCompleted);
+        if (!isCanResumeFromState) return;
         self.suspendCount -= 1;
         if (self.suspendCount < 0) {
             YM_FATALERROR(@"Resuming a task that's not suspended. Calls to resume() / suspend() need to be matched.");
@@ -172,7 +173,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         if (self.suspendCount == 0) {
             self.hasTriggeredResume = true;
             [self getProtocolWithCompletion:^(BOOL isContinue) {
-                if (self.suspendCount != 0) return;
+                // 异步获取 local cache 之后，resume 所需的条件可能不存在，需要重新判断
+                if (self.suspendCount != 0 || !isCanResumeFromState) return;
                 BOOL isHTTPScheme = [self.originalRequest.URL.scheme isEqualToString:@"http"] ||
                                     [self.originalRequest.URL.scheme isEqualToString:@"https"];
                 if (isHTTPScheme && isContinue) {
@@ -211,7 +213,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
         if (self.suspendCount == 1) {
             [self getProtocolWithCompletion:^(BOOL isContinue) {
-                if (self.suspendCount != 1) return;
+                // 异步获取 local cache 之后，suspend 所需的条件可能不存在，需要重新判断
+                if (self.suspendCount != 1 || self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
                 dispatch_async(self.workQueue, ^{
                     [self stopLoading];
                 });
