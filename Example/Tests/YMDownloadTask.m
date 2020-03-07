@@ -10,19 +10,21 @@
 
 @implementation YMDownloadTask
 
--(instancetype)initWithTestCase:(XCTestCase *)testCase description:(NSString *)description {
+- (instancetype)initWithTestCase:(XCTestCase *)testCase description:(NSString *)description {
     self = [super init];
     if (self) {
         self.expectationsDescription = description;
         self.testCase = testCase;
-        self.didCompleteExpectation = [testCase expectationWithDescription:[NSString stringWithFormat:@"Did Complete %@", description]];
+        self.didCompleteExpectation =
+            [testCase expectationWithDescription:[NSString stringWithFormat:@"Did Complete %@", description]];
     }
     return self;
 }
 
--(void)makeDownloadExpectation {
+- (void)makeDownloadExpectation {
     if (self.didDownloadExpectation != nil) return;
-    self.didDownloadExpectation = [self.testCase expectationWithDescription:[NSString stringWithFormat:@"Did finish download: %@", self.description]];
+    self.didDownloadExpectation = [self.testCase
+        expectationWithDescription:[NSString stringWithFormat:@"Did finish download: %@", self.description]];
     self.testCase = nil;
 }
 
@@ -45,31 +47,38 @@
 }
 
 - (void)runWithTask:(YMURLSessionTask *)task errorExpectation:(void (^)(void))errorExpectation {
-//    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
-//    config.timeoutIntervalForRequest = 8;
-//    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
+    //    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    //    config.timeoutIntervalForRequest = 8;
+    //    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
 }
 
-- (void)YMURLSession:(YMURLSession *)session downloadTask:(YMURLSessionTask *)downloadTask didFinishDownloadingToURL:(NSURL *)location {
+- (void)YMURLSession:(YMURLSession *)session
+                 downloadTask:(YMURLSessionTask *)downloadTask
+    didFinishDownloadingToURL:(NSURL *)location {
     if (self.errorExpectation) {
         NSLog(@"download: %@", downloadTask);
         NSLog(@"at location: %@", location);
         XCTFail(@"Expected an error, but got …didFinishDownloadingTo… from download task");
     } else {
         NSError *e = nil;
-        NSDictionary *attr = [[NSFileManager defaultManager] attributesOfItemAtPath:location.path
-                                                         error:&e];
+        NSDictionary *attr = [[NSFileManager defaultManager] attributesOfItemAtPath:location.path error:&e];
         if (e) {
             XCTFail(@"Unable to calculate size of the downloaded file");
         } else {
-            XCTAssertEqual([attr[NSFileSize] integerValue], self.totalBytesWritten, @"Size of downloaded file not equal to total bytes downloaded");
+            XCTAssertEqual([attr[NSFileSize] integerValue],
+                           self.totalBytesWritten,
+                           @"Size of downloaded file not equal to total bytes downloaded");
         }
     }
     self.location = location;
     [self.didDownloadExpectation fulfill];
 }
 
-- (void)YMURLSession:(YMURLSession *)session downloadTask:(YMURLSessionTask *)downloadTask didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite {
+- (void)YMURLSession:(YMURLSession *)session
+                 downloadTask:(YMURLSessionTask *)downloadTask
+                 didWriteData:(int64_t)bytesWritten
+            totalBytesWritten:(int64_t)totalBytesWritten
+    totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite {
     self.totalBytesWritten = totalBytesWritten;
 }
 

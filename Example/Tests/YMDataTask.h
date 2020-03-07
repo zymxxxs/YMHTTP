@@ -7,12 +7,12 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <YMHTTP/YMHTTP.h>
 #import <XCTest/XCTest.h>
+#import <YMHTTP/YMHTTP.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface YMDataTask : XCTestCase<YMURLSessionDataDelegate>
+@interface YMDataTask : XCTestCase <YMURLSessionDataDelegate>
 
 @property (copy) NSDictionary *result;
 @property (copy) NSDictionary *args;
@@ -20,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (strong) XCTestExpectation *cancelExpectation;
 @property (strong) XCTestExpectation *dataTaskExpectation;
 @property (copy) YMURLSessionTask *task;
-@property  BOOL error;
+@property BOOL error;
 
 - (instancetype)initWithExpectation:(XCTestExpectation *)expectation;
 

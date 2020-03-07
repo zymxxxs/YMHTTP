@@ -26,7 +26,7 @@
     [self.task resume];
 }
 
--(void)runWithURL:(NSURL *)URL {
+- (void)runWithURL:(NSURL *)URL {
     YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
     config.timeoutIntervalForRequest = 8;
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
@@ -34,13 +34,16 @@
     [self.task resume];
 }
 
--(void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveData:(NSData *)data {
-    NSDictionary *value = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil];
+- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveData:(NSData *)data {
+    NSDictionary *value = [NSJSONSerialization JSONObjectWithData:data
+                                                          options:NSJSONReadingMutableContainers
+                                                            error:nil];
     self.result = value;
     self.args = value[@"args"];
 }
 
-//- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveResponse:(NSURLResponse *)response completionHandler:(void (^)(YMURLSessionResponseDisposition))completionHandler {
+//- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveResponse:(NSURLResponse
+//*)response completionHandler:(void (^)(YMURLSessionResponseDisposition))completionHandler {
 //    if (!self.responseReceivedExpectation) return;
 //    [self.responseReceivedExpectation fulfill];
 //}
@@ -51,7 +54,7 @@
     if (self.cancelExpectation) {
         [self.cancelExpectation fulfill];
     }
-        
+
     self.error = true;
 }
 

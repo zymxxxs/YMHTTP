@@ -1203,8 +1203,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 - (void)notifyDelegateAboutUploadedDataCount:(int64_t)count {
     YMURLSessionTaskBehaviour *b = [_session behaviourForTask:self];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate &&
-        [self.session.delegate respondsToSelector:@selector
-                               (YMURLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)]) {
+        [self.session.delegate
+            respondsToSelector:@selector(YMURLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)]) {
         self.countOfBytesSent += count;
         [self.session.delegateQueue addOperationWithBlock:^{
             id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;

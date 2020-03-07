@@ -1,7 +1,7 @@
 import glob
 import subprocess
 
-glob_paths = ['YMHTTP/Classes/core/*.[h, m]', 'YMHTTP/Classes/*.[h, m]']
+glob_paths = ['YMHTTP/Classes/core/*.[h, m]', 'YMHTTP/Classes/*.[h, m]', 'Example/Tests/*.[h, m]']
 format_files = []
 
 for glob_path in glob_paths:

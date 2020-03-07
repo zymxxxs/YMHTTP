@@ -16,7 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonnull, nonatomic, strong) XCTestExpectation *uploadCompletedExpectation;
 @property (nonnull, nonatomic, strong) NSInputStream *streamToProvideOnRequest;
-@property  int64_t totalBytesSent;
+@property int64_t totalBytesSent;
 
 @end
 

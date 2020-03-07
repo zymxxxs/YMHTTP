@@ -7,12 +7,12 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <YMHTTP/YMHTTP.h>
 #import <XCTest/XCTest.h>
+#import <YMHTTP/YMHTTP.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface YMDownloadTask : XCTestCase<YMURLSessionDownloadDelegate>
+@interface YMDownloadTask : XCTestCase <YMURLSessionDownloadDelegate>
 
 @property (atomic, strong) NSURL *location;
 @property (atomic, strong) XCTestExpectation *didDownloadExpectation;
@@ -26,7 +26,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithTestCase:(XCTestCase *)textCase description:(NSString *)description;
 
 - (void)makeDownloadExpectation;
-
 
 - (void)runWithRequest:(NSURLRequest *)request;
 

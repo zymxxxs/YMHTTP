@@ -134,7 +134,7 @@ NS_INLINE NSInteger parseArgumentPart(NSString *part, NSString *name) {
                                                 noCache:&noCache
                                                 noStore:&noStore];
         if (noCache || noStore) return false;
-        
+
         if (maxAge > 0) {
             hasMaxAge = true;
 
@@ -170,7 +170,7 @@ NS_INLINE NSInteger parseArgumentPart(NSString *part, NSString *name) {
             return false;
         }
     }
-    
+
     if (!hasCacheControl) return false;
 
     return true;
