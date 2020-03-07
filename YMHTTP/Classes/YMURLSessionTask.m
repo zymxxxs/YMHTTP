@@ -163,43 +163,45 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 - (void)resume {
     dispatch_sync(self.workQueue, ^{
-        BOOL isCanResumeFromState = (self.state != YMURLSessionTaskStateCanceling && self.state != YMURLSessionTaskStateCompleted);
-        if (!isCanResumeFromState) return;
+        if (![self isCanResumeFromState]) return;
+        if (self.suspendCount <= 0) return;
         self.suspendCount -= 1;
-        if (self.suspendCount < 0) {
-            YM_FATALERROR(@"Resuming a task that's not suspended. Calls to resume() / suspend() need to be matched.");
-        }
         [self updateTaskState];
         if (self.suspendCount == 0) {
             self.hasTriggeredResume = true;
+            [self checkOnlySupportHTTP];
             [self getProtocolWithCompletion:^(BOOL isContinue) {
                 // 异步获取 local cache 之后，resume 所需的条件可能不存在，需要重新判断
-                if (self.suspendCount != 0 || !isCanResumeFromState) return;
-                BOOL isHTTPScheme = [self.originalRequest.URL.scheme isEqualToString:@"http"] ||
-                                    [self.originalRequest.URL.scheme isEqualToString:@"https"];
-                if (isHTTPScheme && isContinue) {
+                if (self.suspendCount != 0 || ![self isCanResumeFromState]) return;
+                if (isContinue) {
                     dispatch_async(self.workQueue, ^{
                         [self startLoading];
                     });
-                } else {
-                    if (self.error == nil) {
-                        NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
-                        userInfo[NSLocalizedDescriptionKey] = @"unsupported URL";
-                        NSURL *url = self.originalRequest.URL;
-                        if (url) {
-                            userInfo[NSURLErrorFailingURLErrorKey] = url;
-                            userInfo[NSURLErrorFailingURLStringErrorKey] = url.absoluteString;
-                        }
-                        NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
-                                                                code:NSURLErrorUnsupportedURL
-                                                            userInfo:userInfo];
-                        self.error = urlError;
-                        [self notifyDelegateAboutError:self.error];
-                    }
                 }
             }];
         }
     });
+}
+
+- (void)checkOnlySupportHTTP {
+    NSString *scheme = self.originalRequest.URL.scheme;
+    BOOL isHTTPScheme = [scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"];
+    if (isHTTPScheme == false) {
+        if (self.error == nil) {
+            NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
+            userInfo[NSLocalizedDescriptionKey] = @"unsupported URL";
+            NSURL *url = self.originalRequest.URL;
+            if (url) {
+                userInfo[NSURLErrorFailingURLErrorKey] = url;
+                userInfo[NSURLErrorFailingURLStringErrorKey] = url.absoluteString;
+            }
+            NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
+                                                    code:NSURLErrorUnsupportedURL
+                                                userInfo:userInfo];
+            self.error = urlError;
+            [self notifyDelegateAboutError:self.error];
+        }
+    }
 }
 
 - (void)suspend {
@@ -214,9 +216,13 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         if (self.suspendCount == 1) {
             [self getProtocolWithCompletion:^(BOOL isContinue) {
                 // 异步获取 local cache 之后，suspend 所需的条件可能不存在，需要重新判断
-                if (self.suspendCount != 1 || self.state == YMURLSessionTaskStateCanceling || self.state == YMURLSessionTaskStateCompleted) return;
+                if (self.suspendCount != 1 || self.state == YMURLSessionTaskStateCanceling ||
+                    self.state == YMURLSessionTaskStateCompleted)
+                    return;
                 dispatch_async(self.workQueue, ^{
-                    [self stopLoading];
+                    if (isContinue) {
+                        [self stopLoading];
+                    }
                 });
             }];
         }
@@ -229,12 +235,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             self.state = YMURLSessionTaskStateCanceling;
             [self getProtocolWithCompletion:^(BOOL isContinue) {
                 dispatch_async(self.workQueue, ^{
-                    NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
-                                                            code:NSURLErrorCancelled
-                                                        userInfo:nil];
-                    self.error = urlError;
-
                     if (isContinue) {
+                        NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
+                                                                code:NSURLErrorCancelled
+                                                            userInfo:nil];
+                        self.error = urlError;
                         [self stopLoading];
                         [self notifyDelegateAboutError:urlError];
                     }
@@ -348,6 +353,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 #pragma mark - Setter Getter Methods
+
+- (BOOL)isCanResumeFromState {
+    return self.state != YMURLSessionTaskStateCanceling && self.state != YMURLSessionTaskStateCompleted;
+}
 
 - (void)setInternalState:(YMURLSessionTaskInternalState)internalState {
     YMURLSessionTaskInternalState newValue = internalState;
@@ -466,7 +475,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         self.transferState = [self createTransferStateWithURL:request.URL body:body workQueue:self.workQueue];
         NSURLRequest *r = self.authRequest ?: request;
         [self configureEasyHandleForRequest:r body:body];
-        if (self.suspendCount < 1) {
+        if (self.suspendCount == 0) {
             [self startLoading];
         }
     }];
@@ -825,13 +834,43 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         void (^usingLocalCache)(void) = ^{
             self.internalState = YMURLSessionTaskInternalStateFulfillingFromCache;
             dispatch_async(self.workQueue, ^{
-                [self notifyDelegateAboutReceiveResponse:(NSHTTPURLResponse *)self.cachedResponse.response];
-                if (self.cachedResponse.data) {
-                    self.responseData = self.cachedResponse.data;
-                    [self notifyDelegateAboutReceiveData:self.cachedResponse.data];
-                }
-                [self notifyDelegateAboutFinishLoading];
-                self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
+                NSHTTPURLResponse *response = (NSHTTPURLResponse *)self.cachedResponse.response;
+                [self notifyDelegateAboutReceiveResponse:response];
+                [self
+                    askDelegateHowToProceedAfterCompleteResponse:response
+                                                      completion:^(BOOL isAsk,
+                                                                   YMURLSessionResponseDisposition disposition) {
+                                                          void (^continueNextProcess)(void) = ^{
+                                                              if (self.cachedResponse.data) {
+                                                                  self.responseData = self.cachedResponse.data;
+                                                                  [self
+                                                                      notifyDelegateAboutReceiveData:self.cachedResponse
+                                                                                                         .data];
+                                                              }
+                                                              [self notifyDelegateAboutFinishLoading];
+                                                              self.internalState =
+                                                                  YMURLSessionTaskInternalStateTaskCompleted;
+                                                          };
+
+                                                          // may be the state is change, need check again
+                                                          if (self.suspendCount != 0 || ![self isCanResumeFromState])
+                                                              return;
+
+                                                          if (!isAsk) {
+                                                              continueNextProcess();
+                                                          } else {
+                                                              switch (disposition) {
+                                                                  case YMURLSessionResponseCancel: {
+                                                                      [self handleResponseCancelByDelegate];
+                                                                      break;
+                                                                  }
+                                                                  case YMURLSessionResponseAllow: {
+                                                                      continueNextProcess();
+                                                                      break;
+                                                                  }
+                                                              }
+                                                          }
+                                                      }];
             });
         };
 
@@ -900,10 +939,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         }
     } else {
         self.internalState = YMURLSessionTaskInternalStateTransferFailed;
-        if (!_error) {
+        if (!self.error) {
             YM_FATALERROR(nil);
         }
-        [self completeTaskWithError:_error];
+        [self completeTaskWithError:self.error];
     }
 }
 
@@ -1221,6 +1260,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 - (void)notifyDelegateAboutReceiveResponse:(NSHTTPURLResponse *)response {
     self.response = response;
 
+    // only dataTask can cache
     if (![self isDataTask]) return;
 
     NSCachedURLResponse *cachedResponse = [[NSCachedURLResponse alloc] initWithResponse:response data:[NSData data]];
@@ -1229,32 +1269,50 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         self.cacheableData = [[NSMutableArray alloc] init];
         self.cacheableResponse = response;
     }
-
-    YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
-    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
-        if (self.session.delegate &&
-            [self.session.delegate respondsToSelector:@selector(YMURLSession:
-                                                                        task:didReceiveResponse:completionHandler:)]) {
-            [self askDelegateHowToProceedAfterCompleteResponse:response];
-        }
-    }
 }
 
-- (void)askDelegateHowToProceedAfterCompleteResponse:(NSHTTPURLResponse *)response {
-    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
+- (void)askDelegateHowToProceedAfterCompleteResponse:(NSHTTPURLResponse *)response
+                                          completion:(void (^)(BOOL isAsk,
+                                                               YMURLSessionResponseDisposition disposition))completion {
+    // only dataTask can ask how to process
+    if (![self isDataTask]) return completion(false, 0);
+
+    // internal state is only support transferInProgress || fulfillingFromCache
+    if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress &&
+        self.internalState != YMURLSessionTaskInternalStateFulfillingFromCache) {
         YM_FATALERROR(@"Transfer not in progress.");
     }
 
-    self.internalState = YMURLSessionTaskInternalStateWaitingForResponseHandler;
-    [self.session.delegateQueue addOperationWithBlock:^{
-        id<YMURLSessionDataDelegate> delegate = (id<YMURLSessionDataDelegate>)self.session.delegate;
-        [delegate YMURLSession:self.session
-                          task:self
-            didReceiveResponse:response
-             completionHandler:^(YMURLSessionResponseDisposition disposition) {
-                 [self didCompleteResponseCallbackWithDisposition:disposition];
-             }];
-    }];
+    YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
+    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
+        BOOL isRespondDidReceiveResponse = [self.session.delegate
+            respondsToSelector:@selector(YMURLSession:task:didReceiveResponse:completionHandler:)];
+        if (isRespondDidReceiveResponse) {
+            self.suspendCount += 1;
+            self.state = YMURLSessionTaskStateSuspended;
+
+            // pause easy handle
+            if (self.internalState == YMURLSessionTaskInternalStateTransferInProgress) {
+                self.internalState = YMURLSessionTaskInternalStateWaitingForResponseHandler;
+            }
+            [self.session.delegateQueue addOperationWithBlock:^{
+                id<YMURLSessionDataDelegate> delegate = (id<YMURLSessionDataDelegate>)self.session.delegate;
+                [delegate YMURLSession:self.session
+                                  task:self
+                    didReceiveResponse:response
+                     completionHandler:^(YMURLSessionResponseDisposition disposition) {
+                         if (self.internalState == YMURLSessionTaskInternalStateWaitingForResponseHandler ||
+                             self.internalState == YMURLSessionTaskInternalStateFulfillingFromCache) {
+                             return completion(true, disposition);
+                         }
+                     }];
+            }];
+        } else {
+            return completion(false, 0);
+        }
+    } else {
+        return completion(false, 0);
+    }
 }
 
 - (void)didCompleteResponseCallbackWithDisposition:(YMURLSessionResponseDisposition)disposition {
@@ -1323,9 +1381,34 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         case 303:
         case 307:
             break;
-        default:
-            // 调用 notifyDelegateAboutReceiveResponse 缓存逻辑以及 askDelegateHowToProceedAfterCompleteResponse 逻辑
+        default: {
             [self notifyDelegateAboutReceiveResponse:response];
+            [self askDelegateHowToProceedAfterCompleteResponse:response
+                                                    completion:^(BOOL isAsk,
+                                                                 YMURLSessionResponseDisposition disposition) {
+                                                        if (!isAsk) return;
+                                                        switch (disposition) {
+                                                            case YMURLSessionResponseCancel: {
+                                                                [self handleResponseCancelByDelegate];
+                                                                break;
+                                                            }
+                                                            case YMURLSessionResponseAllow: {
+                                                                self.internalState =
+                                                                    YMURLSessionTaskInternalStateTransferInProgress;
+                                                                break;
+                                                            }
+                                                        }
+                                                    }];
+        }
+    }
+}
+
+- (void)handleResponseCancelByDelegate {
+    if (self.internalState != YMURLSessionTaskInternalStateTransferFailed) {
+        self.internalState = YMURLSessionTaskInternalStateTransferFailed;
+        NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil];
+        [self completeTaskWithError:urlError];
+        [self notifyDelegateAboutError:urlError];
     }
 }
 
