@@ -27,9 +27,6 @@ NS_ASSUME_NONNULL_BEGIN
 /// timeout.
 @property NSTimeInterval timeoutIntervalForResource;
 
-/// allow request to route over cellular.
-@property BOOL allowsCellularAccess;
-
 /// Allow the use of HTTP pipelining
 @property BOOL HTTPShouldUsePipelining;
 
@@ -56,6 +53,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nullable, strong) NSURLCache *URLCache;
 
 - (NSURLRequest *)configureRequest:(NSURLRequest *)request;
+
+- (NSURLRequest *)configureRequestWithURL:(NSURL *)URL;
 
 - (NSURLRequest *)setCookiesOnReqeust:(NSURLRequest *)request;
 

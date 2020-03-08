@@ -40,6 +40,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)seekInputStreamToPosition:(uint64_t)position;
 
+- (void)needTimeoutTimerToValue:(NSInteger)value;
+
 @end
 
 typedef void *YMURLSessionEasyHandle;

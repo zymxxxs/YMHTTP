@@ -12,18 +12,17 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _requestCachePolicy = NSURLRequestUseProtocolCachePolicy;
-        _timeoutIntervalForRequest = 60;
-        _timeoutIntervalForResource = 604800;
-        _allowsCellularAccess = true;
-        _HTTPShouldUsePipelining = false;
-        _HTTPShouldSetCookies = true;
-        _HTTPCookieAcceptPolicy = NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
-        _HTTPAdditionalHeaders = nil;
-        _HTTPMaximumConnectionsPerHost = 6;
-        _HTTPCookieStorage = [NSHTTPCookieStorage sharedHTTPCookieStorage];
-        _URLCredentialStorage = [NSURLCredentialStorage sharedCredentialStorage];
-        _URLCache = [NSURLCache sharedURLCache];
+        self.requestCachePolicy = NSURLRequestUseProtocolCachePolicy;
+        self.timeoutIntervalForRequest = 60;
+        self.timeoutIntervalForResource = 604800;
+        self.HTTPShouldUsePipelining = false;
+        self.HTTPShouldSetCookies = true;
+        self.HTTPCookieAcceptPolicy = NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
+        self.HTTPAdditionalHeaders = nil;
+        self.HTTPMaximumConnectionsPerHost = 6;
+        self.HTTPCookieStorage = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+        self.URLCredentialStorage = [NSURLCredentialStorage sharedCredentialStorage];
+        self.URLCache = [NSURLCache sharedURLCache];
     }
     return self;
 }
@@ -36,14 +35,23 @@
     return [self defaultSessionConfiguration];
 }
 
+- (NSURLRequest *)configureRequestWithURL:(NSURL *)URL {
+    NSMutableURLRequest *r = [NSMutableURLRequest requestWithURL:URL];
+    r.cachePolicy = self.requestCachePolicy;
+    r.timeoutInterval = self.timeoutIntervalForRequest;
+    r.HTTPShouldUsePipelining = self.HTTPShouldUsePipelining;
+    r.HTTPShouldHandleCookies = self.HTTPShouldSetCookies;
+    return [self setCookiesOnReqeust:r];
+}
+
 - (NSURLRequest *)configureRequest:(NSURLRequest *)request {
     return [self setCookiesOnReqeust:request];
 }
 
 - (NSURLRequest *)setCookiesOnReqeust:(NSURLRequest *)request {
     NSMutableURLRequest *r = [request mutableCopy];
-    if (_HTTPShouldSetCookies) {
-        if (_HTTPCookieStorage && request.URL) {
+    if (self.HTTPShouldSetCookies) {
+        if (self.HTTPCookieStorage && request.URL) {
             NSArray *cookies = [_HTTPCookieStorage cookiesForURL:request.URL];
             if (cookies && cookies.count) {
                 NSDictionary *cookiesHeaderFields = [NSHTTPCookie requestHeaderFieldsWithCookies:cookies];
@@ -62,7 +70,6 @@
     session.requestCachePolicy = self.requestCachePolicy;
     session.timeoutIntervalForRequest = self.timeoutIntervalForRequest;
     session.timeoutIntervalForResource = self.timeoutIntervalForResource;
-    session.allowsCellularAccess = self.allowsCellularAccess;
     session.HTTPShouldUsePipelining = self.HTTPShouldUsePipelining;
     session.HTTPShouldSetCookies = self.HTTPShouldSetCookies;
     session.HTTPCookieAcceptPolicy = self.HTTPShouldSetCookies;

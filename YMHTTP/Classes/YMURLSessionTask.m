@@ -254,7 +254,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     switch (self.protocolState) {
         case YMURLSessionTaskProtocolStateToBeCreate: {
             NSURLCache *cache = self.session.configuration.URLCache;
-            NSURLRequestCachePolicy cachePolicy = self.session.configuration.requestCachePolicy;
+            NSURLRequestCachePolicy cachePolicy = self.currentRequest.cachePolicy;
             if (cache && [self isUsingLocalCacheWithPolicy:cachePolicy]) {
                 self.protocolBag = [NSMutableArray array];
                 [self.protocolBag addObject:completion];
@@ -332,7 +332,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             return true;
         case NSURLRequestReloadIgnoringLocalAndRemoteCacheData:
         case NSURLRequestReloadRevalidatingCacheData:
-        default:
             return false;
     }
 }
@@ -577,8 +576,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
     [self.easyHandle setCustomHeaders:curlHeaders];
 
-    // TODO: timeoutInterval set or get
-    NSInteger timeoutInterval = [self.session.configuration timeoutIntervalForRequest] * 1000;
+    NSInteger timeoutInterval = request.timeoutInterval * 1000;
     self.easyHandle.timeoutTimer = [[YMTimeoutSource alloc]
         initWithQueue:self.workQueue
          milliseconds:timeoutInterval
@@ -852,10 +850,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                                                                   YMURLSessionTaskInternalStateTaskCompleted;
                                                           };
 
-                                                          // may be the state is change, need check again
-                                                          if (self.suspendCount != 0 || ![self isCanResumeFromState])
-                                                              return;
-
                                                           if (!isAsk) {
                                                               continueNextProcess();
                                                           } else {
@@ -874,7 +868,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             });
         };
 
-        NSURLRequestCachePolicy cachePolicy = self.session.configuration.requestCachePolicy;
+        NSURLRequestCachePolicy cachePolicy = self.originalRequest.cachePolicy;
         switch (cachePolicy) {
             case NSURLRequestUseProtocolCachePolicy: {
                 if (self.cachedResponse && [self canRespondFromCacheUsingResponse:self.cachedResponse]) {
@@ -882,10 +876,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                 } else {
                     [self startNewTransferByRequest:self.originalRequest];
                 }
-                break;
-            }
-            case NSURLRequestReloadIgnoringLocalCacheData: {
-                [self startNewTransferByRequest:self.originalRequest];
                 break;
             }
             case NSURLRequestReturnCacheDataElseLoad: {
@@ -918,9 +908,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                 }
                 break;
             }
+            case NSURLRequestReloadIgnoringLocalCacheData:
             case NSURLRequestReloadIgnoringLocalAndRemoteCacheData:
-            case NSURLRequestReloadRevalidatingCacheData:
-            default: {
+            case NSURLRequestReloadRevalidatingCacheData: {
                 [self startNewTransferByRequest:self.originalRequest];
                 break;
             }
@@ -1315,24 +1305,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
 }
 
-- (void)didCompleteResponseCallbackWithDisposition:(YMURLSessionResponseDisposition)disposition {
-    if (self.internalState != YMURLSessionTaskInternalStateWaitingForResponseHandler) {
-        YM_FATALERROR(@"Received response disposition, but we're not waiting for it.");
-    }
-    switch (disposition) {
-        case YMURLSessionResponseCancel: {
-            self.internalState = YMURLSessionTaskInternalStateTransferFailed;
-            NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:nil];
-            [self completeTaskWithError:urlError];
-            [self notifyDelegateAboutError:urlError];
-            break;
-        }
-        case YMURLSessionResponseAllow:
-            self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
-            break;
-    }
-}
-
 #pragma mark - EasyHandle Delegate
 
 - (YMEasyHandleAction)didReceiveWithHeaderData:(NSData *)data contentLength:(int64_t)contentLength {
@@ -1541,6 +1513,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
 
     return NO;
+}
+
+- (void)needTimeoutTimerToValue:(NSInteger)value {
+    [self.session updateTimeoutTimerToValue:value];
 }
 
 #pragma mark - Headers Methods

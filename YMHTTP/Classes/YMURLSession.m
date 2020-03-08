@@ -314,6 +314,10 @@ NS_INLINE int nextSessionIdentifier() {
     [self.multiHandle removeHandle:handle];
 }
 
+- (void)updateTimeoutTimerToValue:(NSInteger)value {
+    [self.multiHandle updateTimeoutTimerToValue:value];
+}
+
 #pragma mark - Private Methods
 
 - (YMURLSessionTask *)taskWithRequest:(id)request behaviour:(YMURLSessionTaskBehaviour *)behaviour {
@@ -347,14 +351,15 @@ NS_INLINE int nextSessionIdentifier() {
 - (NSURLRequest *)createConfiguredRequestFrom:(id)request {
     NSURLRequest *r = nil;
     if ([request isKindOfClass:[NSURLRequest class]]) {
-        r = [request copy];
+        r = [_configuration configureRequest:request];
     }
 
     if ([request isKindOfClass:[NSURL class]]) {
-        r = [NSURLRequest requestWithURL:request];
+        NSURL *URL = (NSURL *)request;
+        r = [_configuration configureRequestWithURL:URL];
     }
 
-    return [_configuration configureRequest:r];
+    return r;
 }
 
 - (NSUInteger)createNextTaskIdentifier {

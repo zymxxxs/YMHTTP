@@ -421,6 +421,7 @@
     NSString *urlString = @"http://httpbin.org/delay/10";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    request.timeoutInterval = 5;
 
     YMURLSessionTask *task = [session
           taskWithRequest:request
@@ -430,7 +431,7 @@
             [te fulfill];
         }];
     [task resume];
-    [self waitForExpectationsWithTimeout:30 handler:nil];
+    [self waitForExpectationsWithTimeout:10 handler:nil];
 }
 
 - (void)testConcurrentRequests {
@@ -493,20 +494,19 @@
     config.timeoutIntervalForRequest = 5;
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
 
-    NSString *urlString = @"http://httpbin.org/redirect-to?url=%2Fdelay%2F20";
+    NSString *urlString = @"http://httpbin.org/redirect-to?url=%2Fdelay%2F10";
     NSURL *url = [NSURL URLWithString:urlString];
-    NSURLRequest *req = [NSURLRequest requestWithURL:url];
 
-    YMURLSessionTask *task = [session
-          taskWithRequest:req
-        completionHandler:^(NSData *_Nullable data, NSURLResponse *_Nullable response, NSError *_Nullable error) {
-            if (!error) {
-                XCTFail("must fail");
-            } else {
-                XCTAssertEqual(error.code, NSURLErrorTimedOut, @"Unexpected error code");
-            }
-            [te fulfill];
-        }];
+    YMURLSessionTask *task =
+        [session taskWithURL:url
+            completionHandler:^(NSData *_Nullable data, NSURLResponse *_Nullable response, NSError *_Nullable error) {
+                if (!error) {
+                    XCTFail("must fail");
+                } else {
+                    XCTAssertEqual(error.code, NSURLErrorTimedOut, @"Unexpected error code");
+                }
+                [te fulfill];
+            }];
     [task resume];
     [self waitForExpectationsWithTimeout:12 handler:nil];
 }

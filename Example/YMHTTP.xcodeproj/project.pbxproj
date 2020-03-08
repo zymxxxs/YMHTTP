@@ -26,6 +26,8 @@
 		7AB642C924101ECA006F0FA4 /* YMDataTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AB642C824101ECA006F0FA4 /* YMDataTask.m */; };
 		7AB642CD2410D8AF006F0FA4 /* YMDownloadTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AB642CB2410D848006F0FA4 /* YMDownloadTask.m */; };
 		7AB642D02410FD5A006F0FA4 /* YMSessionDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AB642CF2410FD5A006F0FA4 /* YMSessionDelegate.m */; };
+		7AC6516224150EF80037984F /* YMURLSessionCacheTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AC6516124150EF80037984F /* YMURLSessionCacheTests.m */; };
+		7AC651652415107A0037984F /* YMCacheDataTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AC651642415107A0037984F /* YMCacheDataTask.m */; };
 		7AD395CD2411FFF900C3268C /* YMHTTPRedirectionDataTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AD395CC2411FFF900C3268C /* YMHTTPRedirectionDataTask.m */; };
 		7AD395D02412588C00C3268C /* YMHTTPUploadDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AD395CF2412588C00C3268C /* YMHTTPUploadDelegate.m */; };
 		7AD4B1B123F86CE000633B05 /* aaa.txt in Resources */ = {isa = PBXBuildFile; fileRef = 7AD4B1B023F86CE000633B05 /* aaa.txt */; };
@@ -73,6 +75,9 @@
 		7AB642CB2410D848006F0FA4 /* YMDownloadTask.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMDownloadTask.m; sourceTree = "<group>"; };
 		7AB642CE2410FD5A006F0FA4 /* YMSessionDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMSessionDelegate.h; sourceTree = "<group>"; };
 		7AB642CF2410FD5A006F0FA4 /* YMSessionDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMSessionDelegate.m; sourceTree = "<group>"; };
+		7AC6516124150EF80037984F /* YMURLSessionCacheTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMURLSessionCacheTests.m; sourceTree = "<group>"; };
+		7AC651632415107A0037984F /* YMCacheDataTask.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMCacheDataTask.h; sourceTree = "<group>"; };
+		7AC651642415107A0037984F /* YMCacheDataTask.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMCacheDataTask.m; sourceTree = "<group>"; };
 		7AD395CB2411FFF900C3268C /* YMHTTPRedirectionDataTask.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMHTTPRedirectionDataTask.h; sourceTree = "<group>"; };
 		7AD395CC2411FFF900C3268C /* YMHTTPRedirectionDataTask.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMHTTPRedirectionDataTask.m; sourceTree = "<group>"; };
 		7AD395CE2412588C00C3268C /* YMHTTPUploadDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMHTTPUploadDelegate.h; sourceTree = "<group>"; };
@@ -179,12 +184,15 @@
 			children = (
 				6003F5B6195388D20070C39A /* Supporting Files */,
 				7AB642C524101D4F006F0FA4 /* YMURLSessionTests.m */,
+				7AC6516124150EF80037984F /* YMURLSessionCacheTests.m */,
 				7AB642CE2410FD5A006F0FA4 /* YMSessionDelegate.h */,
 				7AB642CF2410FD5A006F0FA4 /* YMSessionDelegate.m */,
 				7AD395CE2412588C00C3268C /* YMHTTPUploadDelegate.h */,
 				7AD395CF2412588C00C3268C /* YMHTTPUploadDelegate.m */,
 				7AB642C724101ECA006F0FA4 /* YMDataTask.h */,
 				7AB642C824101ECA006F0FA4 /* YMDataTask.m */,
+				7AC651632415107A0037984F /* YMCacheDataTask.h */,
+				7AC651642415107A0037984F /* YMCacheDataTask.m */,
 				7AD395CB2411FFF900C3268C /* YMHTTPRedirectionDataTask.h */,
 				7AD395CC2411FFF900C3268C /* YMHTTPRedirectionDataTask.m */,
 				7AB642CA2410D848006F0FA4 /* YMDownloadTask.h */,
@@ -389,7 +397,9 @@
 				7AD395CD2411FFF900C3268C /* YMHTTPRedirectionDataTask.m in Sources */,
 				7AB642C924101ECA006F0FA4 /* YMDataTask.m in Sources */,
 				7AB642C624101D4F006F0FA4 /* YMURLSessionTests.m in Sources */,
+				7AC651652415107A0037984F /* YMCacheDataTask.m in Sources */,
 				7AD395D02412588C00C3268C /* YMHTTPUploadDelegate.m in Sources */,
+				7AC6516224150EF80037984F /* YMURLSessionCacheTests.m in Sources */,
 				7AB642CD2410D8AF006F0FA4 /* YMDownloadTask.m in Sources */,
 				7AB642D02410FD5A006F0FA4 /* YMSessionDelegate.m in Sources */,
 			);

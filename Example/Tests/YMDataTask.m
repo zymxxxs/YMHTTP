@@ -42,12 +42,6 @@
     self.args = value[@"args"];
 }
 
-//- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveResponse:(NSURLResponse
-//*)response completionHandler:(void (^)(YMURLSessionResponseDisposition))completionHandler {
-//    if (!self.responseReceivedExpectation) return;
-//    [self.responseReceivedExpectation fulfill];
-//}
-
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didCompleteWithError:(NSError *)error {
     [self.dataTaskExpectation fulfill];
     if (!error) return;

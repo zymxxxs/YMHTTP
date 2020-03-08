@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithConfiguration:(YMURLSessionConfiguration *)configuration WorkQueue:(dispatch_queue_t)workQueque;
 - (void)addHandle:(YMEasyHandle *)handle;
 - (void)removeHandle:(YMEasyHandle *)handle;
+- (void)updateTimeoutTimerToValue:(NSInteger)value;
 
 @end
 

@@ -251,6 +251,12 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     NSUInteger receive = pauseState & YMEasyHandlePauseStateReceive;
     int bitmask = 0 | (send ? CURLPAUSE_SEND : CURLPAUSE_SEND_CONT) | (receive ? CURLPAUSE_RECV : CURLPAUSE_RECV_CONT);
     YM_ECODE(curl_easy_pause(self.rawHandle, bitmask));
+    
+    // https://curl.haxx.se/libcurl/c/curl_easy_pause.html
+    // Starting in libcurl 7.32.0, unpausing a transfer will schedule a timeout trigger for that handle 1 millisecond into the future, so that a curl_multi_socket_action( ... CURL_SOCKET_TIMEOUT) can be used immediately afterwards to get the transfer going again as desired.
+    if (bitmask == 0) {
+        [self.delegate needTimeoutTimerToValue:1];
+    }
 }
 
 - (double)getTimeoutIntervalSpent {

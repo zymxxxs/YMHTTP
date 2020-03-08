@@ -110,6 +110,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)removeHandle:(YMEasyHandle *)handle;
 
+- (void)updateTimeoutTimerToValue:(NSInteger)value;
+
 - (instancetype)init __attribute__((unavailable(
     "Please use NSURLSessionConfiguration.defaultSessionConfiguration or other class methods to create instances")));
 + (instancetype)new __attribute__((unavailable(
