@@ -124,7 +124,7 @@ NS_INLINE NSInteger parseArgumentPart(NSString *part, NSString *name) {
     NSString *cacheControl = httpResponse.allHeaderFields[@"Cache-Control"];
     if (cacheControl) {
         NSInteger maxAge = 0;
-        NSInteger sharedMaxAge;
+        NSInteger sharedMaxAge = 0;
         BOOL noCache = false;
         BOOL noStore = false;
 

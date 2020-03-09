@@ -74,9 +74,6 @@ NS_INLINE void ym_swizzleMethods(Class class, SEL origSel, SEL swizSel) {
 
 - (NSInteger)ym_connectToPort {
     NSNumber *value = objc_getAssociatedObject(self, _cmd);
-    if (!value) {
-        return 0;
-    }
     return [value integerValue];
 }
 

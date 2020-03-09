@@ -813,6 +813,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     if (!urlString) {
         // maybe need return nil
         YM_FATALERROR(@"Invalid URL");
+        return nil;
     }
 
     request.URL = [NSURL URLWithString:urlString];
@@ -1107,101 +1108,118 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     //        }
     //    }
 
-    if (self.session.configuration.URLCache && self.cacheableData && self.cacheableResponse && [self isDataTask]) {
-        NSMutableData *data = [NSMutableData data];
-        for (NSData *d in self.cacheableData) {
-            [data appendData:d];
+    [self askDelegateHowToProceedProposedResponseCompletion:^{
+        YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
+        switch (b.type) {
+            case YMURLSessionTaskBehaviourTypeTaskDelegate: {
+                if ([self isDownloadTask] &&
+                    [self.session.delegate respondsToSelector:@selector(YMURLSession:
+                                                                        downloadTask:didFinishDownloadingToURL:)]) {
+                    id<YMURLSessionDownloadDelegate> d = (id<YMURLSessionDownloadDelegate>)self.session.delegate;
+                    [self.session.delegateQueue addOperationWithBlock:^{
+                        [d YMURLSession:self.session downloadTask:self didFinishDownloadingToURL:self.tempFileURL];
+                    }];
+                }
+
+                [self.session.delegateQueue addOperationWithBlock:^{
+                    if (self.state == YMURLSessionTaskStateCompleted) return;
+                    if ([self.session.delegate respondsToSelector:@selector(YMURLSession:task:didCompleteWithError:)]) {
+                        id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
+                        [d YMURLSession:self.session task:self didCompleteWithError:nil];
+                    }
+                    self.state = YMURLSessionTaskStateCompleted;
+                    dispatch_async(self.workQueue, ^{
+                        [self.session.taskRegistry removeWithTask:self];
+                    });
+                }];
+                break;
+            }
+            case YMURLSessionTaskBehaviourTypeNoDelegate: {
+                [self.session.delegateQueue addOperationWithBlock:^{
+                    if (self.state == YMURLSessionTaskStateCompleted) return;
+                    self.state = YMURLSessionTaskStateCompleted;
+                    dispatch_async(self.workQueue, ^{
+                        [self.session.taskRegistry removeWithTask:self];
+                    });
+                }];
+                break;
+            }
+            case YMURLSessionTaskBehaviourTypeDataHandler: {
+                [self.session.delegateQueue addOperationWithBlock:^{
+                    if (self.state == YMURLSessionTaskStateCompleted) return;
+                    self.state = YMURLSessionTaskStateCompleted;
+                    if (b.dataTaskCompeltion) {
+                        NSData *data = self.responseData ?: [NSData data];
+                        b.dataTaskCompeltion(data, self.response, nil);
+                    }
+                    dispatch_async(self.workQueue, ^{
+                        [self.session.taskRegistry removeWithTask:self];
+                    });
+                }];
+                break;
+            }
+            case YMURLSessionTaskBehaviourTypeDownloadHandler: {
+                [self.session.delegateQueue addOperationWithBlock:^{
+                    if (self.state == YMURLSessionTaskStateCompleted) return;
+                    self.state = YMURLSessionTaskStateCompleted;
+                    if (b.downloadCompletion) {
+                        NSURL *location = self.tempFileURL;
+                        b.downloadCompletion(location, self.response, nil);
+                    }
+                    dispatch_async(self.workQueue, ^{
+                        [self.session.taskRegistry removeWithTask:self];
+                    });
+                }];
+                break;
+            }
         }
-        NSCachedURLResponse *cacheable = [[NSCachedURLResponse alloc] initWithResponse:self.cacheableResponse
-                                                                                  data:data];
-        BOOL protocolAllows = [YMURLCacheHelper canCacheResponse:cacheable request:self.currentRequest];
-        if (protocolAllows) {
-            id<YMURLSessionDelegate> delegate = self.session.delegate;
-            if (delegate && [delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)] &&
-                [delegate respondsToSelector:@selector(YMURLSession:task:willCacheResponse:completionHandler:)]) {
-                id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)delegate;
+
+        [self invalidateProtocol];
+    }];
+}
+
+- (void)askDelegateHowToProceedProposedResponseCompletion:(void (^)(void))completion {
+    BOOL isWillCache =
+        self.session.configuration.URLCache && self.cacheableData && self.cacheableResponse && [self isDataTask];
+    if (!isWillCache) return completion();
+
+    NSMutableData *data = [NSMutableData data];
+    for (NSData *d in self.cacheableData) {
+        [data appendData:d];
+    }
+    NSCachedURLResponse *cacheable = [[NSCachedURLResponse alloc] initWithResponse:self.cacheableResponse data:data];
+    BOOL cacheProtocolAllows = [YMURLCacheHelper canCacheResponse:cacheable request:self.currentRequest];
+
+    if (!cacheProtocolAllows) return completion();
+
+    id<YMURLSessionDelegate> delegate = self.session.delegate;
+    YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
+    if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
+        if (delegate && [delegate conformsToProtocol:@protocol(YMURLSessionDataDelegate)] &&
+            [delegate respondsToSelector:@selector(YMURLSession:task:willCacheResponse:completionHandler:)]) {
+            id<YMURLSessionDataDelegate> d = (id<YMURLSessionDataDelegate>)delegate;
+            [self.session.delegateQueue addOperationWithBlock:^{
                 [d YMURLSession:self.session
                                  task:self
                     willCacheResponse:cacheable
                     completionHandler:^(NSCachedURLResponse *_Nullable actualCacheable) {
                         if (actualCacheable) {
                             NSURLCache *cache = self.session.configuration.URLCache;
-                            [cache ym_storeCachedResponse:cacheable forDataTask:self];
+                            [cache ym_storeCachedResponse:actualCacheable forDataTask:self];
                         }
+                        return completion();
                     }];
-            } else {
-                NSURLCache *cache = self.session.configuration.URLCache;
-                [cache ym_storeCachedResponse:cacheable forDataTask:self];
-            }
+            }];
+        } else {
+            NSURLCache *cache = self.session.configuration.URLCache;
+            [cache ym_storeCachedResponse:cacheable forDataTask:self];
+            return completion();
         }
+    } else {
+        NSURLCache *cache = self.session.configuration.URLCache;
+        [cache ym_storeCachedResponse:cacheable forDataTask:self];
+        return completion();
     }
-
-    YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
-    switch (b.type) {
-        case YMURLSessionTaskBehaviourTypeTaskDelegate: {
-            if ([self isDownloadTask] &&
-                [self.session.delegate respondsToSelector:@selector(YMURLSession:
-                                                                    downloadTask:didFinishDownloadingToURL:)]) {
-                id<YMURLSessionDownloadDelegate> d = (id<YMURLSessionDownloadDelegate>)self.session.delegate;
-                [self.session.delegateQueue addOperationWithBlock:^{
-                    [d YMURLSession:self.session downloadTask:self didFinishDownloadingToURL:self.tempFileURL];
-                }];
-            }
-
-            [self.session.delegateQueue addOperationWithBlock:^{
-                if (self.state == YMURLSessionTaskStateCompleted) return;
-                if ([self.session.delegate respondsToSelector:@selector(YMURLSession:task:didCompleteWithError:)]) {
-                    id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
-                    [d YMURLSession:self.session task:self didCompleteWithError:nil];
-                }
-                self.state = YMURLSessionTaskStateCompleted;
-                dispatch_async(self.workQueue, ^{
-                    [self.session.taskRegistry removeWithTask:self];
-                });
-            }];
-            break;
-        }
-        case YMURLSessionTaskBehaviourTypeNoDelegate: {
-            [self.session.delegateQueue addOperationWithBlock:^{
-                if (self.state == YMURLSessionTaskStateCompleted) return;
-                self.state = YMURLSessionTaskStateCompleted;
-                dispatch_async(self.workQueue, ^{
-                    [self.session.taskRegistry removeWithTask:self];
-                });
-            }];
-            break;
-        }
-        case YMURLSessionTaskBehaviourTypeDataHandler: {
-            [self.session.delegateQueue addOperationWithBlock:^{
-                if (self.state == YMURLSessionTaskStateCompleted) return;
-                self.state = YMURLSessionTaskStateCompleted;
-                if (b.dataTaskCompeltion) {
-                    NSData *data = self.responseData ?: [NSData data];
-                    b.dataTaskCompeltion(data, self.response, nil);
-                }
-                dispatch_async(self.workQueue, ^{
-                    [self.session.taskRegistry removeWithTask:self];
-                });
-            }];
-            break;
-        }
-        case YMURLSessionTaskBehaviourTypeDownloadHandler: {
-            [self.session.delegateQueue addOperationWithBlock:^{
-                if (self.state == YMURLSessionTaskStateCompleted) return;
-                self.state = YMURLSessionTaskStateCompleted;
-                if (b.downloadCompletion) {
-                    NSURL *location = self.tempFileURL;
-                    b.downloadCompletion(location, self.response, nil);
-                }
-                dispatch_async(self.workQueue, ^{
-                    [self.session.taskRegistry removeWithTask:self];
-                });
-            }];
-            break;
-        }
-    }
-
-    [self invalidateProtocol];
 }
 
 - (NSURLProtectionSpace *)createProtectionSpaceWithResponse:(NSHTTPURLResponse *)response {

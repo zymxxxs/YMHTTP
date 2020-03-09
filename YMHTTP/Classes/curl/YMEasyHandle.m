@@ -233,6 +233,8 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     NSNumber *port = (__bridge NSNumber *)portNum;
     NSString *proxy = (__bridge NSString *)proxyString;
     
+    CFRelease(dicRef);
+    
     if (proxy && port) {
         const char *ip = [proxy UTF8String];
         NSInteger p = [port longValue];
