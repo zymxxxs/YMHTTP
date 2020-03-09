@@ -17,8 +17,13 @@
 
 @implementation YMURLSessionCacheTests
 
+- (void)resetURLCache {
+    NSURLCache *URLCache = [[NSURLCache alloc] initWithMemoryCapacity:4 * 1024 * 1024 diskCapacity:0 diskPath:nil];
+    [NSURLCache setSharedURLCache:URLCache];
+}
+
 - (void)testCacheUseProtocolCachePolicy {
-    [[NSURLCache sharedURLCache] removeAllCachedResponses];
+    [self resetURLCache];
 
     NSString *urlString = @"http://httpbin.org/cache/200";
     NSURL *url = [NSURL URLWithString:urlString];
@@ -142,8 +147,7 @@
         XCTFail();
     }
 
-    [[NSURLCache sharedURLCache] removeCachedResponseForRequest:request];
-    [[NSURLCache sharedURLCache] removeAllCachedResponses];
+    [self resetURLCache];
     XCTAssertNil([[NSURLCache sharedURLCache] cachedResponseForRequest:request]);
 
     XCTestExpectation *te2 =
@@ -205,8 +209,7 @@
         XCTFail();
     }
 
-    [[NSURLCache sharedURLCache] removeCachedResponseForRequest:request];
-    [[NSURLCache sharedURLCache] removeAllCachedResponses];
+    [self resetURLCache];
     XCTAssertNil([[NSURLCache sharedURLCache] cachedResponseForRequest:request]);
 
     XCTestExpectation *te2 =
@@ -217,6 +220,26 @@
     [d2 runWithRequest:request];
     [self waitForExpectationsWithTimeout:12 handler:nil];
     XCTAssertTrue(d2.error);
+}
+
+- (void)testCacheUsingResponseAllow {
+    [self resetURLCache];
+
+    NSString *urlString = @"http://httpbin.org/get";
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSURLRequest *request = [NSURLRequest requestWithURL:url];
+    XCTestExpectation *te = [self expectationWithDescription:@"GET testCacheUsingResponseAllow: with a delegate"];
+    YMCacheDataTask *d = [[YMCacheDataTask alloc] initWithExpectation:te];
+    d.responseReceivedExpectation = [self expectationWithDescription:@"GET responseReceivedExpectation"];
+    d.disposition = YMURLSessionResponseCancel;
+    [d runWithRequest:request];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
+
+    if (!d.error) {
+        XCTFail();
+    } else {
+        XCTAssertEqual(d.task.error.code, NSURLErrorCancelled);
+    }
 }
 
 @end

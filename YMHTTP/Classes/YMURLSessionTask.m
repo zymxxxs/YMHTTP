@@ -1022,7 +1022,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         case YMURLSessionTaskBehaviourTypeDownloadHandler: {
             [self.session.delegateQueue addOperationWithBlock:^{
                 if (self.state != YMURLSessionTaskStateCompleted) {
-                    if (b.dataTaskCompeltion) b.downloadCompletion(nil, nil, error);
+                    if (b.downloadCompletion) b.downloadCompletion(nil, nil, error);
                     self.state = YMURLSessionTaskStateCompleted;
                     dispatch_async(self.workQueue, ^{
                         [self.session.taskRegistry removeWithTask:self];
@@ -1222,31 +1222,31 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
 }
 
-- (NSURLProtectionSpace *)createProtectionSpaceWithResponse:(NSHTTPURLResponse *)response {
-    NSString *host = response.URL.host ?: @"";
-    NSNumber *port = response.URL.port ?: @(80);
-    NSString *protocol = response.URL.scheme;
-
-    NSString *wwwAuthHeaderValue = response.allHeaderFields[@"WWW-Authenticate"];
-    if (wwwAuthHeaderValue) {
-        NSString *authMethod = [wwwAuthHeaderValue componentsSeparatedByString:@" "][0];
-        NSString *realm = [wwwAuthHeaderValue componentsSeparatedByString:@"realm="][1];
-        realm = [realm substringFromIndex:1];
-        realm = [realm substringToIndex:realm.length - 1];
-
-        NSURLProtectionSpace *space = [[NSURLProtectionSpace alloc] initWithHost:host
-                                                                            port:port.integerValue
-                                                                        protocol:protocol
-                                                                           realm:realm
-                                                            authenticationMethod:authMethod];
-        return space;
-    } else {
-        return nil;
-    }
-}
-
-- (void)notifyDelegateAboutReveiveChallenge:(NSURLAuthenticationChallenge *)challenge {
-}
+//- (NSURLProtectionSpace *)createProtectionSpaceWithResponse:(NSHTTPURLResponse *)response {
+//    NSString *host = response.URL.host ?: @"";
+//    NSNumber *port = response.URL.port ?: @(80);
+//    NSString *protocol = response.URL.scheme;
+//
+//    NSString *wwwAuthHeaderValue = response.allHeaderFields[@"WWW-Authenticate"];
+//    if (wwwAuthHeaderValue) {
+//        NSString *authMethod = [wwwAuthHeaderValue componentsSeparatedByString:@" "][0];
+//        NSString *realm = [wwwAuthHeaderValue componentsSeparatedByString:@"realm="][1];
+//        realm = [realm substringFromIndex:1];
+//        realm = [realm substringToIndex:realm.length - 1];
+//
+//        NSURLProtectionSpace *space = [[NSURLProtectionSpace alloc] initWithHost:host
+//                                                                            port:port.integerValue
+//                                                                        protocol:protocol
+//                                                                           realm:realm
+//                                                            authenticationMethod:authMethod];
+//        return space;
+//    } else {
+//        return nil;
+//    }
+//}
+//
+//- (void)notifyDelegateAboutReveiveChallenge:(NSURLAuthenticationChallenge *)challenge {
+//}
 
 - (void)notifyDelegateAboutUploadedDataCount:(int64_t)count {
     YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
