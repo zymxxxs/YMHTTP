@@ -21,7 +21,7 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
     YMURLSessionTaskStateCompleted = 3,
 };
 
-@interface YMURLSessionTask : NSObject <NSCopying>
+@interface YMURLSessionTask : NSObject <NSCopying, NSProgressReporting>
 
 @property (readonly) NSUInteger taskIdentifier;
 
@@ -34,6 +34,8 @@ typedef NS_ENUM(NSInteger, YMURLSessionTaskState) {
 @property (nullable, readonly, copy) NSError *error;
 
 @property (readonly) YMURLSessionTaskState state;
+
+@property (readonly) NSProgress *progress;
 
 @property (readonly) int64_t countOfBytesReceived;
 

@@ -30,7 +30,6 @@
 		7AC651652415107A0037984F /* YMCacheDataTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AC651642415107A0037984F /* YMCacheDataTask.m */; };
 		7AD395CD2411FFF900C3268C /* YMHTTPRedirectionDataTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AD395CC2411FFF900C3268C /* YMHTTPRedirectionDataTask.m */; };
 		7AD395D02412588C00C3268C /* YMHTTPUploadDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7AD395CF2412588C00C3268C /* YMHTTPUploadDelegate.m */; };
-		7AD4B1B123F86CE000633B05 /* aaa.txt in Resources */ = {isa = PBXBuildFile; fileRef = 7AD4B1B023F86CE000633B05 /* aaa.txt */; };
 		873B8AEB1B1F5CCA007FD442 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 873B8AEA1B1F5CCA007FD442 /* Main.storyboard */; };
 /* End PBXBuildFile section */
 
@@ -82,7 +81,6 @@
 		7AD395CC2411FFF900C3268C /* YMHTTPRedirectionDataTask.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMHTTPRedirectionDataTask.m; sourceTree = "<group>"; };
 		7AD395CE2412588C00C3268C /* YMHTTPUploadDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YMHTTPUploadDelegate.h; sourceTree = "<group>"; };
 		7AD395CF2412588C00C3268C /* YMHTTPUploadDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = YMHTTPUploadDelegate.m; sourceTree = "<group>"; };
-		7AD4B1B023F86CE000633B05 /* aaa.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = aaa.txt; sourceTree = "<group>"; };
 		873B8AEA1B1F5CCA007FD442 /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = Main.storyboard; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		8DBFDA45763A100B587356A0 /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = LICENSE; path = ../LICENSE; sourceTree = "<group>"; };
 		9B92362F77DF9D617C514746 /* Pods-YMHTTP_Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YMHTTP_Example.release.xcconfig"; path = "Target Support Files/Pods-YMHTTP_Example/Pods-YMHTTP_Example.release.xcconfig"; sourceTree = "<group>"; };
@@ -162,7 +160,6 @@
 				71719F9D1E33DC2100824A3D /* LaunchScreen.storyboard */,
 				6003F5A8195388D20070C39A /* Images.xcassets */,
 				6003F594195388D20070C39A /* Supporting Files */,
-				7AD4B1B023F86CE000633B05 /* aaa.txt */,
 			);
 			name = "Example for YMHTTP";
 			path = YMHTTP;
@@ -317,7 +314,6 @@
 				873B8AEB1B1F5CCA007FD442 /* Main.storyboard in Resources */,
 				71719F9F1E33DC2100824A3D /* LaunchScreen.storyboard in Resources */,
 				6003F5A9195388D20070C39A /* Images.xcassets in Resources */,
-				7AD4B1B123F86CE000633B05 /* aaa.txt in Resources */,
 				6003F598195388D20070C39A /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

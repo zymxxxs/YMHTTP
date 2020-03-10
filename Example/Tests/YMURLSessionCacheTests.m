@@ -64,7 +64,7 @@
 }
 
 - (void)testCacheUseIgnoringLocalCacheData {
-    [[NSURLCache sharedURLCache] removeAllCachedResponses];
+    [self resetURLCache];
 
     NSString *urlString = @"http://httpbin.org/cache/200";
     NSURL *url = [NSURL URLWithString:urlString];
@@ -107,7 +107,7 @@
 }
 
 - (void)testCacheUseReturnCacheDataElseLoad {
-    [[NSURLCache sharedURLCache] removeAllCachedResponses];
+    [self resetURLCache];
 
     NSString *urlString = @"http://httpbin.org/cache/200";
     NSURL *url = [NSURL URLWithString:urlString];

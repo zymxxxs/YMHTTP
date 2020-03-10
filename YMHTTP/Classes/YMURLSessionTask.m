@@ -71,7 +71,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     YMURLSessionTaskProtocolStateInvalidated
 };
 
-@interface YMURLSessionTask () <YMEasyHandleDelegate>
+@interface YMURLSessionTask () <YMEasyHandleDelegate, NSProgressReporting>
 
 @property (nonatomic, strong) YMURLSession *session;
 @property (nonatomic, strong) dispatch_queue_t workQueue;
@@ -109,13 +109,20 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 @property (readwrite) int64_t countOfBytesSent;
 @property (readwrite) int64_t countOfBytesExpectedToSend;
 @property (readwrite) int64_t countOfBytesExpectedToReceive;
+@property (nonatomic, strong) dispatch_queue_t syncQ;
+@property (readwrite) NSProgress *progress;
 
 @property BOOL hasTriggeredResume;
 @property BOOL isDownloadTask;
 
 @end
 
-@implementation YMURLSessionTask
+@implementation YMURLSessionTask {
+    int64_t _countOfBytesReceived;
+    int64_t _countOfBytesSent;
+    int64_t _countOfBytesExpectedToSend;
+    int64_t _countOfBytesExpectedToReceive;
+}
 
 /// Create a data task. If there is a httpBody in the URLRequest, use that as a parameter
 - (instancetype)initWithSession:(YMURLSession *)session
@@ -159,6 +166,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
     self.protocolLock = [[NSLock alloc] init];
     self.protocolState = YMURLSessionTaskProtocolStateToBeCreate;
+
+    self.syncQ = dispatch_queue_create("com.zymxxxs.YMURLSessionTask.SyncQ", DISPATCH_QUEUE_SERIAL);
+
+    self.progress = [NSProgress progressWithTotalUnitCount:-1];
 }
 
 - (void)resume {
@@ -441,7 +452,118 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     return _tempFileURL;
 }
 
+- (void)setCountOfBytesSent:(int64_t)countOfBytesSent {
+    dispatch_sync(self.syncQ, ^{
+        _countOfBytesSent = countOfBytesSent;
+        [self updateProgress];
+    });
+}
+
+- (int64_t)countOfBytesSent {
+    __block int64_t value;
+    dispatch_sync(self.syncQ, ^{
+        value = _countOfBytesSent;
+    });
+    return value;
+}
+
+- (void)setCountOfBytesReceived:(int64_t)countOfBytesReceived {
+    dispatch_sync(self.syncQ, ^{
+        _countOfBytesReceived = countOfBytesReceived;
+        [self updateProgress];
+    });
+}
+
+- (int64_t)countOfBytesReceived {
+    __block int64_t value;
+    dispatch_sync(self.syncQ, ^{
+        value = _countOfBytesReceived;
+    });
+    return value;
+}
+
+- (void)setCountOfBytesExpectedToSend:(int64_t)countOfBytesExpectedToSend {
+    dispatch_sync(self.syncQ, ^{
+        _countOfBytesExpectedToSend = countOfBytesExpectedToSend;
+        [self updateProgress];
+    });
+}
+
+- (int64_t)countOfBytesExpectedToSend {
+    __block int64_t value;
+    dispatch_sync(self.syncQ, ^{
+        value = _countOfBytesExpectedToSend;
+    });
+    return value;
+}
+
+- (void)setCountOfBytesExpectedToReceive:(int64_t)countOfBytesExpectedToReceive {
+    dispatch_sync(self.syncQ, ^{
+        _countOfBytesExpectedToReceive = countOfBytesExpectedToReceive;
+        [self updateProgress];
+    });
+}
+
+- (int64_t)countOfBytesExpectedToReceive {
+    __block int64_t value;
+    dispatch_sync(self.syncQ, ^{
+        value = _countOfBytesExpectedToReceive;
+    });
+    return value;
+}
+
 #pragma mark - Private Methods
+
+- (void)updateProgress {
+    dispatch_async(self.workQueue, ^{
+        NSProgress *progress = self.progress;
+
+        switch (self.state) {
+            case YMURLSessionTaskStateCanceling:
+            case YMURLSessionTaskStateCompleted: {
+                int64_t total = progress.totalUnitCount;
+                int64_t finalToal = total < 0 ? 1 : total;
+                progress.totalUnitCount = finalToal;
+                progress.completedUnitCount = finalToal;
+                break;
+            }
+            default: {
+                int64_t toBeSent;
+
+                NSError *error = nil;
+                NSNumber *bodySize = [self.knownBody getBodyLengthWithError:&error];
+                if (error == nil && bodySize) {
+                    toBeSent = [bodySize longLongValue];
+                } else if (self.countOfBytesExpectedToSend > 0) {
+                    toBeSent = self.countOfBytesExpectedToSend;
+                } else {
+                    toBeSent = YMURLSessionTransferSizeUnknown;
+                }
+
+                int64_t sent = self.countOfBytesSent;
+
+                int64_t toBeReceived;
+                if (self.countOfBytesExpectedToReceive > 0) {
+                    toBeReceived = self.countOfBytesExpectedToReceive;
+                } else {
+                    toBeReceived = YMURLSessionTransferSizeUnknown;
+                }
+
+                int64_t received = self.countOfBytesReceived;
+
+                progress.completedUnitCount = sent + received;
+
+                if (toBeSent != YMURLSessionTransferSizeUnknown && toBeReceived != YMURLSessionTransferSizeUnknown) {
+                    progress.totalUnitCount = toBeSent + toBeReceived;
+                } else {
+                    progress.totalUnitCount = YMURLSessionTransferSizeUnknown;
+                }
+
+                break;
+            }
+        }
+    });
+}
 
 - (void)updateTaskState {
     if (self.suspendCount == 0) {
