@@ -72,6 +72,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request fromData:(NSData *)bodyData;
 
+- (YMURLSessionTask *)taskWithStreamedRequest:(NSURLRequest *)request;
+
 - (YMURLSessionTask *)taskWithRequest:(NSURLRequest *)request
                              fromFile:(NSURL *)fileURL
                     completionHandler:(void (^)(NSData *_Nullable data,
@@ -83,8 +85,6 @@ NS_ASSUME_NONNULL_BEGIN
                     completionHandler:(void (^)(NSData *_Nullable data,
                                                 NSHTTPURLResponse *_Nullable response,
                                                 NSError *_Nullable error))completionHandler;
-
-- (YMURLSessionTask *)taskWithStreamedRequest:(NSURLRequest *)request;
 
 - (YMURLSessionTask *)taskWithDownloadRequest:(NSURLRequest *)request;
 

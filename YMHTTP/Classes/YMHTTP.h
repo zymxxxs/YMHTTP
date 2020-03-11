@@ -8,6 +8,7 @@
 #ifndef YMHTTP_h
 #define YMHTTP_h
 
+#import "NSURLRequest+YMCategory.h"
 #import "YMURLSession.h"
 #import "YMURLSessionConfiguration.h"
 #import "YMURLSessionDelegate.h"

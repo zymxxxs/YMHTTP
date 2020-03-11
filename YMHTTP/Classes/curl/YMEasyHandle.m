@@ -240,10 +240,6 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
         NSInteger p = [port longValue];
         YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_PROXY, ip));
         YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_PROXYPORT, p));
-        
-        // TODO: https 下无效
-//        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SSL_VERIFYHOST, 0));
-//        YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SSL_VERIFYPEER, 0));
     }
 }
 
