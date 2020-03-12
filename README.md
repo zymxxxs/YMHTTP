@@ -200,6 +200,13 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 
 备注：没有具体测试对于包大小的影响，如果您有对应的数据，请告诉我
 
+## 最后
+
+如果看过 `swift-corelibs-foundation` 的相关源码， 你会发现其 `NSURLSession` 系列的功能（HTTP、FTP）则是基于 libcurl 进行的封装。如果你想学习它，建议你直接去学习官方源码，YMHTTP 也是参考其中大量的实现，然后补充一些尚未实现的功能以及修复了一些BUG。
+
+`YMHTTP` 之所以诞生，初衷是为了 `彻底` 解决 HTTP DNS 的问题（性能+SNI 场景+ Cache + Cookies + 302 ），现在回头来看，倒像是切开了一道口，获取了更多的自由度，如果您需要什么功能，请 ISSUE 告诉我。
+
+
 ## 感谢
 * [lindean](https://github.com/lindean) 破老师，目前就职于PDD。感谢其初版 HTTP DNS 的实现，作为先驱者，填了无数坑，尤其是 libcurl 中各种参数以及 Cache 层的相关实现
 * [amendgit](https://github.com/amendgit) 二老师，人称二哥，目前就职于支付宝，感谢其在 `IO 多路复用` 上解惑与指导
@@ -207,12 +214,6 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 * [swift-corelibs-foundation](https://github.com/apple/swift-corelibs-foundation.git)
 * [curl-android-ios](https://github.com/gcesarmza/curl-android-ios)
 * [Build-OpenSSL-cURL](https://github.com/jasonacox/Build-OpenSSL-cURL.git)
-
-## 最后
-
-如果看过 `swift-corelibs-foundation` 的相关源码， 你会发现其 `NSURLSession` 系列的功能（HTTP、FTP）则是基于 libcurl 进行的封装。如果你想学习它，建议你直接去学习官方源码，YMHTTP 也是参考其中大量的实现，然后补充一些尚未实现的功能以及修复了一些BUG。
-
-`YMHTTP` 之所以诞生，初衷是为了 `彻底` 解决 HTTP DNS 的问题（性能+SNI 场景+ Cache + Cookies + 302 ），现在回头来看，倒像是切开了一道口，获取了更多的自由度，如果您需要什么功能，请 ISSUE 告诉我。
 
 ## TODO:
 * 使用 use_frameworks! 无法在真机运行
