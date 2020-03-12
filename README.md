@@ -190,8 +190,8 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 注意 `Build-OpenSSL-cURL` 中使用的是 openSSL，而目前 macOS Catalina 中则是使用 LibreSSL，目前没有找到相关的构建脚本，待后期以 `Build-OpenSSL-cURL` 的基础提供一个。
 
 ## 感谢
-* [amendgit](https://github.com/amendgit) 破老师，感谢其初版 HTTP DNS 的实现，作为先驱者，埋了无数坑，尤其是 libcurl 中各种参数以及 Cache 层的相关实现
-* [amendgit](https://github.com/amendgit) 二老师，人称二哥，感谢其在 `IO 多路复用` 上解惑与指导
+* [lindean](https://github.com/lindean) 破老师，目前就职于PDD。感谢其初版 HTTP DNS 的实现，作为先驱者，填了无数坑，尤其是 libcurl 中各种参数以及 Cache 层的相关实现
+* [amendgit](https://github.com/amendgit) 二老师，人称二哥，目前就职于支付宝。感谢其在 `IO 多路复用` 上解惑与指导
 * [libcurl](https://curl.haxx.se/libcurl/)
 * [swift-corelibs-foundation](https://github.com/apple/swift-corelibs-foundation.git)
 * [curl-android-ios](https://github.com/gcesarmza/curl-android-ios)
