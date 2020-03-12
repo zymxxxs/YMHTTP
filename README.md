@@ -4,13 +4,6 @@
 
 因为 `YMHTTP` 是基于 libcurl 进行封装，所以有着较高的定制性，目前的版本与 `NSURLSession` 在 API 保持高度一致的同时拓展了 DNS 的能力（包括 SNI 的场景）。
 
-## 关于 libcurl
-
-> libcurl is free, thread-safe, IPv6 compatible, feature rich, well supported, fast, thoroughly documented and is already used by many known, big and successful companies.
-
-> libcurl是免费的，线程安全的，IPv6兼容的，功能丰富，支持良好，速度快，有完整的文档记录，已经被许多知名的，大的和成功的公司使用。
-
-您也可以通过这里查看更多的内容：https://curl.haxx.se/
 ## 说明
 
 1. 您可以通过 [NSURLSession](https://developer.apple.com/documentation/foundation/nsurlsession) 来查阅具体的细节。
@@ -190,12 +183,20 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 备注：该接口不会影响到 DNS Cache，了解更多可以看这里 https://curl.haxx.se/libcurl/c/CURLOPT_CONNECT_TO.html。
 
 ## libcurl
+
+> libcurl is free, thread-safe, IPv6 compatible, feature rich, well supported, fast, thoroughly documented and is already used by many known, big and successful companies.
+
+> libcurl是免费的，线程安全的，IPv6兼容的，功能丰富，支持良好，速度快，有完整的文档记录，已经被许多知名的，大的和成功的公司使用。
+
+您也可以通过这里查看更多的内容：https://curl.haxx.se/
+
+### libcurl 版本
 当前使用 libcurl 7.64.1 的版本，与 macOS Catalina 中保持一致，使用[curl-android-ios](https://github.com/gcesarmza/curl-android-ios)进行构建，你也可以选择喜欢的版本进行构建
 
 ### HTTP/2
 目前版本不支持 HTTP/2，你可以使用 [Build-OpenSSL-cURL](https://github.com/jasonacox/Build-OpenSSL-cURL.git) 进行构建支持 HTTP/2 功能的版本。
 
-注意 `Build-OpenSSL-cURL` 中使用的是 openSSL，而目前 macOS Catalina 中则是使用 LibreSSL，目前没有找到相关的构建脚本，待后期以 `Build-OpenSSL-cURL` 的基础提供一个。
+注意 `Build-OpenSSL-cURL` 中使用的是 openSSL，而目前 macOS Catalina 中则是使用 LibreSSL，目前暂时没有找到相关的构建脚本，后期会以 `Build-OpenSSL-cURL` 的基础提供一个
 
 备注：没有具体测试对于包大小的影响，如果您有对应的数据，请告诉我
 
