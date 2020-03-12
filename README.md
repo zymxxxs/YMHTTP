@@ -1,15 +1,23 @@
 # YMHTTP
 
-`YMHTTP` 是一个适用于 iOS 的高性能异步网络框架。它建立在 [libcurl](https://curl.haxx.se/libcurl/) 的基础上，其 API 设计和行为与 NSURLSession 保持高度一致。
+`YMHTTP` 是一个适用于 iOS 平台，基于  [libcurl](https://curl.haxx.se/) 的 IO 多路复用 HTTP 框架，其 API 设计和行为与 NSURLSession 保持高度一致。
 
-因为 `YMHTTP` 是基于 libcurl 进行封装，所以有着较高的定制性，目前的版本与 `NSURLSession` 在 API 设计与行为保持着高度一致，便于使用，极少二次理解，同时拓展了 DNS 的能力（包括 SNI）。
+因为 `YMHTTP` 是基于 libcurl 进行封装，所以有着较高的定制性，目前的版本与 `NSURLSession` 在 API 保持高度一致的同时拓展了 DNS 的能力（包括 SNI 的场景）。
 
+## 关于 libcurl
+
+> libcurl is free, thread-safe, IPv6 compatible, feature rich, well supported, fast, thoroughly documented and is already used by many known, big and successful companies.
+
+> libcurl是免费的，线程安全的，IPv6兼容的，功能丰富，支持良好，速度快，有完整的文档记录，已经被许多知名的，大的和成功的公司使用。
+
+您也可以通过这里查看更多的内容：https://curl.haxx.se/
 ## 说明
 
 1. 您可以通过 [NSURLSession](https://developer.apple.com/documentation/foundation/nsurlsession) 来查阅具体的细节。
-2. YMHTTP 和 NSURLSession 非常像，一个是 YM 前缀，一个是 NS 前缀，对外提供的API相互一致
-3. 如果您已经非常了解 NSURLSession，那么可以直接查阅 Connect to specific host and port 部分
-4. 不支持 System Background Task 相关功能，这个真的无能为力
+2. 这里有一份非常不错的[NSURLSession最全攻略](https://mp.weixin.qq.com/s/UdwRytczg2lar0FwRpLTyg)可以查漏补缺(来自搜狐技术产品)。
+3. YMHTTP 和 NSURLSession 非常像，一个是 YM 前缀，一个是 NS 前缀，对外提供的API相互一致
+4. 如果您已经非常了解 NSURLSession，那么可以直接查阅 Connect to specific host and port 部分来获取 DNS 相关内容
+5. 不支持 System Background Task 相关功能，这个真的无能为力
 
 ## 安装
 
@@ -69,8 +77,8 @@ YMURLSession *session = [YMURLSession sessionWithConfiguration:config
 #### Example
 
 1. delegate 方式
-```objc
 
+```objc
 // create
 YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://httpbin.org/get"]];
 [task resume];
@@ -189,17 +197,24 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 
 注意 `Build-OpenSSL-cURL` 中使用的是 openSSL，而目前 macOS Catalina 中则是使用 LibreSSL，目前没有找到相关的构建脚本，待后期以 `Build-OpenSSL-cURL` 的基础提供一个。
 
+备注：没有具体测试对于包大小的影响，如果您有对应的数据，请告诉我
+
 ## 感谢
 * [lindean](https://github.com/lindean) 破老师，目前就职于PDD。感谢其初版 HTTP DNS 的实现，作为先驱者，填了无数坑，尤其是 libcurl 中各种参数以及 Cache 层的相关实现
-* [amendgit](https://github.com/amendgit) 二老师，人称二哥，目前就职于支付宝。感谢其在 `IO 多路复用` 上解惑与指导
+* [amendgit](https://github.com/amendgit) 二老师，人称二哥，目前就职于支付宝，感谢其在 `IO 多路复用` 上解惑与指导
 * [libcurl](https://curl.haxx.se/libcurl/)
 * [swift-corelibs-foundation](https://github.com/apple/swift-corelibs-foundation.git)
 * [curl-android-ios](https://github.com/gcesarmza/curl-android-ios)
 * [Build-OpenSSL-cURL](https://github.com/jasonacox/Build-OpenSSL-cURL.git)
 
+## 最后
+
+如果看过 `swift-corelibs-foundation` 的相关源码， 你会发现其 `NSURLSession` 系列的功能（HTTP、FTP）则是基于 libcurl 进行的封装。如果你想学习它，建议你直接去学习官方源码，YMHTTP 也是参考其中大量的实现，然后补充一些尚未实现的功能以及修复了一些BUG。
+
+`YMHTTP` 之所以诞生，初衷是为了 `彻底` 解决 HTTP DNS 的问题（性能+SNI 场景+ Cache + Cookies + 302 ），现在回头来看，倒像是切开了一道口，获取了更多的自由度，如果您需要什么功能，请 ISSUE 告诉我。
 
 ## TODO:
 * 使用 use_frameworks! 无法在真机运行
-* 目前指定 IP 的能力通过 CURLOPT_CONNECT_TO 来解决，其好处是不会影响 DNS Cache，但是在 Charles 中无法抓包。待考虑是否替换为 CURLOPT_RESOLVE 参数，可以解决 Charles 抓包的问题，不过对于 DNS Cache 的问题，是否需要影响还是不能影响都要删除？或者是说DNS的能力，使用 CURLOPT_CONNECT_TO 还是 CURLOPT_RESOLVE 哪一个更为合理？
+* 目前指定 IP 的能力通过 CURLOPT_CONNECT_TO 来解决，其好处是不会影响 DNS Cache，但是在 Charles 中会直接显示 IP 的请求。待考虑是否替换为 CURLOPT_RESOLVE 参数，不过对于 DNS Cache 的问题，是需要影响还是不能影响需要删除？或者是说DNS的能力，使用 CURLOPT_CONNECT_TO 还是 CURLOPT_RESOLVE 哪一个更为合理？
 * 不支持断点续传，目前苹果 NSURLSession 对于断点续传功能的限制太多，感觉弱弱的，实现起来又麻烦，索性不实现了
 * 目前大部分还是基于 AFNetworking 进行分封装，待考虑是否提供一个 YMNetworking 版本便于接入？
