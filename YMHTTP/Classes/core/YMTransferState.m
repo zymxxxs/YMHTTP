@@ -163,14 +163,13 @@
     NSString *head = [self.lines firstObject];
     if (!head) return nil;
 
-    if ([self.lines count] <= 1) return nil;
+    if ([self.lines count] == 0) return nil;
     NSArray *tail = [self.lines subarrayWithRange:NSMakeRange(1, [self.lines count] - 1)];
 
     NSArray *startline = [self statusLineFromLine:head];
     if (!startline) return nil;
 
     NSDictionary *headerFields = [self createHeaderFieldsFromLines:tail];
-    if (!headerFields) return nil;
 
     NSString *v = startline[0];
     NSString *s = startline[1];
