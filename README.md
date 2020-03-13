@@ -40,8 +40,8 @@ YMURLSession *sessionNoDelegate = [YMURLSession sessionWithConfiguration:config]
 
 // 创建具有指定会话配置，委托和操作队列的会话
 YMURLSession *session = [YMURLSession sessionWithConfiguration:config
-                                                                    delegate:self
-                                                            delegateQueue:nil];
+                                                      delegate:self
+                                                 delegateQueue:nil];
 ```
 
 ### 0x02 Adding Data Task to a Session
@@ -216,7 +216,7 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 * [Build-OpenSSL-cURL](https://github.com/jasonacox/Build-OpenSSL-cURL.git)
 
 ## TODO:
-* 使用 use_frameworks! 无法在真机运行
+* ~~使用 use_frameworks! 无法在真机运行~~
 * 目前指定 IP 的能力通过 CURLOPT_CONNECT_TO 来解决，其好处是不会影响 DNS Cache，但是在 Charles 中会直接显示 IP 的请求。待考虑是否替换为 CURLOPT_RESOLVE 参数，不过对于 DNS Cache 的问题，是需要影响还是不能影响需要删除？或者是说DNS的能力，使用 CURLOPT_CONNECT_TO 还是 CURLOPT_RESOLVE 哪一个更为合理？
 * 不支持断点续传，目前苹果 NSURLSession 对于断点续传功能的限制太多，感觉弱弱的，实现起来又麻烦，索性不实现了
 * 目前大部分还是基于 AFNetworking 进行分封装，待考虑是否提供一个 YMNetworking 版本便于接入？

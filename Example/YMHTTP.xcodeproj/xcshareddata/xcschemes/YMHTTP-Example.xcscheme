@@ -42,7 +42,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AEB74E093D84E7A9EF076EBDE55F01CC"
-            BuildableName = "libYMHTTP.a"
+            BuildableName = "YMHTTP.framework"
             BlueprintName = "YMHTTP"
             ReferencedContainer = "container:Pods/Pods.xcodeproj">
          </BuildableReference>
