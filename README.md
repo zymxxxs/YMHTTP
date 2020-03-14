@@ -196,9 +196,11 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 ### HTTP/2
 目前版本不支持 HTTP/2，你可以使用 [Build-OpenSSL-cURL](https://github.com/jasonacox/Build-OpenSSL-cURL.git) 进行构建支持 HTTP/2 功能的版本。
 
-注意 `Build-OpenSSL-cURL` 中使用的是 openSSL，而目前 macOS Catalina 中则是使用 LibreSSL，目前暂时没有找到相关的构建脚本，后期会以 `Build-OpenSSL-cURL` 的基础提供一个
+注意 `Build-OpenSSL-cURL` 中使用的是 openSSL，而目前 macOS Catalina 中则是使用 LibreSSL，我在 `Build-OpenSSL-cURL` 的基础上修改了一个支持 `libresll` 的版本，链接地址：https://github.com/zymxxxs/libcurl-nghttp2-libressl-ios。
 
-备注：没有具体测试对于包大小的影响，如果您有对应的数据，请告诉我
+备注：
+* 支持 HTTP/2 需要考虑包大小的影响
+* 目前一期的工作量主要是对外接口与 NSURLSession 对齐以及支持 DNS，HTTP/2 暂时不在支持范围内，所以上述脚本只能保证构建出静态库，暂无做过较多的验证，请知悉。
 
 ## 最后
 
