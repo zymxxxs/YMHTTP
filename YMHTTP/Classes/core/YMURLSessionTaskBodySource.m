@@ -19,7 +19,10 @@
 - (instancetype)initWithInputStream:(NSInputStream *)inputStream {
     self = [super init];
     if (self) {
-        _inputStream = inputStream;
+        self.inputStream = inputStream;
+        if (self.inputStream.streamStatus == NSStreamStatusNotOpen) {
+            [self.inputStream open];
+        }
     }
     return self;
 }
