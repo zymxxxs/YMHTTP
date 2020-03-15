@@ -88,6 +88,7 @@
 
     NSCachedURLResponse *cachedURLResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:request];
     XCTAssertNotNil(cachedURLResponse);
+    sleep(1);
 
     XCTestExpectation *te1 = [self expectationWithDescription:@"GET testCacheUseProtocolCachePolicy1: with a delegate"];
     YMCacheDataTask *d1 = [[YMCacheDataTask alloc] initWithExpectation:te1];
@@ -149,6 +150,7 @@
 
     [self resetURLCache];
     XCTAssertNil([[NSURLCache sharedURLCache] cachedResponseForRequest:request]);
+    sleep(2);
 
     XCTestExpectation *te2 =
         [self expectationWithDescription:@"GET testCacheUseReturnCacheDataElseLoad 2: with a delegate"];
