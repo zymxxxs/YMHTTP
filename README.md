@@ -4,6 +4,8 @@
 
 因为 `YMHTTP` 是基于 libcurl 进行封装，所以有着较高的定制性，目前的版本与 `NSURLSession` 在 API 保持高度一致的同时拓展了 DNS 的能力（包括 SNI 的场景）。
 
+如果你对 DNS 相关的问题比较感兴趣，可以查看这个 [文章](https://juejin.im/post/5e6a4cfc518825495b29ad65)，它汇总了在 iOS 上支持 DNS 需要面临的一些技术难点、相关解决方案以及 YMHTTP 诞生的初衷。
+
 ## 说明
 
 1. 您可以通过 [NSURLSession](https://developer.apple.com/documentation/foundation/nsurlsession) 来查阅具体的细节。
