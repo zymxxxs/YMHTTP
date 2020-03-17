@@ -631,9 +631,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)configureEasyHandleForRequest:(NSURLRequest *)request body:(YMURLSessionTaskBody *)body {
-    BOOL debugLibcurl = NSProcessInfo.processInfo.environment[@"URLSessionDebugLibcurl"];
+    BOOL debugLibcurl = NSProcessInfo.processInfo.environment[@"URLSessionDebugLibcurl"] ? true : false;
     [self.easyHandle setVerboseMode:debugLibcurl];
-    BOOL debugOutput = NSProcessInfo.processInfo.environment[@"URLSessionDebug"];
+    BOOL debugOutput = NSProcessInfo.processInfo.environment[@"URLSessionDebug"] ? true : false;
     [self.easyHandle setDebugOutput:debugOutput task:self];
     [self.easyHandle setPassHeadersToDataStream:false];
     [self.easyHandle setProgressMeterOff:true];
