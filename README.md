@@ -16,10 +16,10 @@
 
 ## 安装
 
-目前 `YMHTTP` 的 `UT覆盖率` 在 80% 左右，覆盖代码各个 case，但仍有一些地方需要打磨，目前暂时没有发布正式版本。
+目前 `YMHTTP` 的 `UT覆盖率` 在 80% 左右，覆盖代码各个 case，目前已经发布了 beta 版本，欢迎大家测试反馈～。
 
 ```ruby
-pod 'YMHTTP', :git => 'https://github.com/zymxxxs/YMHTTP.git'
+pod 'YMHTTP', '1.0.0-beta.1'
 ```
 
 ## Requirements
