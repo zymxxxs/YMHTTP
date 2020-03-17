@@ -34,7 +34,7 @@ TODO: Add long description of the pod here.
   
   s.subspec 'libcurl' do |ss|
       ss.source_files = 'YMHTTP/Classes/libcurl/**/*.h'
-      s.private_header_files = 'YMHTTP/Classes/libcurl/**/*.h'
+      ss.private_header_files = 'YMHTTP/Classes/libcurl/**/*.h'
       ss.vendored_libraries = 'YMHTTP/Classes/libcurl/libcurl.a'
       ss.ios.library = 'z'
   end
