@@ -175,8 +175,9 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 - (void)resume {
     dispatch_sync(self.workQueue, ^{
         if (![self isCanResumeFromState]) return;
-        if (self.suspendCount <= 0) return;
-        self.suspendCount -= 1;
+        if (self.suspendCount > 0) self.suspendCount -= 1;
+        ;
+
         [self updateTaskState];
         if (self.suspendCount == 0) {
             self.hasTriggeredResume = true;

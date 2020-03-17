@@ -575,7 +575,7 @@
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
     req.HTTPMethod = @"PUT";
 
-    NSData *data = [[NSData alloc] initWithBytes:"123" length:1024 * 1];
+    NSData *data = [[NSData alloc] initWithBytes:"123" length:512 * 1];
     YMURLSessionTask *task = [session taskWithRequest:req fromData:data];
     [task resume];
     [self waitForExpectationsWithTimeout:12 handler:nil];
@@ -595,7 +595,7 @@
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
     req.HTTPMethod = @"PUT";
 
-    NSData *data = [[NSData alloc] initWithBytes:"123" length:1024 * 1];
+    NSData *data = [[NSData alloc] initWithBytes:"123" length:512 * 1];
     NSInputStream *stream = [[NSInputStream alloc] initWithData:data];
     [stream open];
     delegate.streamToProvideOnRequest = stream;
@@ -912,6 +912,37 @@
         [expectation fulfill];
     }];
     [self waitForExpectationsWithTimeout:1 handler:nil];
+}
+
+- (void)testSuspendResumeTask {
+    XCTestExpectation *expectation = [self expectationWithDescription:@"GET testSuspendResumeTask: suspend task"];
+    YMURLSessionTask *task = [[YMURLSession sharedSession]
+              taskWithURL:[NSURL URLWithString:@"https://httpbin.org/get"]
+        completionHandler:^(NSData *_Nullable data, NSHTTPURLResponse *_Nullable response, NSError *_Nullable error) {
+            if (response.statusCode == 200) {
+                [expectation fulfill];
+            } else {
+                XCTFail();
+            }
+        }];
+
+    [task suspend];  // 2
+    XCTAssertEqual(task.state, YMURLSessionTaskStateSuspended);
+    [task suspend];  // 3
+    XCTAssertEqual(task.state, YMURLSessionTaskStateSuspended);
+    [task resume];  // 2
+    XCTAssertEqual(task.state, YMURLSessionTaskStateSuspended);
+    [task resume];  // 1
+    XCTAssertEqual(task.state, YMURLSessionTaskStateSuspended);
+    [task resume];  // 0
+    XCTAssertEqual(task.state, YMURLSessionTaskStateRunning);
+    [task resume];  // -1
+    XCTAssertEqual(task.state, YMURLSessionTaskStateRunning);
+    [task resume];  // -2
+    XCTAssertEqual(task.state, YMURLSessionTaskStateRunning);
+
+    [self waitForExpectationsWithTimeout:10 handler:nil];
+    XCTAssertEqual(task.state, YMURLSessionTaskStateCompleted);
 }
 
 @end

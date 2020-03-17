@@ -28,7 +28,7 @@
 }
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveData:(NSData *)data {
-    XCTAssertEqual(self.totalBytesSent, 1 * 1024);
+    XCTAssertEqual(self.totalBytesSent, 1 * 512);
     [self.uploadCompletedExpectation fulfill];
 }
 
