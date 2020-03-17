@@ -28,17 +28,9 @@ TODO: Add long description of the pod here.
 
   s.ios.deployment_target = '10.0'
 
-  s.source_files = 'YMHTTP/Classes/*.{h,m}'
-
-  s.subspec 'Core' do |ss|
-    ss.source_files = 'YMHTTP/Classes/core/**/*.{h,m}'
-    ss.dependency 'YMHTTP/Curl'
-  end
-  
-  s.subspec 'Curl' do |ss|
-      ss.source_files = 'YMHTTP/Classes/curl/**/*.{h,m}'
-      ss.dependency 'YMHTTP/libcurl'
-  end
+  s.public_header_files = 'YMHTTP/Classes/*.h'
+  s.source_files = 'YMHTTP/Classes/**/*.{h,m}'
+  s.exclude_files = 'YMHTTP/Classes/libcurl/**/*.h'
   
   s.subspec 'libcurl' do |ss|
       ss.source_files = 'YMHTTP/Classes/libcurl/**/*.h'

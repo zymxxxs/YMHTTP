@@ -7,7 +7,6 @@
 //
 
 #import <XCTest/XCTest.h>
-#import <YMHTTP/NSURLCache+YMCategory.h>
 #import <YMHTTP/YMHTTP.h>
 #import "YMCacheDataTask.h"
 
