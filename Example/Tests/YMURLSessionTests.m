@@ -581,27 +581,113 @@
     [self waitForExpectationsWithTimeout:12 handler:nil];
 }
 
+- (void)testRequestWithEmptyBody {
+    NSArray *httpMethods = @[ @"GET", @"PUT", @"POST", @"DELETE" ];
+    for (NSString *method in httpMethods) {
+        NSString *urlString = [NSString stringWithFormat:@"https://httpbin.org/%@", [method lowercaseString]];
+        YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+        YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
+        request.HTTPMethod = method;
+
+        XCTestExpectation *e =
+            [self expectationWithDescription:[NSString stringWithFormat:@"%@ testRequestWithEmptyBody", method]];
+
+        YMURLSessionTask *task = [session
+              taskWithRequest:request
+            completionHandler:^(
+                NSData *_Nullable data, NSHTTPURLResponse *_Nullable response, NSError *_Nullable error) {
+                XCTAssertNil(error);
+                XCTAssertEqual(response.statusCode, 200);
+
+                NSDictionary *jsonBody = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+                XCTAssertEqualObjects(jsonBody[@"url"], urlString);
+                if ([method isEqualToString:@"GET"]) {
+                    XCTAssertNil(jsonBody[@"headers"][@"Content-Length"], @"Unexpected Content-Length for get request");
+                } else {
+                    XCTAssertEqualObjects(jsonBody[@"headers"][@"Content-Length"], @"0");
+                }
+                [e fulfill];
+            }];
+        [task resume];
+        [self waitForExpectationsWithTimeout:10 handler:nil];
+    }
+}
+
+- (void)testRequestWithNonEmptyBody {
+    NSArray *httpMethods = @[ @"GET", @"PUT", @"POST", @"DELETE" ];
+    for (NSString *method in httpMethods) {
+        NSString *urlString = [NSString stringWithFormat:@"https://httpbin.org/%@", [method lowercaseString]];
+        YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+        YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
+        request.HTTPMethod = method;
+        request.HTTPBody = [@"this is a request body data" dataUsingEncoding:NSUTF8StringEncoding];
+
+        XCTestExpectation *e =
+            [self expectationWithDescription:[NSString stringWithFormat:@"%@ testRequestWithNonEmptyBody", method]];
+
+        YMURLSessionTask *task =
+            [session taskWithRequest:request
+                   completionHandler:^(
+                       NSData *_Nullable data, NSHTTPURLResponse *_Nullable response, NSError *_Nullable error) {
+                       if ([method isEqualToString:@"GET"]) {
+                           XCTAssertNotNil(error);
+                           XCTAssertNil(response);
+                           XCTAssertNil(data);
+                       } else {
+                           XCTAssertEqual(response.statusCode, 200);
+                           NSDictionary *jsonBody = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+                           XCTAssertEqualObjects(jsonBody[@"url"], urlString);
+                           XCTAssertEqualObjects(jsonBody[@"headers"][@"Content-Length"],
+                                                 @(request.HTTPBody.length).stringValue);
+                       }
+                       [e fulfill];
+                   }];
+        [task resume];
+        [self waitForExpectationsWithTimeout:10 handler:nil];
+    }
+}
+
 - (void)testSimpleUploadWithDelegateProvidingInputStream {
-    YMHTTPUploadDelegate *delegate = [[YMHTTPUploadDelegate alloc] init];
-    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
-    config.timeoutIntervalForRequest = 8;
-    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:delegate delegateQueue:nil];
+    NSArray *httpMethods = @[ @"GET", @"PUT", @"POST", @"DELETE" ];
+    for (NSString *method in httpMethods) {
+        YMHTTPUploadDelegate *delegate = [[YMHTTPUploadDelegate alloc] init];
+        YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+        config.timeoutIntervalForRequest = 8;
+        YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:delegate delegateQueue:nil];
+        XCTestExpectation *expect = [self
+            expectationWithDescription:[NSString
+                                           stringWithFormat:@"%@ testSimpleUploadWithDelegateProvidingInputStream",
+                                                            method]];
+        if ([method isEqualToString:@"GET"] || [method isEqualToString:@"HEAD"]) {
+            [expect setInverted:true];
+        }
+        delegate.uploadCompletedExpectation = expect;
 
-    delegate.uploadCompletedExpectation =
-        [self expectationWithDescription:@"PUT testSimpleUploadWithDelegateProvidingInputStream"];
+        NSString *urlString = @"http://httpbin.org/put";
+        NSURL *url = [NSURL URLWithString:urlString];
+        NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
+        req.HTTPMethod = method;
 
-    NSString *urlString = @"http://httpbin.org/put";
-    NSURL *url = [NSURL URLWithString:urlString];
-    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
-    req.HTTPMethod = @"PUT";
+        NSData *data = [[NSData alloc] initWithBytes:"123" length:512 * 1];
+        NSInputStream *stream = [[NSInputStream alloc] initWithData:data];
+        delegate.streamToProvideOnRequest = stream;
+        YMURLSessionTask *task = [session taskWithStreamedRequest:req];
+        [task resume];
+        [self waitForExpectationsWithTimeout:10 handler:nil];
 
-    NSData *data = [[NSData alloc] initWithBytes:"123" length:512 * 1];
-    NSInputStream *stream = [[NSInputStream alloc] initWithData:data];
-    [stream open];
-    delegate.streamToProvideOnRequest = stream;
-    YMURLSessionTask *task = [session taskWithStreamedRequest:req];
-    [task resume];
-    [self waitForExpectationsWithTimeout:30 handler:nil];
+        if ([method isEqualToString:@"GET"] || [method isEqualToString:@"HEAD"]) {
+            XCTAssertEqual(delegate.callbacks.count, 1, @"Callback count for GET request");
+            XCTAssertEqualObjects(delegate.callbacks[0], @"YMURLSession:task:needNewBodyStream:");
+        } else {
+            XCTAssertEqual(delegate.callbacks.count, 3, @"Callback count for \(method) request");
+            XCTAssertEqualObjects(delegate.callbacks[0], @"YMURLSession:task:needNewBodyStream:");
+            XCTAssertEqualObjects(delegate.callbacks[2], @"YMURLSession:task:didReceiveData:");
+            XCTAssertEqualObjects(delegate.callbacks[1],
+                                  @"YMURLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:");
+        }
+    }
 }
 
 - (void)emptyCookieStorage:(NSHTTPCookieStorage *)cookieStorage {

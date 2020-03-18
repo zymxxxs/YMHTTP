@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface YMHTTPUploadDelegate : XCTestCase <YMURLSessionDataDelegate>
 
+@property (nonnull, nonatomic, strong) NSMutableArray *callbacks;
 @property (nonnull, nonatomic, strong) XCTestExpectation *uploadCompletedExpectation;
 @property (nonnull, nonatomic, strong) NSInputStream *streamToProvideOnRequest;
 @property int64_t totalBytesSent;
