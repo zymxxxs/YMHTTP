@@ -78,7 +78,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 
     // seeking in input stream
     YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SEEKDATA, (__bridge void *)self));
-    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SEEKFUNCTION, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SEEKFUNCTION, _curl_seek_function));
 }
 
 #pragma mark - Public Methods
