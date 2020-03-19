@@ -1660,6 +1660,16 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     [self.session updateTimeoutTimerToValue:value];
 }
 
+- (void)updateProgressMeterWithTotalBytesSent:(int64_t)totalBytesSent
+                     totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
+                           totalBytesReceived:(int64_t)totalBytesReceived
+                  totalBytesExpectedToReceive:(int64_t)totalBytesExpectedToReceive {
+    if (!self.progress) return;
+
+    self.progress.totalUnitCount = totalBytesExpectedToReceive + totalBytesExpectedToSend;
+    self.progress.completedUnitCount = totalBytesReceived + totalBytesSent;
+}
+
 #pragma mark - Headers Methods
 
 - (NSDictionary *)transformLowercaseKeyForHTTPHeaders:(NSDictionary *)HTTPHeaders {
