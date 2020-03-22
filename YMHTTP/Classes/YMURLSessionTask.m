@@ -148,8 +148,12 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         [self setupProps];
 
         self.session = session;
-        self.workQueue = dispatch_queue_create_with_target(
-            "com.zymxxxs.YMURLSessionTask.WrokQueue", DISPATCH_QUEUE_SERIAL, session.workQueue);
+        if (@available(iOS 10.0, *)) {
+            self.workQueue = dispatch_queue_create_with_target(
+                                                               "com.zymxxxs.YMURLSessionTask.WrokQueue", DISPATCH_QUEUE_SERIAL, session.workQueue);
+        } else {
+            self.workQueue = session.workQueue;
+        }
         self.taskIdentifier = taskIdentifier;
         self.originalRequest = request;
         self.knownBody = body;

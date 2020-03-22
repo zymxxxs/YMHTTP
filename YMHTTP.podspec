@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
   s.author           = { 'zymxxxs' => 'zymxxxs@gmail.com' }
   s.source           = { :git => 'https://github.com/zymxxxs/YMHTTP.git', :tag => s.version.to_s }
 
-  s.ios.deployment_target = '10.0'
+  s.ios.deployment_target = '8.0'
 
   s.source_files = 'YMHTTP/Classes/**/*.{h,m}'
   s.public_header_files = 'YMHTTP/Classes/*.h'

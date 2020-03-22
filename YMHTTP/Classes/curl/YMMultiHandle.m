@@ -28,7 +28,11 @@
     if (self) {
         self.rawHandle = curl_multi_init();
         self.easyHandles = [[NSMutableArray alloc] init];
-        self.queue = dispatch_queue_create_with_target("YMMutilHandle.isolation", DISPATCH_QUEUE_SERIAL, workQueque);
+        if (@available(iOS 10.0, *)) {
+            self.queue = dispatch_queue_create_with_target("com.zymxxxs.YMMutilHandle.WorkQueue", DISPATCH_QUEUE_SERIAL, workQueque);
+        } else {
+            self.queue = workQueque;
+        }
         [self setupCallbacks];
         [self configureWithConfiguration:configuration];
     }
