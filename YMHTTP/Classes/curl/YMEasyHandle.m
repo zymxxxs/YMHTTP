@@ -79,7 +79,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     // seeking in input stream
     YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SEEKDATA, (__bridge void *)self));
     YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SEEKFUNCTION, _curl_seek_function));
-    
+
     // progress
     YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_NOPROGRESS, 0));
     YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_PROGRESSDATA, (__bridge void *)self));

@@ -135,8 +135,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithInputStream:request.HTTPBodyStream];
         return [self initWithSession:session reqeust:request taskIdentifier:taskIdentifier body:body];
     } else {
-        YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] init];
-        return [self initWithSession:session reqeust:request taskIdentifier:taskIdentifier body:body];
+        return [self initWithSession:session reqeust:request taskIdentifier:taskIdentifier body:nil];
     }
 }
 
@@ -631,6 +630,20 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)configureEasyHandleForRequest:(NSURLRequest *)request body:(YMURLSessionTaskBody *)body {
+    if ([request.HTTPMethod isEqualToString:@"GET"]) {
+        if (body.type != YMURLSessionTaskBodyTypeNone) {
+            NSError *error = [NSError errorWithDomain:NSURLErrorDomain
+                                                 code:NSURLErrorDataLengthExceedsMaximum
+                                             userInfo:@{
+                                                 NSLocalizedDescriptionKey : @"resource exceeds maximum size",
+                                                 NSURLErrorFailingURLStringErrorKey : [request.URL description] ?: @""
+                                             }];
+            self.internalState = YMURLSessionTaskInternalStateTransferFailed;
+            [self transferCompletedWithError:error];
+            return;
+        }
+    }
+
     BOOL debugLibcurl = NSProcessInfo.processInfo.environment[@"URLSessionDebugLibcurl"] ? true : false;
     [self.easyHandle setVerboseMode:debugLibcurl];
     BOOL debugOutput = NSProcessInfo.processInfo.environment[@"URLSessionDebug"] ? true : false;
@@ -667,8 +680,13 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         return;
     }
     if (body.type == YMURLSessionTaskBodyTypeNone) {
-        [self.easyHandle setUpload:false];
-        [self.easyHandle setRequestBodyLength:0];
+        if ([request.HTTPMethod isEqualToString:@"GET"]) {
+            [self.easyHandle setUpload:false];
+            [self.easyHandle setRequestBodyLength:0];
+        } else {
+            [self.easyHandle setUpload:true];
+            [self.easyHandle setRequestBodyLength:0];
+        }
     } else if (bodySize != nil) {
         self.countOfBytesExpectedToSend = bodySize.longLongValue;
         [self.easyHandle setUpload:true];
@@ -786,7 +804,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
     if (request.URL) {
         userInfo = @{
-            NSUnderlyingErrorKey : error,
             NSURLErrorFailingURLErrorKey : request.URL,
             NSURLErrorFailingURLStringErrorKey : request.URL.absoluteString,
             NSLocalizedDescriptionKey : NSLocalizedString(error.localizedDescription, @"N/A")
@@ -1159,10 +1176,6 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)notifyDelegateAboutFinishLoading {
-    if (!self.response) {
-        YM_FATALERROR(@"No response");
-    }
-
     // TODO: AuthenticationChallenge
 
     //    if (self.response.statusCode == 401) {
@@ -1546,18 +1559,18 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)transferCompletedWithError:(NSError *)error {
+    if (error) {
+        self.internalState = YMURLSessionTaskInternalStateTransferFailed;
+        [self failWithError:error request:self.currentRequest];
+        return;
+    }
+
     if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
         YM_FATALERROR(@"Transfer completed, but it wasn't in progress.");
     }
 
     if (!self.currentRequest) {
         YM_FATALERROR(@"Transfer completed, but there's no current request.");
-    }
-
-    if (error) {
-        self.internalState = YMURLSessionTaskInternalStateTransferFailed;
-        [self failWithError:error request:self.currentRequest];
-        return;
     }
 
     if (self.response) {
