@@ -79,6 +79,11 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     // seeking in input stream
     YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SEEKDATA, (__bridge void *)self));
     YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_SEEKFUNCTION, _curl_seek_function));
+
+    // progress
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_NOPROGRESS, 0));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_PROGRESSDATA, (__bridge void *)self));
+    YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_XFERINFOFUNCTION, _curl_XFERINFO_function));
 }
 
 #pragma mark - Public Methods
@@ -444,6 +449,13 @@ int _curl_seek_function(void *userdata, curl_off_t offset, int origin) {
     YMEasyHandle *handle = from(userdata);
     if (!handle) return CURL_SEEKFUNC_FAIL;
     return [handle seekInputStreamWithOffset:offset origin:origin];
+}
+
+int _curl_XFERINFO_function(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal,  curl_off_t ulnow) {
+    YMEasyHandle *handle = from(userdata);
+    if (!handle) return -1;
+    [handle.delegate updateProgressMeterWithTotalBytesSent:ulnow totalBytesExpectedToSend:ultotal totalBytesReceived:dlnow totalBytesExpectedToReceive:dltotal];
+    return 0;
 }
 
 int _curl_debug_function(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr) {
