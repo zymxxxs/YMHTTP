@@ -586,6 +586,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)startNewTransferByRequest:(NSURLRequest *)request {
+    self.currentRequest = request;
     if (!request.URL) {
         YM_FATALERROR(@"No URL in request.");
     }
@@ -729,9 +730,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
               }];
     [self.easyHandle setAutomaticBodyDecompression:true];
     [self.easyHandle setRequestMethod:request.HTTPMethod ?: @"GET"];
-    if ([request.HTTPMethod isEqualToString:@"HEAD"]) {
-        [self.easyHandle setNoBody:true];
-    }
+    // always set the status as it may change if a HEAD is converted to a GET
+    [self.easyHandle setNoBody:[request.HTTPMethod isEqualToString:@"HEAD"]];
     [self.easyHandle setProxy];
 }
 
@@ -823,7 +823,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     self.response = self.transferState.response;
     self.easyHandle.timeoutTimer = nil;
 
-    YMDataDrain *bodyData = _transferState.bodyDataDrain;
+    YMDataDrain *bodyData = self.transferState.bodyDataDrain;
     if (bodyData.type == YMDataDrainInMemory) {
         NSData *data = [NSData data];
         if (bodyData.data) {
@@ -911,10 +911,15 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     switch (response.statusCode) {
         case 301:
         case 302:
+            method = [fromRequest.HTTPMethod isEqualToString:@"POST"] ? @"GET" : fromRequest.HTTPMethod;
+            break;
         case 303:
             method = @"GET";
             break;
+        case 305:
+        case 306:
         case 307:
+        case 308:
             method = fromRequest.HTTPMethod ?: @"GET";
             break;
         default:
@@ -1467,7 +1472,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
 
     NSError *error = nil;
-    YMTransferState *ts = _transferState;
+    YMTransferState *ts = self.transferState;
     YMTransferState *newTS = [ts byAppendingHTTPHeaderLineData:data error:&error];
     if (error) {
         return YMEasyHandleActionAbort;
@@ -1496,7 +1501,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress) {
         YM_FATALERROR(@"Transfer not in progress.");
     }
-    if (!_transferState.response) {
+    if (!self.transferState.response) {
         YM_FATALERROR(@"Header complete, but not URL response.");
     }
 
@@ -1505,7 +1510,10 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         case 301:
         case 302:
         case 303:
+        case 305:
+        case 306:
         case 307:
+        case 308:
             break;
         default: {
             [self notifyDelegateAboutReceiveResponse:response];
@@ -1543,11 +1551,16 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         YM_FATALERROR(@"Received body data, but no transfer in progress.");
     }
 
-    NSHTTPURLResponse *response = [self validateHeaderCompleteWithTS:_transferState];
-    if (response) _transferState.response = response;
+    NSHTTPURLResponse *response = [self validateHeaderCompleteWithTS:self.transferState];
+    if (response) self.transferState.response = response;
+
+    if (response.statusCode >= 301 && response.statusCode <= 308) {
+        return YMEasyHandleActionProceed;
+    }
+
     [self notifyDelegateAboutReceiveData:data];
     self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
-    _transferState = [_transferState byAppendingBodyData:data];
+    self.transferState = [self.transferState byAppendingBodyData:data];
     return YMEasyHandleActionProceed;
 }
 
@@ -1583,7 +1596,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
 
     self.internalState = YMURLSessionTaskInternalStateTransferCompleted;
-    NSURLRequest *rr = [self redirectedReqeustForResponse:response fromRequest:_currentRequest];
+    NSURLRequest *rr = [self redirectedReqeustForResponse:response fromRequest:self.currentRequest];
     if (rr) {
         [self redirectForRequest:rr];
     } else {
@@ -1597,7 +1610,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         YM_FATALERROR(@"Requested to fill write buffer, but transfer isn't in progress.");
     }
 
-    id<YMURLSessionTaskBodySource> source = _transferState.requestBodySource;
+    id<YMURLSessionTaskBodySource> source = self.transferState.requestBodySource;
 
     if (!source) {
         YM_FATALERROR(@"Requested to fill write buffer, but transfer state has no body source.");
@@ -1649,7 +1662,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
     if (self.originalRequest.URL && currentInputStream) {
         if (self.internalState == YMURLSessionTaskInternalStateTransferInProgress) {
-            if ([_transferState.requestBodySource isKindOfClass:[YMBodyStreamSource class]]) {
+            if ([self.transferState.requestBodySource isKindOfClass:[YMBodyStreamSource class]]) {
                 BOOL result = [currentInputStream ym_seekToPosition:position];
                 if (!result) return false;
                 YMDataDrain *drain = [self createTransferBodyDataDrain];
@@ -1658,7 +1671,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                                                              bodyDataDrain:drain
                                                                 bodySource:source];
                 self.internalState = YMURLSessionTaskInternalStateTransferInProgress;
-                _transferState = ts;
+                self.transferState = ts;
                 return true;
             } else {
                 YM_FATALERROR(nil);
