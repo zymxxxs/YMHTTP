@@ -170,7 +170,7 @@
                                                      statusCode.stringValue]];
             YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
             [d runWithRequest:request];
-            [self waitForExpectationsWithTimeout:12 handler:nil];
+            [self waitForExpectationsWithTimeout:20 handler:nil];
             XCTAssertNil(d.httpError);
             XCTAssertEqual(d.response.statusCode, 200);
             XCTAssertEqual(d.redirectionResponse.statusCode, statusCode.integerValue);
@@ -205,7 +205,6 @@
         }
     }
 }
-
 
 - (void)testHttpRedirectionWithCompleteRelativePath {
     NSString *urlString = @"http://httpbin.org/redirect-to?url=http%3A%2F%2Fhttpbin.org%2Fget";
@@ -261,6 +260,5 @@
     [task resume];
     [self waitForExpectationsWithTimeout:12 handler:nil];
 }
-
 
 @end

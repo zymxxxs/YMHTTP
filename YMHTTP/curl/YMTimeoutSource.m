@@ -22,8 +22,10 @@
 
         dispatch_time_t start = dispatch_time(DISPATCH_TIME_NOW, delay * NSEC_PER_MSEC);
 
-        dispatch_source_set_timer(
-            self.rawSource, start, delay * NSEC_PER_MSEC, self.milliseconds == 1 ? 1 * NSEC_PER_USEC : 1 * NSEC_PER_MSEC);
+        dispatch_source_set_timer(self.rawSource,
+                                  start,
+                                  delay * NSEC_PER_MSEC,
+                                  self.milliseconds == 1 ? 1 * NSEC_PER_USEC : 1 * NSEC_PER_MSEC);
         dispatch_source_set_event_handler(self.rawSource, self.handler);
         dispatch_resume(self.rawSource);
     }

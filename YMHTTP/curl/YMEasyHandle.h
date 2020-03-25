@@ -42,7 +42,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)needTimeoutTimerToValue:(NSInteger)value;
 
-- (void)updateProgressMeterWithTotalBytesSent:(int64_t)totalBytesSent totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend totalBytesReceived:(int64_t)totalBytesReceived totalBytesExpectedToReceive:(int64_t)totalBytesExpectedToReceive;
+- (void)updateProgressMeterWithTotalBytesSent:(int64_t)totalBytesSent
+                     totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
+                           totalBytesReceived:(int64_t)totalBytesReceived
+                  totalBytesExpectedToReceive:(int64_t)totalBytesExpectedToReceive;
 
 @end
 
@@ -138,10 +141,8 @@ typedef void *YMURLSessionEasyHandle;
 - (void)pauseReceive;
 - (void)unpauseReceive;
 
-
 - (void)pauseSend;
 - (void)unpauseSend;
-
 
 @end
 

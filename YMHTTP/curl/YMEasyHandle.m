@@ -55,8 +55,8 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     // simply create a new timer with the same queue, timeout and handler
     // this must cancel the old handler and reset the timer
     self.timeoutTimer = [[YMTimeoutSource alloc] initWithQueue:self.timeoutTimer.queue
-                                              milliseconds:self.timeoutTimer.milliseconds
-                                                   handler:self.timeoutTimer.handler];
+                                                  milliseconds:self.timeoutTimer.milliseconds
+                                                       handler:self.timeoutTimer.handler];
 }
 
 - (void)setupCallbacks {
@@ -163,7 +163,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     }
 }
 
--(void)setConnectToHost:(NSString *)host port:(NSInteger)port {
+- (void)setConnectToHost:(NSString *)host port:(NSInteger)port {
     if (host) {
         NSString *originHost = self.URL.host;
         NSString *value = nil;
@@ -172,7 +172,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
         } else {
             value = [NSString stringWithFormat:@"%@:%@:%@", originHost, @(port), host];
         }
-        
+
         struct curl_slist *connect_to = NULL;
         connect_to = curl_slist_append(NULL, [value UTF8String]);
         YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_CONNECT_TO, connect_to));
@@ -230,16 +230,18 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     YM_ECODE(curl_easy_setopt(self.rawHandle, CURLOPT_TIMEOUT, (long)timeout));
 }
 
-- (void)setProxy {    
+- (void)setProxy {
     CFDictionaryRef dicRef = CFNetworkCopySystemProxySettings();
-    const CFStringRef proxyString = (const CFStringRef)CFDictionaryGetValue(dicRef, (const void*)kCFNetworkProxiesHTTPProxy);
-    const CFNumberRef portNum = (const CFNumberRef)CFDictionaryGetValue(dicRef, (const void*)kCFNetworkProxiesHTTPPort);
-    
+    const CFStringRef proxyString =
+        (const CFStringRef)CFDictionaryGetValue(dicRef, (const void *)kCFNetworkProxiesHTTPProxy);
+    const CFNumberRef portNum =
+        (const CFNumberRef)CFDictionaryGetValue(dicRef, (const void *)kCFNetworkProxiesHTTPPort);
+
     NSNumber *port = (__bridge NSNumber *)portNum;
     NSString *proxy = (__bridge NSString *)proxyString;
-    
+
     CFRelease(dicRef);
-    
+
     if (proxy && port) {
         const char *ip = [proxy UTF8String];
         NSInteger p = [port longValue];
@@ -248,15 +250,16 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     }
 }
 
-
 - (void)updatePauseState:(YMEasyHandlePauseState)pauseState {
     NSUInteger send = pauseState & YMEasyHandlePauseStateSend;
     NSUInteger receive = pauseState & YMEasyHandlePauseStateReceive;
     int bitmask = 0 | (send ? CURLPAUSE_SEND : CURLPAUSE_SEND_CONT) | (receive ? CURLPAUSE_RECV : CURLPAUSE_RECV_CONT);
     YM_ECODE(curl_easy_pause(self.rawHandle, bitmask));
-    
+
     // https://curl.haxx.se/libcurl/c/curl_easy_pause.html
-    // Starting in libcurl 7.32.0, unpausing a transfer will schedule a timeout trigger for that handle 1 millisecond into the future, so that a curl_multi_socket_action( ... CURL_SOCKET_TIMEOUT) can be used immediately afterwards to get the transfer going again as desired.
+    // Starting in libcurl 7.32.0, unpausing a transfer will schedule a timeout trigger for that handle 1 millisecond
+    // into the future, so that a curl_multi_socket_action( ... CURL_SOCKET_TIMEOUT) can be used immediately afterwards
+    // to get the transfer going again as desired.
     if (bitmask == 0) {
         [self.delegate needTimeoutTimerToValue:1];
     }
@@ -274,29 +277,29 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     return _errno;
 }
 
--(void)pauseSend {
+- (void)pauseSend {
     if (self.pauseState & YMEasyHandlePauseStateSend) return;
-    
+
     self.pauseState = self.pauseState | YMEasyHandlePauseStateSend;
     [self updatePauseState:self.pauseState];
 }
 - (void)unpauseSend {
     if (!(self.pauseState & YMEasyHandlePauseStateSend)) return;
-    
+
     self.pauseState = self.pauseState ^ YMEasyHandlePauseStateSend;
     [self updatePauseState:self.pauseState];
 }
 
--(void)pauseReceive {
+- (void)pauseReceive {
     if (self.pauseState & YMEasyHandlePauseStateReceive) return;
-    
+
     self.pauseState = self.pauseState | YMEasyHandlePauseStateReceive;
     [self updatePauseState:self.pauseState];
 }
 
 - (void)unpauseReceive {
     if (!(self.pauseState & YMEasyHandlePauseStateReceive)) return;
-    
+
     self.pauseState = self.pauseState ^ YMEasyHandlePauseStateReceive;
     [self updatePauseState:self.pauseState];
 }
@@ -348,21 +351,21 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 - (NSInteger)fillWriteBuffer:(char *)buffer size:(NSInteger)size nmemb:(NSInteger)nmemb {
     __block NSInteger d;
     [self.delegate fillWriteBufferLength:size * nmemb
-                              result:^(YMEasyHandleWriteBufferResult result, NSInteger length, NSData *data) {
-                                  switch (result) {
-                                      case YMEasyHandleWriteBufferResultPause:
-                                          self.pauseState = self.pauseState | YMEasyHandlePauseStateSend;
-                                          d = CURL_READFUNC_PAUSE;
-                                          break;
-                                      case YMEasyHandleWriteBufferResultAbort:
-                                          d = CURL_READFUNC_ABORT;
-                                          break;
-                                      case YMEasyHandleWriteBufferResultBytes:
-                                          memcpy(buffer, [data bytes], length);
-                                          d = length;
-                                          break;
-                                  }
-                              }];
+                                  result:^(YMEasyHandleWriteBufferResult result, NSInteger length, NSData *data) {
+                                      switch (result) {
+                                          case YMEasyHandleWriteBufferResultPause:
+                                              self.pauseState = self.pauseState | YMEasyHandlePauseStateSend;
+                                              d = CURL_READFUNC_PAUSE;
+                                              break;
+                                          case YMEasyHandleWriteBufferResultAbort:
+                                              d = CURL_READFUNC_ABORT;
+                                              break;
+                                          case YMEasyHandleWriteBufferResultBytes:
+                                              memcpy(buffer, [data bytes], length);
+                                              d = length;
+                                              break;
+                                      }
+                                  }];
 
     return d;
 }
@@ -381,7 +384,8 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
 }
 
 - (void)setCookiesWithHeaderData:(NSData *)data {
-    if (self.config && self.config.HTTPCookieAcceptPolicy != NSHTTPCookieAcceptPolicyNever && self.config.HTTPCookieStorage) {
+    if (self.config && self.config.HTTPCookieAcceptPolicy != NSHTTPCookieAcceptPolicyNever &&
+        self.config.HTTPCookieStorage) {
         NSString *headerLine = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
         if (headerLine.length == 0) return;
 
@@ -451,10 +455,14 @@ int _curl_seek_function(void *userdata, curl_off_t offset, int origin) {
     return [handle seekInputStreamWithOffset:offset origin:origin];
 }
 
-int _curl_XFERINFO_function(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal,  curl_off_t ulnow) {
+int _curl_XFERINFO_function(
+    void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
     YMEasyHandle *handle = from(userdata);
     if (!handle) return -1;
-    [handle.delegate updateProgressMeterWithTotalBytesSent:ulnow totalBytesExpectedToSend:ultotal totalBytesReceived:dlnow totalBytesExpectedToReceive:dltotal];
+    [handle.delegate updateProgressMeterWithTotalBytesSent:ulnow
+                                  totalBytesExpectedToSend:ultotal
+                                        totalBytesReceived:dlnow
+                               totalBytesExpectedToReceive:dltotal];
     return 0;
 }
 
