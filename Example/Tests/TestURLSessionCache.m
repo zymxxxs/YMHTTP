@@ -1,5 +1,5 @@
 //
-//  YMURLSessionCacheTests.m
+//  TestURLSessionCache.m
 //  YMHTTP_Tests
 //
 //  Created by zymxxxs on 2020/3/8.
@@ -10,11 +10,11 @@
 #import <YMHTTP/YMHTTP.h>
 #import "YMCacheDataTask.h"
 
-@interface YMURLSessionCacheTests : XCTestCase
+@interface TestURLSessionCache : XCTestCase
 
 @end
 
-@implementation YMURLSessionCacheTests
+@implementation TestURLSessionCache
 
 - (void)resetURLCache {
     NSURLCache *URLCache = [[NSURLCache alloc] initWithMemoryCapacity:4 * 1024 * 1024 diskCapacity:0 diskPath:nil];
