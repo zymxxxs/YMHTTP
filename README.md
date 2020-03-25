@@ -1,5 +1,11 @@
 # YMHTTP
 
+[![Build Status](https://travis-ci.org/zymxxxs/YMHTTP.svg?branch=master)](https://travis-ci.org/zymxxxs/YMHTTP)
+[![Version](https://img.shields.io/cocoapods/v/YMHTTP.svg?style=flat)](https://cocoapods.org/pods/YMHTTP)
+[![License](https://img.shields.io/cocoapods/l/YMHTTP.svg?style=flat)](https://cocoapods.org/pods/YMHTTP)
+[![Platform](https://img.shields.io/cocoapods/p/YMHTTP.svg?style=flat)](https://cocoapods.org/pods/YMHTTP)
+
+
 `YMHTTP` 是一个适用于 iOS 平台，基于  [libcurl](https://curl.haxx.se/) 的 IO 多路复用 HTTP 框架，其 API 设计和行为与 NSURLSession 保持高度一致。
 
 因为 `YMHTTP` 是基于 libcurl 进行封装，所以有着较高的定制性，目前的版本与 `NSURLSession` 在 API 保持高度一致的同时拓展了 DNS 的能力（包括 SNI 的场景）。
@@ -210,8 +216,16 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 
 `YMHTTP` 之所以诞生，初衷是为了 `彻底` 解决 HTTP DNS 的问题（性能+SNI 场景+ Cache + Cookies + 302 ），现在回头来看，倒像是切开了一道口，获取了更多的自由度，如果您需要什么功能，请 ISSUE 告诉我。
 
+## 如何贡献
+
+非常欢迎你的加入! [提一个Issue](https://github.com/zymxxxs/YMHTTP/issues/new) 或者提交一个 Pull Request。
+
+## License
+
+**YMHTTP**  is available under the MIT license. See the LICENSE file for more info.
 
 ## 感谢
+
 * [lindean](https://github.com/lindean) 破老师，目前就职于PDD。感谢其初版 HTTP DNS 的实现，作为先驱者，填了无数坑，尤其是 libcurl 中各种参数以及 Cache 层的相关实现
 * [amendgit](https://github.com/amendgit) 二老师，人称二哥，目前就职于支付宝，感谢其在 `IO 多路复用` 上解惑与指导
 * [libcurl](https://curl.haxx.se/libcurl/)
@@ -220,8 +234,7 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 * [Build-OpenSSL-cURL](https://github.com/jasonacox/Build-OpenSSL-cURL.git)
 
 ## TODO:
-* ~~使用 use_frameworks! 无法在真机运行~~
+
 * 目前指定 IP 的能力通过 CURLOPT_CONNECT_TO 来解决，其好处是不会影响 DNS Cache，但是在 Charles 中会直接显示 IP 的请求。待考虑是否替换为 CURLOPT_RESOLVE 参数，不过对于 DNS Cache 的问题，是需要影响还是不能影响需要删除？或者是说DNS的能力，使用 CURLOPT_CONNECT_TO 还是 CURLOPT_RESOLVE 哪一个更为合理？
-* 不支持断点续传，目前苹果 NSURLSession 对于断点续传功能的限制太多，感觉弱弱的，实现起来又麻烦，索性不实现了
 * 目前大部分还是基于 AFNetworking 进行分封装，待考虑是否提供一个 YMNetworking 版本便于接入？也可以参考 retrofit 的接口实现？
 * NSURLSessionTaskMetrics 待实现。使用 curl_easy_getinfo 实现，目前实现这个功能，代码改动较大，需要着重设计下，目前属于重要不紧急，可以延后。
