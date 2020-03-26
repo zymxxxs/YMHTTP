@@ -109,8 +109,8 @@
 }
 
 - (void)removeHandle:(YMEasyHandle *)handle {
-    NSUInteger idx =
-        [self.easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+    NSUInteger idx = [self.easyHandles
+        indexOfObjectPassingTest:^BOOL(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
             if (obj.rawHandle == handle.rawHandle) {
                 *stop = YES;
                 return YES;
@@ -147,7 +147,7 @@ int _curlm_socket_function(
 int _curlm_timer_function(YMURLSessionEasyHandle easyHandle, int timeout, void *userdata) {
     YMMultiHandle *handle = from(userdata);
     if (!handle) {
-YM_FATALERROR(nil);
+        YM_FATALERROR(nil);
     }
     [handle updateTimeoutTimerToValue:timeout];
     return 0;
@@ -185,8 +185,8 @@ YM_FATALERROR(nil);
 }
 
 - (void)completedTransferForEasyHandle:(YMURLSessionEasyHandle)handle easyCode:(int)easyCode {
-    NSUInteger idx =
-        [self.easyHandles indexOfObjectPassingTest:^BOOL(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+    NSUInteger idx = [self.easyHandles
+        indexOfObjectPassingTest:^BOOL(YMEasyHandle *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
             if (obj.rawHandle == handle) {
                 *stop = YES;
                 return YES;
@@ -237,10 +237,10 @@ CURLMsg *mutilHandleInfoRead(YMURLSessionMultiHandle handle, int *msgs_in_queue)
         if (self.timeoutSource == nil || self.timeoutSource.milliseconds != value) {
             __weak typeof(self) _wself = self;
             self.timeoutSource = [[YMTimeoutSource alloc] initWithQueue:self.queue
-                                                       milliseconds:value
-                                                            handler:^{
-                                                                [_wself timeoutTimerFired];
-                                                            }];
+                                                           milliseconds:value
+                                                                handler:^{
+                                                                    [_wself timeoutTimerFired];
+                                                                }];
         }
     }
 }

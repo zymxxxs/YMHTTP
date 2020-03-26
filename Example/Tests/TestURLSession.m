@@ -448,7 +448,6 @@
     dispatch_group_wait(gourp, DISPATCH_TIME_FOREVER);
 }
 
-
 - (void)testOutOfRangeButCorrectlyFormattedHTTPCode {
     XCTestExpectation *te =
         [self expectationWithDescription:@"GET testOutOfRangeButCorrectlyFormattedHTTPCode: out of range HTTP code"];

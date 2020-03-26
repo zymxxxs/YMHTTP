@@ -17,14 +17,14 @@ Pod::Spec.new do |s|
 
   s.ios.deployment_target = '10.0'
 
-  s.source_files = 'YMHTTP/Classes/**/*.{h,m}'
-  s.public_header_files = 'YMHTTP/Classes/*.h'
-  s.exclude_files = 'YMHTTP/Classes/libcurl/**/*.h'
+  s.source_files = 'YMHTTP/**/*.{h,m}'
+  s.public_header_files = 'YMHTTP/*.h'
+  s.exclude_files = 'YMHTTP/libcurl/**/*.h'
   
   s.subspec 'libcurl' do |ss|
-      ss.source_files = 'YMHTTP/Classes/libcurl/**/*.h'
-      ss.private_header_files = 'YMHTTP/Classes/libcurl/**/*.h'
-      ss.vendored_libraries = 'YMHTTP/Classes/libcurl/libcurl.a'
+      ss.source_files = 'YMHTTP/libcurl/**/*.h'
+      ss.private_header_files = 'YMHTTP/libcurl/**/*.h'
+      ss.vendored_libraries = 'YMHTTP/libcurl/libcurl.a'
       ss.ios.library = 'z'
   end
   
