@@ -15,6 +15,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface YMHTTPRedirectionDataTask : YMDataTask
 
+@property (nonnull, nonatomic, strong) NSMutableArray *callbacks;
+@property (nonnull, nonatomic, strong) NSHTTPURLResponse *redirectionResponse;
+@property (nonnull, nonatomic, strong) NSHTTPURLResponse *response;
+@property (nonnull, nonatomic, strong) NSError *httpError;
+
 @end
 
 NS_ASSUME_NONNULL_END

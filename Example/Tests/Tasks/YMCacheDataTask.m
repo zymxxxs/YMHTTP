@@ -12,7 +12,7 @@
 
 - (void)YMURLSession:(YMURLSession *)session
                   task:(YMURLSessionTask *)task
-    didReceiveResponse:(NSURLResponse *)response
+    didReceiveResponse:(NSHTTPURLResponse *)response
      completionHandler:(void (^)(YMURLSessionResponseDisposition))completionHandler {
     self.response = (NSHTTPURLResponse *)response;
     completionHandler(self.disposition);

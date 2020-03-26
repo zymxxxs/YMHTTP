@@ -54,7 +54,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)YMURLSession:(YMURLSession *)session
                   task:(YMURLSessionTask *)task
-    didReceiveResponse:(NSURLResponse *)response
+    didReceiveResponse:(NSHTTPURLResponse *)response
      completionHandler:(void (^)(YMURLSessionResponseDisposition disposition))completionHandler;
 
 - (void)YMURLSession:(YMURLSession *)session

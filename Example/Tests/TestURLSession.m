@@ -1,5 +1,5 @@
 //
-//  YMURLSessionTests.m
+//  TestURLSession.m
 //  YMHTTP_Tests
 //
 //  Created by zymxxxs on 2020/3/5.
@@ -14,19 +14,11 @@
 #import "YMHTTPUploadDelegate.h"
 #import "YMSessionDelegate.h"
 
-@interface YMURLSessionTests : XCTestCase
+@interface TestURLSession : XCTestCase
 
 @end
 
-@implementation YMURLSessionTests
-
-- (void)setUp {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
-}
-
-- (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
-}
+@implementation TestURLSession
 
 - (void)testDataTaskWithURL {
     NSString *urlString = @"http://httpbin.org/get?capital=testDataTaskWithURL";
@@ -456,60 +448,6 @@
     dispatch_group_wait(gourp, DISPATCH_TIME_FOREVER);
 }
 
-- (void)testHttpRedirectionWithCompleteRelativePath {
-    NSString *urlString = @"http://httpbin.org/redirect-to?url=http%3A%2F%2Fhttpbin.org%2Fget";
-    NSURL *url = [NSURL URLWithString:urlString];
-    XCTestExpectation *te =
-        [self expectationWithDescription:@"GET testHttpRedirectionWithCompleteRelativePath: with HTTP redirection"];
-    YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
-    [d runWithURL:url];
-    [self waitForExpectationsWithTimeout:12 handler:nil];
-    if (!d.error) {
-        XCTAssertEqualObjects(d.result[@"url"],
-                              @"http://httpbin.org/get",
-                              @"testHttpRedirectionWithCompleteRelativePath returned an unexpected result");
-    }
-}
-
-- (void)testHttpRedirectionWithInCompleteRelativePath {
-    NSString *urlString = @"http://httpbin.org/redirect-to?url=%2Fget";
-    NSURL *url = [NSURL URLWithString:urlString];
-    XCTestExpectation *te =
-        [self expectationWithDescription:@"GET testHttpRedirectionWithInCompleteRelativePath: with HTTP redirection"];
-    YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
-    [d runWithURL:url];
-    [self waitForExpectationsWithTimeout:12 handler:nil];
-    if (!d.error) {
-        XCTAssertEqualObjects(d.result[@"url"],
-                              @"http://httpbin.org/get",
-                              @"testHttpRedirectionWithCompleteRelativePath returned an unexpected result");
-    }
-}
-
-- (void)testHttpRedirectionTimeout {
-    XCTestExpectation *te =
-        [self expectationWithDescription:@"GET testHttpRedirectionTimeout: timeout with redirection"];
-
-    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
-    config.timeoutIntervalForRequest = 5;
-    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
-
-    NSString *urlString = @"http://httpbin.org/redirect-to?url=%2Fdelay%2F10";
-    NSURL *url = [NSURL URLWithString:urlString];
-
-    YMURLSessionTask *task =
-        [session taskWithURL:url
-            completionHandler:^(NSData *_Nullable data, NSURLResponse *_Nullable response, NSError *_Nullable error) {
-                if (!error) {
-                    XCTFail("must fail");
-                } else {
-                    XCTAssertEqual(error.code, NSURLErrorTimedOut, @"Unexpected error code");
-                }
-                [te fulfill];
-            }];
-    [task resume];
-    [self waitForExpectationsWithTimeout:12 handler:nil];
-}
 
 - (void)testOutOfRangeButCorrectlyFormattedHTTPCode {
     XCTestExpectation *te =
