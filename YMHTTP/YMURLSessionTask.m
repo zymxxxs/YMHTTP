@@ -79,6 +79,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 @property (nonatomic, strong) NSURLRequest *authRequest;
 
 @property (nonatomic, strong) NSData *responseData;
+@property (nonatomic, strong) NSMutableData *lastRedirectBody;
 
 @property (nonatomic, strong) NSLock *protocolLock;
 @property (nonatomic, assign) YMURLSessionTaskProtocolState protocolState;
@@ -724,10 +725,18 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
         initWithQueue:self.workQueue
          milliseconds:timeoutInterval
               handler:^{
-                  self.internalState = YMURLSessionTaskInternalStateTransferFailed;
-                  NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorTimedOut userInfo:nil];
-                  [self completeTaskWithError:urlError];
-                  [self notifyDelegateAboutError:urlError];
+                  if (self.internalState == YMURLSessionTaskInternalStateWaitingForRedirectHandler) {
+                      self.response = self.transferState.response;
+                      self.easyHandle.timeoutTimer = nil;
+                      self.internalState = YMURLSessionTaskInternalStateTaskCompleted;
+                  } else {
+                      self.internalState = YMURLSessionTaskInternalStateTransferFailed;
+                      NSError *urlError = [NSError errorWithDomain:NSURLErrorDomain
+                                                              code:NSURLErrorTimedOut
+                                                          userInfo:nil];
+                      [self completeTaskWithError:urlError];
+                      [self notifyDelegateAboutError:urlError];
+                  }
               }];
     [self.easyHandle setAutomaticBodyDecompression:true];
     [self.easyHandle setRequestMethod:request.HTTPMethod ?: @"GET"];
@@ -868,11 +877,12 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
             respondsToSelector:@selector(YMURLSession:task:willPerformHTTPRedirection:newRequest:completionHandler:)];
         if (isResponds) {
             self.internalState = YMURLSessionTaskInternalStateWaitingForRedirectHandler;
+            NSHTTPURLResponse *response = self.transferState.response;
             [self.session.delegateQueue addOperationWithBlock:^{
                 id<YMURLSessionTaskDelegate> d = (id<YMURLSessionTaskDelegate>)self.session.delegate;
                 [d YMURLSession:self.session
                                           task:self
-                    willPerformHTTPRedirection:self.transferState.response
+                    willPerformHTTPRedirection:response
                                     newRequest:reqeust
                              completionHandler:^(NSURLRequest *_Nullable request) {
                                  dispatch_async(self.workQueue, ^{
@@ -881,11 +891,47 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                                                        @"for it. Was it called multiple times?");
                                      }
                                      if (request) {
+                                         self.lastRedirectBody = nil;
                                          [self startNewTransferByRequest:request];
                                      } else {
-                                         self.internalState = YMURLSessionTaskInternalStateTransferCompleted;
-                                         [self completeTask];
-                                     }
+                                         // If the redirect is not followed, return the redirect itself as the response
+                                         [self notifyDelegateAboutReceiveResponse:response];
+                                         [self
+                                             askDelegateHowToProceedAfterCompleteResponse:response
+                                                                               completion:^(
+                                                                                   BOOL isAsk,
+                                                                                   YMURLSessionResponseDisposition
+                                                                                       disposition) {
+                                                                                   void (^continueNextProcess)(
+                                                                                       void) = ^{
+                                                                                       if (self.lastRedirectBody) {
+                                                                                           [self
+                                                                                               notifyDelegateAboutReceiveData:
+                                                                                                   [self.lastRedirectBody
+                                                                                                           copy]];
+                                                                                       }
+                                                                                       self.internalState =
+                                                                                           YMURLSessionTaskInternalStateTransferCompleted;
+                                                                                       [self completeTask];
+                                                                                   };
+
+                                                                                   if (!isAsk) {
+                                                                                       continueNextProcess();
+                                                                                   } else {
+                                                                                       switch (disposition) {
+                                                                                           case YMURLSessionResponseCancel: {
+                                                                                               [self
+                                                                                                   handleResponseCancelByDelegate];
+                                                                                               break;
+                                                                                           }
+                                                                                           case YMURLSessionResponseAllow: {
+                                                                                               continueNextProcess();
+                                                                                               break;
+                                                                                           }
+                                                                                       }
+                                                                                   }
+                                                                               }];
+                                     };
                                  });
                              }];
             }];
@@ -1429,7 +1475,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
     // internal state is only support transferInProgress || fulfillingFromCache
     if (self.internalState != YMURLSessionTaskInternalStateTransferInProgress &&
-        self.internalState != YMURLSessionTaskInternalStateFulfillingFromCache) {
+        self.internalState != YMURLSessionTaskInternalStateFulfillingFromCache &&
+        self.internalState != YMURLSessionTaskInternalStateWaitingForRedirectHandler) {
         YM_FATALERROR(@"Transfer not in progress.");
     }
 
@@ -1452,7 +1499,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                     didReceiveResponse:response
                      completionHandler:^(YMURLSessionResponseDisposition disposition) {
                          if (self.internalState == YMURLSessionTaskInternalStateWaitingForResponseHandler ||
-                             self.internalState == YMURLSessionTaskInternalStateFulfillingFromCache) {
+                             self.internalState == YMURLSessionTaskInternalStateFulfillingFromCache ||
+                             self.internalState == YMURLSessionTaskInternalStateWaitingForRedirectHandler) {
                              return completion(true, disposition);
                          }
                      }];
@@ -1555,7 +1603,14 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     NSHTTPURLResponse *response = [self validateHeaderCompleteWithTS:self.transferState];
     if (response) self.transferState.response = response;
 
+    // Note this excludes code 300 which should return the response of the redirect and not follow it.
+    // For other redirect codes dont notify the delegate of the data received in the redirect response.
     if (response.statusCode >= 301 && response.statusCode <= 308) {
+        if (!self.lastRedirectBody) {
+            self.lastRedirectBody = [[NSMutableData alloc] init];
+        }
+        [self.lastRedirectBody appendData:data];
+
         return YMEasyHandleActionProceed;
     }
 
