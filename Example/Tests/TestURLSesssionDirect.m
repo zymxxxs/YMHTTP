@@ -344,9 +344,9 @@
         request.timeoutInterval = 3.f;
 
         XCTestExpectation *te = [self
-            expectationWithDescription:[NSString
-                                           stringWithFormat:@"%@ testHttpRedirectionChainInheritsTimeoutInterval: with redirection",
-                                                            method]];
+            expectationWithDescription:
+                [NSString
+                    stringWithFormat:@"%@ testHttpRedirectionChainInheritsTimeoutInterval: with redirection", method]];
         NSMutableArray *timeoutIntervals = [NSMutableArray array];
         YMSessionDelegate *d = [[YMSessionDelegate alloc] initWithExpectation:te];
         d.redirectionHandler = ^(NSHTTPURLResponse *_Nonnull response,
@@ -362,6 +362,5 @@
         XCTAssertEqual(d.response.statusCode, 200);
     }
 }
-
 
 @end

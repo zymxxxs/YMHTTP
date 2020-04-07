@@ -185,7 +185,6 @@
             }
         }
     }
-
 }
 
 - (void)testGzippedDataTask {
