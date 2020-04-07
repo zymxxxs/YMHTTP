@@ -12,9 +12,27 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface YMSessionDelegate : NSObject <YMURLSessionDelegate>
+@interface YMSessionDelegate : NSObject <YMURLSessionDelegate, YMURLSessionDataDelegate>
 
 @property (nonnull, atomic, strong) XCTestExpectation *invalidateExpectation;
+@property (nonnull, atomic, strong) XCTestExpectation *cancelExpectation;
+@property (nonatomic, strong) XCTestExpectation *expectation;
+@property (nonatomic, strong) YMURLSession *session;
+@property (nonatomic, strong) YMURLSessionTask *task;
+@property (nonnull, nonatomic, strong) void (^redirectionHandler)
+    (NSHTTPURLResponse *response, NSURLRequest *request, void (^completionHandler)(NSURLRequest *_Nullable));
+
+@property (nonnull, nonatomic, strong) NSMutableData *receivedData;
+@property (nonnull, nonatomic, strong) NSError *error;
+@property (nonnull, nonatomic, strong) NSHTTPURLResponse *response;
+@property (nonatomic, strong) NSHTTPURLResponse *redirectionResponse;
+@property (nonnull, nonatomic, strong) NSMutableArray<NSString *> *callbacks;
+
+- (instancetype)initWithExpectation:(XCTestExpectation *)expectation;
+
+- (void)runWithRequest:(NSURLRequest *)request;
+
+- (void)runWithURL:(NSURL *)URL;
 
 @end
 

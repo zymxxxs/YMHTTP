@@ -9,6 +9,7 @@
 #import <XCTest/XCTest.h>
 #import <YMHTTP/YMHTTP.h>
 #import "YMHTTPRedirectionDataTask.h"
+#import "YMSessionDelegate.h"
 
 @interface TestURLSesssionDirect : XCTestCase
 
@@ -259,6 +260,77 @@
             }];
     [task resume];
     [self waitForExpectationsWithTimeout:12 handler:nil];
+}
+
+- (void)testHttpRedirectDontFollowUsingNil {
+    NSArray *httpMethods = @[ @"HEAD", @"GET", @"PUT", @"POST", @"DELETE" ];
+    for (NSString *method in httpMethods) {
+        NSString *urlString =
+            [NSString stringWithFormat:@"http://httpbin.org/redirect-to?url=/anything&status_code=302"];
+        NSURL *url = [NSURL URLWithString:urlString];
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+        request.HTTPMethod = method;
+
+        XCTestExpectation *te = [self
+            expectationWithDescription:[NSString
+                                           stringWithFormat:@"%@ testHttpRedirectDontFollowUsingNil: with redirection",
+                                                            method]];
+        YMSessionDelegate *d = [[YMSessionDelegate alloc] initWithExpectation:te];
+        d.redirectionHandler = ^(NSHTTPURLResponse *_Nonnull response,
+                                 NSURLRequest *_Nonnull request,
+                                 void (^_Nonnull completionHandler)(NSURLRequest *)) {
+            completionHandler(nil);
+        };
+        [d runWithRequest:request];
+
+        [self waitForExpectationsWithTimeout:10.f handler:nil];
+        XCTAssertNotNil(d.response);
+        XCTAssertEqual(d.response.statusCode, 302);
+        XCTAssertEqual(d.redirectionResponse.statusCode, 302);
+        XCTAssertEqual(d.callbacks.count, 3);
+        XCTAssertEqualObjects(
+            d.callbacks[0],
+            NSStringFromSelector(@selector(YMURLSession:
+                                                   task:willPerformHTTPRedirection:newRequest:completionHandler:)));
+        XCTAssertEqualObjects(d.callbacks[1],
+                              NSStringFromSelector(@selector(YMURLSession:task:didReceiveResponse:completionHandler:)));
+        XCTAssertEqualObjects(d.callbacks[2], NSStringFromSelector(@selector(YMURLSession:task:didCompleteWithError:)));
+        XCTAssertNil(d.receivedData);
+    }
+}
+
+- (void)testHttpRedirectDontFollowIgnoringHandler {
+    NSArray *httpMethods = @[ @"HEAD" ];
+    for (NSString *method in httpMethods) {
+        NSString *urlString =
+            [NSString stringWithFormat:@"http://httpbin.org/redirect-to?url=/anything&status_code=302"];
+        NSURL *url = [NSURL URLWithString:urlString];
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+        request.HTTPMethod = method;
+        request.timeoutInterval = 2.f;
+        XCTestExpectation *te = [self
+            expectationWithDescription:
+                [NSString stringWithFormat:@"%@ testHttpRedirectDontFollowIgnoringHandler: with redirection", method]];
+        [te setInverted:true];
+        YMSessionDelegate *d = [[YMSessionDelegate alloc] initWithExpectation:te];
+        d.redirectionHandler = ^(NSHTTPURLResponse *_Nonnull response,
+                                 NSURLRequest *_Nonnull request,
+                                 void (^_Nonnull completionHandler)(NSURLRequest *)) {
+
+        };
+        [d runWithRequest:request];
+
+        [self waitForExpectationsWithTimeout:3.f handler:nil];
+        XCTAssertNil(d.error);
+        XCTAssertNil(d.receivedData);
+        XCTAssertNil(d.response);
+        XCTAssertEqual(d.redirectionResponse.statusCode, 302);
+        XCTAssertEqual(d.callbacks.count, 1);
+        XCTAssertEqualObjects(
+            d.callbacks[0],
+            NSStringFromSelector(@selector(YMURLSession:
+                                                   task:willPerformHTTPRedirection:newRequest:completionHandler:)));
+    }
 }
 
 @end
