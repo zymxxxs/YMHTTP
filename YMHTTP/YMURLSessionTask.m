@@ -1013,8 +1013,8 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     }
 
     request.URL = [NSURL URLWithString:urlString];
-    double timeSpent = [self.easyHandle getTimeoutIntervalSpent];
-    request.timeoutInterval = fromRequest.timeoutInterval - timeSpent;
+    // inherit the  timeout from the previous requesst
+    request.timeoutInterval = fromRequest.timeoutInterval;
     return request;
 }
 

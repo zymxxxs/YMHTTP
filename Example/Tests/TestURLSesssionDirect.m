@@ -300,7 +300,7 @@
 }
 
 - (void)testHttpRedirectDontFollowIgnoringHandler {
-    NSArray *httpMethods = @[ @"HEAD" ];
+    NSArray *httpMethods = @[ @"HEAD", @"GET", @"PUT", @"POST", @"DELETE" ];
     for (NSString *method in httpMethods) {
         NSString *urlString =
             [NSString stringWithFormat:@"http://httpbin.org/redirect-to?url=/anything&status_code=302"];
@@ -332,5 +332,36 @@
                                                    task:willPerformHTTPRedirection:newRequest:completionHandler:)));
     }
 }
+
+- (void)testHttpRedirectionChainInheritsTimeoutInterval {
+    NSArray *httpMethods = @[ @"HEAD", @"GET", @"PUT", @"POST", @"DELETE" ];
+    for (NSString *method in httpMethods) {
+        NSString *urlString =
+            [NSString stringWithFormat:@"http://httpbin.org/redirect-to?url=/anything&status_code=302"];
+        NSURL *url = [NSURL URLWithString:urlString];
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+        request.HTTPMethod = method;
+        request.timeoutInterval = 3.f;
+
+        XCTestExpectation *te = [self
+            expectationWithDescription:[NSString
+                                           stringWithFormat:@"%@ testHttpRedirectionChainInheritsTimeoutInterval: with redirection",
+                                                            method]];
+        NSMutableArray *timeoutIntervals = [NSMutableArray array];
+        YMSessionDelegate *d = [[YMSessionDelegate alloc] initWithExpectation:te];
+        d.redirectionHandler = ^(NSHTTPURLResponse *_Nonnull response,
+                                 NSURLRequest *_Nonnull request,
+                                 void (^_Nonnull completionHandler)(NSURLRequest *)) {
+            [timeoutIntervals addObject:@(request.timeoutInterval)];
+            completionHandler(request);
+        };
+        [d runWithRequest:request];
+        [self waitForExpectationsWithTimeout:5.f handler:nil];
+        XCTAssertEqual(timeoutIntervals.count, 1);
+        XCTAssertEqualObjects(timeoutIntervals[0], @(3.f));
+        XCTAssertEqual(d.response.statusCode, 200);
+    }
+}
+
 
 @end
