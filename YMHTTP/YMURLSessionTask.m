@@ -712,8 +712,12 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     [hh addEntriesFromDictionary:[self transformLowercaseKeyForHTTPHeaders:HTTPHeaders]];
 
     NSArray *curlHeaders = [self curlHeadersForHTTPHeaders:hh];
-    if ([request.HTTPMethod isEqualToString:@"POST"] && (request.HTTPBody.length > 0) &&
-        ([request valueForHTTPHeaderField:@"Content-Type"] == nil)) {
+    BOOL hasStream = request.HTTPBodyStream != nil;
+    if (self.knownBody.type == YMURLSessionTaskBodyTypeStream) {
+        hasStream = true;
+    }
+    if ([request.HTTPMethod isEqualToString:@"POST"] && ([request valueForHTTPHeaderField:@"Content-Type"] == nil) &&
+        (request.HTTPBody.length > 0 || hasStream)) {
         NSMutableArray *temp = [curlHeaders mutableCopy];
         [temp addObject:@"Content-Type:application/x-www-form-urlencoded"];
         curlHeaders = temp;
