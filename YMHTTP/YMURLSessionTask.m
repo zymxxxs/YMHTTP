@@ -867,7 +867,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 #pragma mark - Redirect Methods
 
-- (void)redirectForRequest:(NSURLRequest *)reqeust {
+- (void)redirectForRequest:(NSURLRequest *)request {
     if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
         YM_FATALERROR(@"Trying to redirect, but the transfer is not complete.");
     }
@@ -883,16 +883,16 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                 [d YMURLSession:self.session
                                           task:self
                     willPerformHTTPRedirection:response
-                                    newRequest:reqeust
-                             completionHandler:^(NSURLRequest *_Nullable request) {
+                                    newRequest:request
+                             completionHandler:^(NSURLRequest *_Nullable rr) {
                                  dispatch_async(self.workQueue, ^{
                                      if (self.internalState != YMURLSessionTaskInternalStateWaitingForRedirectHandler) {
                                          YM_FATALERROR(@"Received callback for HTTP redirection, but we're not waiting "
                                                        @"for it. Was it called multiple times?");
                                      }
-                                     if (request) {
+                                     if (rr) {
                                          self.lastRedirectBody = nil;
-                                         [self startNewTransferByRequest:request];
+                                         [self startNewTransferByRequest:rr];
                                      } else {
                                          // If the redirect is not followed, return the redirect itself as the response
                                          [self notifyDelegateAboutReceiveResponse:response];
@@ -936,11 +936,11 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
                              }];
             }];
         } else {
-            NSURLRequest *configuredRequest = [self.session.configuration configureRequest:reqeust];
+            NSURLRequest *configuredRequest = [self.session.configuration configureRequest:request];
             [self startNewTransferByRequest:configuredRequest];
         }
     } else {
-        NSURLRequest *configuredRequest = [self.session.configuration configureRequest:reqeust];
+        NSURLRequest *configuredRequest = [self.session.configuration configureRequest:request];
         [self startNewTransferByRequest:configuredRequest];
     }
 }
