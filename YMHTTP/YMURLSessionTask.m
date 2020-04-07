@@ -129,7 +129,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 - (instancetype)initWithSession:(YMURLSession *)session
                         reqeust:(NSURLRequest *)request
                  taskIdentifier:(NSUInteger)taskIdentifier {
-    if (request.HTTPBody) {
+    if (request.HTTPBody && request.HTTPBody.length != 0) {
         YMURLSessionTaskBody *body = [[YMURLSessionTaskBody alloc] initWithData:request.HTTPBody];
         return [self initWithSession:session reqeust:request taskIdentifier:taskIdentifier body:body];
     } else if (request.HTTPBodyStream) {

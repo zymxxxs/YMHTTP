@@ -522,67 +522,122 @@
     NSArray *httpMethods = @[ @"GET", @"PUT", @"POST", @"DELETE" ];
     for (NSString *method in httpMethods) {
         NSString *urlString = [NSString stringWithFormat:@"https://httpbin.org/%@", [method lowercaseString]];
-        YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
-        YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
-        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
-        request.HTTPMethod = method;
-
-        XCTestExpectation *e =
-            [self expectationWithDescription:[NSString stringWithFormat:@"%@ testRequestWithEmptyBody", method]];
-
-        YMURLSessionTask *task = [session
-              taskWithRequest:request
-            completionHandler:^(
-                NSData *_Nullable data, NSHTTPURLResponse *_Nullable response, NSError *_Nullable error) {
-                XCTAssertNil(error);
-                XCTAssertEqual(response.statusCode, 200);
-
-                NSDictionary *jsonBody = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-                XCTAssertEqualObjects(jsonBody[@"url"], urlString);
-                if ([method isEqualToString:@"GET"]) {
-                    XCTAssertNil(jsonBody[@"headers"][@"Content-Length"], @"Unexpected Content-Length for get request");
+        for (id body in @[ [NSNull null], [NSData data] ]) {
+            for (id contentType in @[ @"text/plain; charset=utf-8", [NSNull null] ]) {
+                NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
+                request.HTTPMethod = method;
+                if ([body isKindOfClass:[NSNull class]]) {
+                    request.HTTPBody = nil;
                 } else {
-                    XCTAssertEqualObjects(jsonBody[@"headers"][@"Content-Length"], @"0");
+                    request.HTTPBody = body;
                 }
-                [e fulfill];
-            }];
-        [task resume];
-        [self waitForExpectationsWithTimeout:10 handler:nil];
+
+                if ([contentType isKindOfClass:[NSString class]]) {
+                    [request setValue:contentType forHTTPHeaderField:@"Content-Type"];
+                }
+
+                XCTestExpectation *e =
+                    [self expectationWithDescription:[NSString stringWithFormat:@"%@ %@ testRequestWithEmptyBody",
+                                                                                method,
+                                                                                urlString]];
+                YMSessionDelegate *delegate = [[YMSessionDelegate alloc] initWithExpectation:e];
+                [delegate runWithRequest:request];
+                [self waitForExpectationsWithTimeout:8.f handler:nil];
+
+                XCTAssertNil(delegate.error);
+                XCTAssertNotNil(delegate.response);
+                XCTAssertEqual(delegate.response.statusCode, 200);
+                XCTAssertEqual(delegate.callbacks.count, 3);
+                NSArray *callbacks = @[
+                    NSStringFromSelector(@selector(YMURLSession:task:didReceiveResponse:completionHandler:)),
+                    NSStringFromSelector(@selector(YMURLSession:task:didReceiveData:)),
+                    NSStringFromSelector(@selector(YMURLSession:task:didCompleteWithError:))
+                ];
+                XCTAssertEqualObjects(delegate.callbacks, callbacks);
+                XCTAssertNotNil(delegate.receivedData);
+
+                NSString *contentLength = [delegate.response.allHeaderFields objectForKey:@"Content-Length"];
+                NSInteger cl = contentLength ? contentLength.integerValue : 0;
+                XCTAssertEqual(delegate.receivedData.length, cl);
+
+                NSDictionary *result = [NSJSONSerialization JSONObjectWithData:delegate.receivedData
+                                                                       options:0
+                                                                         error:nil];
+                NSDictionary *headers = result[@"headers"];
+                if ([contentType isKindOfClass:[NSNull class]]) {
+                    XCTAssertNil(headers[@"Content-Type"]);
+                } else {
+                    XCTAssertEqualObjects(headers[@"Content-Type"], contentType);
+                }
+            }
+        }
     }
 }
 
 - (void)testRequestWithNonEmptyBody {
     NSArray *httpMethods = @[ @"GET", @"PUT", @"POST", @"DELETE" ];
     for (NSString *method in httpMethods) {
+        NSData *bodyData = [@"This is a request body" dataUsingEncoding:NSUTF8StringEncoding];
         NSString *urlString = [NSString stringWithFormat:@"https://httpbin.org/%@", [method lowercaseString]];
-        YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
-        YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
-        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
-        request.HTTPMethod = method;
-        request.HTTPBody = [@"this is a request body data" dataUsingEncoding:NSUTF8StringEncoding];
+        for (id contentType in @[ @"text/plain; charset=utf-8", [NSNull null] ]) {
+            NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
+            request.HTTPMethod = method;
+            request.HTTPBody = bodyData;
 
-        XCTestExpectation *e =
-            [self expectationWithDescription:[NSString stringWithFormat:@"%@ testRequestWithNonEmptyBody", method]];
+            if ([contentType isKindOfClass:[NSString class]]) {
+                [request setValue:contentType forHTTPHeaderField:@"Content-Type"];
+            }
 
-        YMURLSessionTask *task =
-            [session taskWithRequest:request
-                   completionHandler:^(
-                       NSData *_Nullable data, NSHTTPURLResponse *_Nullable response, NSError *_Nullable error) {
-                       if ([method isEqualToString:@"GET"]) {
-                           XCTAssertNotNil(error);
-                           XCTAssertNil(response);
-                           XCTAssertNil(data);
-                       } else {
-                           XCTAssertEqual(response.statusCode, 200);
-                           NSDictionary *jsonBody = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-                           XCTAssertEqualObjects(jsonBody[@"url"], urlString);
-                           XCTAssertEqualObjects(jsonBody[@"headers"][@"Content-Length"],
-                                                 @(request.HTTPBody.length).stringValue);
-                       }
-                       [e fulfill];
-                   }];
-        [task resume];
-        [self waitForExpectationsWithTimeout:10 handler:nil];
+            XCTestExpectation *e =
+                [self expectationWithDescription:[NSString stringWithFormat:@"%@ %@ testRequestWithNonEmptyBody",
+                                                                            method,
+                                                                            urlString]];
+            YMSessionDelegate *delegate = [[YMSessionDelegate alloc] initWithExpectation:e];
+            [delegate runWithRequest:request];
+            [self waitForExpectationsWithTimeout:4.f handler:nil];
+
+            if ([method isEqualToString:@"GET"]) {
+                XCTAssertNotNil(delegate.error);
+                XCTAssertEqual(delegate.error.code, NSURLErrorDataLengthExceedsMaximum);
+                XCTAssertEqualObjects(delegate.error.localizedDescription, @"resource exceeds maximum size");
+                XCTAssertNil(delegate.response);
+                XCTAssertEqual(delegate.callbacks.count, 1);
+                XCTAssertEqualObjects(delegate.callbacks[0],
+                                      NSStringFromSelector(@selector(YMURLSession:task:didCompleteWithError:)));
+                XCTAssertNil(delegate.receivedData);
+            } else {
+                XCTAssertNil(delegate.error);
+                XCTAssertNotNil(delegate.response);
+                XCTAssertEqual(delegate.response.statusCode, 200);
+                XCTAssertEqual(delegate.callbacks.count, 3);
+                NSArray *callbacks = @[
+                    NSStringFromSelector(@selector(YMURLSession:task:didReceiveResponse:completionHandler:)),
+                    NSStringFromSelector(@selector(YMURLSession:task:didReceiveData:)),
+                    NSStringFromSelector(@selector(YMURLSession:task:didCompleteWithError:))
+                ];
+                XCTAssertEqualObjects(delegate.callbacks, callbacks);
+                XCTAssertNotNil(delegate.receivedData);
+
+                NSString *contentLength = [delegate.response.allHeaderFields objectForKey:@"Content-Length"];
+                NSInteger cl = contentLength ? contentLength.integerValue : 0;
+                XCTAssertEqual(delegate.receivedData.length, cl);
+
+                NSDictionary *result = [NSJSONSerialization JSONObjectWithData:delegate.receivedData
+                                                                       options:0
+                                                                         error:nil];
+                NSDictionary *headers = result[@"headers"];
+                if ([contentType isKindOfClass:[NSNull class]]) {
+                    if ([method isEqualToString:@"POST"]) {
+                        XCTAssertEqualObjects(headers[@"Content-Type"], @"application/x-www-form-urlencoded");
+                    } else {
+                        XCTAssertNil(headers[@"Content-Type"]);
+                    }
+
+                } else {
+                    XCTAssertEqualObjects(headers[@"Content-Type"], contentType);
+                }
+            }
+        }
     }
 }
 
@@ -602,7 +657,7 @@
         }
         delegate.uploadCompletedExpectation = expect;
 
-        NSString *urlString = @"http://httpbin.org/put";
+        NSString *urlString = [NSString stringWithFormat:@"http://httpbin.org/%@", method];
         NSURL *url = [NSURL URLWithString:urlString];
         NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
         req.HTTPMethod = method;
@@ -614,9 +669,14 @@
         [task resume];
         [self waitForExpectationsWithTimeout:10 handler:nil];
 
-        if ([method isEqualToString:@"GET"] || [method isEqualToString:@"HEAD"]) {
+        if ([method isEqualToString:@"GET"]) {
             XCTAssertEqual(delegate.callbacks.count, 1, @"Callback count for GET request");
             XCTAssertEqualObjects(delegate.callbacks[0], @"YMURLSession:task:needNewBodyStream:");
+        } else if ([method isEqualToString:@"HEAD"]) {
+            XCTAssertEqual(delegate.callbacks.count, 2, @"Callback count for HEAD request");
+            XCTAssertEqualObjects(delegate.callbacks[0], @"YMURLSession:task:needNewBodyStream:");
+            XCTAssertEqualObjects(delegate.callbacks[1],
+                                  @"YMURLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:");
         } else {
             XCTAssertEqual(delegate.callbacks.count, 3, @"Callback count for \(method) request");
             XCTAssertEqualObjects(delegate.callbacks[0], @"YMURLSession:task:needNewBodyStream:");
