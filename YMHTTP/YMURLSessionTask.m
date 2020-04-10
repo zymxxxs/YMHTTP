@@ -80,6 +80,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 
 @property (nonatomic, strong) NSData *responseData;
 @property (nonatomic, strong) NSMutableData *lastRedirectBody;
+@property (atomic) NSInteger redirectCount;
 
 @property (nonatomic, strong) NSLock *protocolLock;
 @property (nonatomic, assign) YMURLSessionTaskProtocolState protocolState;
@@ -164,12 +165,12 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     self.state = YMURLSessionTaskStateSuspended;
     self.suspendCount = 1;
     self.previousFailureCount = 0;
+    self.redirectCount = 0;
 
     self.protocolLock = [[NSLock alloc] init];
     self.protocolState = YMURLSessionTaskProtocolStateToBeCreate;
 
     self.syncQ = dispatch_queue_create("com.zymxxxs.YMURLSessionTask.SyncQ", DISPATCH_QUEUE_SERIAL);
-
     self.progress = [NSProgress progressWithTotalUnitCount:-1];
 }
 
@@ -856,7 +857,7 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)completeTaskWithError:(NSError *)error {
-    _error = error;
+    self.error = error;
     if (self.internalState != YMURLSessionTaskInternalStateTransferFailed) {
         YM_FATALERROR(@"Trying to complete the task, but its transfer isn't complete / failed.");
     }
@@ -875,6 +876,21 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
         YM_FATALERROR(@"Trying to redirect, but the transfer is not complete.");
     }
+    
+    self.redirectCount+=1;
+    if (self.redirectCount > 16) {
+        self.internalState = YMURLSessionTaskInternalStateTransferFailed;
+        NSError *error = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorHTTPTooManyRedirects userInfo:@{
+            NSLocalizedDescriptionKey: @"too many HTTP redirects"
+        }];
+        if (!self.currentRequest) {
+             YM_FATALERROR(@"In a redirect chain but no current task/request");
+        }
+        
+        [self failWithError:error request:request];
+        return;
+    }
+    
     YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
         BOOL isResponds = [self.session.delegate
