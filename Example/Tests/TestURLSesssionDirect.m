@@ -363,4 +363,30 @@
     }
 }
 
+- (void)testHttpRedirectionExceededMaxRedirects {
+    NSString *urlString = [NSString stringWithFormat:@"http://httpbin.org/redirect/18"];
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    request.timeoutInterval = 3.f;
+
+    XCTestExpectation *te =
+        [self expectationWithDescription:@"testHttpRedirectionExceededMaxRedirects: with redirection"];
+    NSMutableArray *redirectRequests = [NSMutableArray array];
+    YMSessionDelegate *d = [[YMSessionDelegate alloc] initWithExpectation:te];
+    d.redirectionHandler = ^(NSHTTPURLResponse *_Nonnull response,
+                             NSURLRequest *_Nonnull request,
+                             void (^_Nonnull completionHandler)(NSURLRequest *)) {
+        [redirectRequests addObject:response];
+        completionHandler(request);
+    };
+    [d runWithRequest:request];
+    [self waitForExpectationsWithTimeout:20.f handler:nil];
+    XCTAssertNil(d.response);
+    XCTAssertNotNil(d.receivedData);
+    XCTAssertNotNil(d.error);
+    XCTAssertEqual(d.error.code, NSURLErrorHTTPTooManyRedirects);
+    XCTAssertEqualObjects(d.error.localizedDescription, @"too many HTTP redirects");
+    XCTAssertEqual(((NSHTTPURLResponse *)redirectRequests.lastObject).statusCode, 302);
+}
+
 @end

@@ -876,21 +876,21 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
     if (self.internalState != YMURLSessionTaskInternalStateTransferCompleted) {
         YM_FATALERROR(@"Trying to redirect, but the transfer is not complete.");
     }
-    
-    self.redirectCount+=1;
+
+    self.redirectCount += 1;
     if (self.redirectCount > 16) {
         self.internalState = YMURLSessionTaskInternalStateTransferFailed;
-        NSError *error = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorHTTPTooManyRedirects userInfo:@{
-            NSLocalizedDescriptionKey: @"too many HTTP redirects"
-        }];
+        NSError *error = [NSError errorWithDomain:NSURLErrorDomain
+                                             code:NSURLErrorHTTPTooManyRedirects
+                                         userInfo:@{NSLocalizedDescriptionKey : @"too many HTTP redirects"}];
         if (!self.currentRequest) {
-             YM_FATALERROR(@"In a redirect chain but no current task/request");
+            YM_FATALERROR(@"In a redirect chain but no current task/request");
         }
-        
+
         [self failWithError:error request:request];
         return;
     }
-    
+
     YMURLSessionTaskBehaviour *b = [self.session behaviourForTask:self];
     if (b.type == YMURLSessionTaskBehaviourTypeTaskDelegate) {
         BOOL isResponds = [self.session.delegate
