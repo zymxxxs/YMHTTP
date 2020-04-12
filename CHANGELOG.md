@@ -1,3 +1,7 @@
+## develop
+---
+* feat: 重定向最大支持 16 次
+
 ## 1.0.0-beta.3
 ---
 * fix: task 不再触发 needNewBodyStream 回调
