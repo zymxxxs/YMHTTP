@@ -34,6 +34,14 @@
     [self.task resume];
 }
 
+- (void)runUploadTask:(NSURLRequest *)request {
+    YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 8;
+    YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:self delegateQueue:nil];
+    self.task = [session taskWithStreamedRequest:request];
+    [self.task resume];
+}
+
 - (void)YMURLSession:(YMURLSession *)session didBecomeInvalidWithError:(NSError *)error {
     [self.callbacks addObject:NSStringFromSelector(_cmd)];
     self.error = error;
@@ -57,6 +65,10 @@
                  task:(YMURLSessionTask *)task
     needNewBodyStream:(void (^)(NSInputStream *_Nullable))completionHandler {
     [self.callbacks addObject:NSStringFromSelector(_cmd)];
+
+    if (_newBodyStreamHandler) {
+        _newBodyStreamHandler(completionHandler);
+    }
 }
 
 - (void)YMURLSession:(YMURLSession *)session
@@ -85,6 +97,18 @@
     } else {
         [self.receivedData appendData:data];
     }
+}
+
+- (void)YMURLSession:(YMURLSession *)session
+                        task:(YMURLSessionTask *)task
+             didSendBodyData:(int64_t)bytesSent
+              totalBytesSent:(int64_t)totalBytesSent
+    totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend {
+    NSString *last = (NSString *)self.callbacks.lastObject;
+    if (![last isEqualToString:NSStringFromSelector(_cmd)]) {
+        [self.callbacks addObject:NSStringFromSelector(_cmd)];
+    }
+    self.totalBytesSent = totalBytesSent;
 }
 
 - (void)YMURLSession:(YMURLSession *)session

@@ -155,8 +155,9 @@
                 XCTAssertNil(delegate.error);
                 XCTAssertNotNil(delegate.response);
                 XCTAssertEqual(delegate.response.statusCode, 200);
-                XCTAssertEqual(delegate.callbacks.count, 3);
                 NSArray *callbacks = @[
+                    NSStringFromSelector(@selector
+                                         (YMURLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)),
                     NSStringFromSelector(@selector(YMURLSession:task:didReceiveResponse:completionHandler:)),
                     NSStringFromSelector(@selector(YMURLSession:task:didReceiveData:)),
                     NSStringFromSelector(@selector(YMURLSession:task:didCompleteWithError:))
@@ -542,6 +543,7 @@
     YMURLSessionTask *task = [session taskWithRequest:req fromData:data];
     [task resume];
     [self waitForExpectationsWithTimeout:12 handler:nil];
+    XCTAssertEqual(delegate.totalBytesSent, data.length);
 }
 
 - (void)testRequestWithEmptyBody {
@@ -635,8 +637,9 @@
                 XCTAssertNil(delegate.error);
                 XCTAssertNotNil(delegate.response);
                 XCTAssertEqual(delegate.response.statusCode, 200);
-                XCTAssertEqual(delegate.callbacks.count, 3);
                 NSArray *callbacks = @[
+                    NSStringFromSelector(@selector
+                                         (YMURLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)),
                     NSStringFromSelector(@selector(YMURLSession:task:didReceiveResponse:completionHandler:)),
                     NSStringFromSelector(@selector(YMURLSession:task:didReceiveData:)),
                     NSStringFromSelector(@selector(YMURLSession:task:didCompleteWithError:))
@@ -669,46 +672,82 @@
 
 - (void)testSimpleUploadWithDelegateProvidingInputStream {
     NSArray *httpMethods = @[ @"GET", @"PUT", @"POST", @"DELETE" ];
+    ;
+    ;
+    NSData *data = [[NSData alloc] initWithBytes:"123" length:512 * 1];
     for (NSString *method in httpMethods) {
-        YMHTTPUploadDelegate *delegate = [[YMHTTPUploadDelegate alloc] init];
-        YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
-        config.timeoutIntervalForRequest = 8;
-        YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:delegate delegateQueue:nil];
         XCTestExpectation *expect = [self
             expectationWithDescription:[NSString
                                            stringWithFormat:@"%@ testSimpleUploadWithDelegateProvidingInputStream",
                                                             method]];
-        if ([method isEqualToString:@"GET"] || [method isEqualToString:@"HEAD"]) {
-            [expect setInverted:true];
-        }
-        delegate.uploadCompletedExpectation = expect;
+        YMSessionDelegate *delegate = [[YMSessionDelegate alloc] initWithExpectation:expect];
+        delegate.newBodyStreamHandler = ^(void (^completionHandler)(NSInputStream *_Nullable)) {
+            completionHandler([[NSInputStream alloc] initWithData:data]);
+        };
 
-        NSString *urlString = [NSString stringWithFormat:@"http://httpbin.org/%@", method];
+        NSString *urlString = [NSString stringWithFormat:@"http://httpbin.org/%@", [method lowercaseString]];
         NSURL *url = [NSURL URLWithString:urlString];
         NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
         req.HTTPMethod = method;
 
-        NSData *data = [[NSData alloc] initWithBytes:"123" length:512 * 1];
-        NSInputStream *stream = [[NSInputStream alloc] initWithData:data];
-        delegate.streamToProvideOnRequest = stream;
-        YMURLSessionTask *task = [session taskWithStreamedRequest:req];
-        [task resume];
-        [self waitForExpectationsWithTimeout:10 handler:nil];
+        [delegate runUploadTask:req];
+        [self waitForExpectationsWithTimeout:20 handler:nil];
 
         if ([method isEqualToString:@"GET"]) {
-            XCTAssertEqual(delegate.callbacks.count, 1, @"Callback count for GET request");
+            XCTAssertNotNil(delegate.error);
+            XCTAssertEqual(delegate.error.code, NSURLErrorDataLengthExceedsMaximum);
+            XCTAssertEqualObjects(delegate.error.localizedDescription, @"resource exceeds maximum size");
+            XCTAssertNil(delegate.response);
+            XCTAssertNil(delegate.receivedData);
+            XCTAssertEqual(delegate.totalBytesSent, 0);
+            XCTAssertEqual(delegate.callbacks.count, 2, @"Callback count for GET request");
             XCTAssertEqualObjects(delegate.callbacks[0], @"YMURLSession:task:needNewBodyStream:");
+            XCTAssertEqualObjects(delegate.callbacks[1],
+                                  NSStringFromSelector(@selector(YMURLSession:task:didCompleteWithError:)));
         } else if ([method isEqualToString:@"HEAD"]) {
-            XCTAssertEqual(delegate.callbacks.count, 2, @"Callback count for HEAD request");
-            XCTAssertEqualObjects(delegate.callbacks[0], @"YMURLSession:task:needNewBodyStream:");
-            XCTAssertEqualObjects(delegate.callbacks[1],
-                                  @"YMURLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:");
+            XCTAssertNil(delegate.error);
+            XCTAssertNotNil(delegate.response);
+            //            XCTAssertEqual(delegate.response.statusCode, 200);
+            XCTAssertNil(delegate.receivedData);
+            XCTAssertEqual(delegate.totalBytesSent, data.length);
+            XCTAssertEqual(delegate.callbacks.count, 4, @"Callback count for HEAD request");
+            NSArray *callbacks = @[
+                NSStringFromSelector(@selector(YMURLSession:task:needNewBodyStream:)),
+                NSStringFromSelector(@selector(YMURLSession:
+                                                       task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)),
+                NSStringFromSelector(@selector(YMURLSession:task:didReceiveResponse:completionHandler:)),
+                NSStringFromSelector(@selector(YMURLSession:task:didCompleteWithError:))
+            ];
+            XCTAssertEqualObjects(delegate.callbacks, callbacks);
         } else {
-            XCTAssertEqual(delegate.callbacks.count, 3, @"Callback count for \(method) request");
-            XCTAssertEqualObjects(delegate.callbacks[0], @"YMURLSession:task:needNewBodyStream:");
-            XCTAssertEqualObjects(delegate.callbacks[2], @"YMURLSession:task:didReceiveData:");
-            XCTAssertEqualObjects(delegate.callbacks[1],
-                                  @"YMURLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:");
+            XCTAssertNil(delegate.error);
+            XCTAssertNotNil(delegate.response);
+            XCTAssertEqual(delegate.response.statusCode, 200);
+            XCTAssertNotNil(delegate.receivedData);
+            XCTAssertEqual(delegate.totalBytesSent, data.length);
+            XCTAssertEqual(delegate.callbacks.count, 5);
+            NSArray *callbacks = @[
+                NSStringFromSelector(@selector(YMURLSession:task:needNewBodyStream:)),
+                NSStringFromSelector(@selector(YMURLSession:
+                                                       task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)),
+                NSStringFromSelector(@selector(YMURLSession:task:didReceiveResponse:completionHandler:)),
+                NSStringFromSelector(@selector(YMURLSession:task:didReceiveData:)),
+                NSStringFromSelector(@selector(YMURLSession:task:didCompleteWithError:))
+            ];
+            XCTAssertEqualObjects(delegate.callbacks, callbacks);
+
+            NSString *contentLength = [delegate.response.allHeaderFields objectForKey:@"Content-Length"];
+            NSInteger cl = contentLength ? contentLength.integerValue : 0;
+            XCTAssertEqual(delegate.receivedData.length, cl);
+
+            NSDictionary *result = [NSJSONSerialization JSONObjectWithData:delegate.receivedData options:0 error:nil];
+            NSDictionary *headers = result[@"headers"];
+
+            if ([method isEqualToString:@"POST"]) {
+                XCTAssertEqualObjects(headers[@"Content-Type"], @"application/x-www-form-urlencoded");
+            } else {
+                XCTAssertNil(headers[@"Content-Type"]);
+            }
         }
     }
 }

@@ -30,20 +30,13 @@
     self.totalBytesSent = totalBytesSent;
 }
 
-- (void)YMURLSession:(YMURLSession *)session
-                 task:(YMURLSessionTask *)task
-    needNewBodyStream:(void (^)(NSInputStream *_Nullable))completionHandler {
+- (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didCompleteWithError:(NSError *)error {
     [self.callbacks addObject:NSStringFromSelector(_cmd)];
-    if (!self.streamToProvideOnRequest) {
-        XCTFail(@"This shouldn't have been invoked -- no stream was set.");
-    }
-    completionHandler(self.streamToProvideOnRequest);
+    [self.uploadCompletedExpectation fulfill];
 }
 
 - (void)YMURLSession:(YMURLSession *)session task:(YMURLSessionTask *)task didReceiveData:(NSData *)data {
     [self.callbacks addObject:NSStringFromSelector(_cmd)];
-    XCTAssertEqual(self.totalBytesSent, 1 * 512);
-    [self.uploadCompletedExpectation fulfill];
 }
 
 @end
