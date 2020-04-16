@@ -261,7 +261,7 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     // into the future, so that a curl_multi_socket_action( ... CURL_SOCKET_TIMEOUT) can be used immediately afterwards
     // to get the transfer going again as desired.
     if (bitmask == 0) {
-        [self.delegate needTimeoutTimerToValue:1];
+        [self.delegate needTimeoutTimerToValue:0];
     }
 }
 
