@@ -1,6 +1,7 @@
-## develop
+## 1.0.0
 ---
 * feat: 重定向最大支持 16 次
+* build: 补充 stream 相关 UT
 
 ## 1.0.0-beta.3
 ---

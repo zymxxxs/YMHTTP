@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'YMHTTP'
-  s.version          = '1.0.0-beta.3'
+  s.version          = '1.0.0'
   s.summary          = '一个基于 libcurl 的 IO 多路复用 HTTP 框架'
   s.homepage         = 'https://github.com/zymxxxs/YMHTTP'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
