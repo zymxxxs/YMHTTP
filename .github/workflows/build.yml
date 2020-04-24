@@ -11,17 +11,17 @@ jobs:
     run-on: macos-latest
   
   steps:
-    - uses: actions/checkout@master
+  - uses: actions/checkout@master
 
-    - name: install cocoapods
-      run: brew install cocoapods
+  - name: install cocoapods
+    run: brew install cocoapods
 
-    - name: install dependencies
-      run: |
-        cd Example
-        pod install
-      shell: bash
+  - name: install dependencies
+    run: |
+      cd Example
+      pod install
+    shell: bash
 
-    - name: run test
-      run: xcodebuild test -workspace ./Example/YMHTTP.xcworkspace -scheme 'YMHTTP-Example' -destination 'platform=iOS Simulator,name=iPhone 11'
-      shell: bash
+  - name: run test
+    run: xcodebuild test -workspace ./Example/YMHTTP.xcworkspace -scheme 'YMHTTP-Example' -destination 'platform=iOS Simulator,name=iPhone 11'
+    shell: bash
