@@ -1,0 +1,27 @@
+name: build
+
+on: 
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    run-on: macos-latest
+  
+  steps:
+    - uses: actions/checkout@master
+
+    - name: install cocoapods
+      run: brew install cocoapods
+
+    - name: install dependencies
+      run: |
+        cd Example
+        pod install
+      shell: bash
+
+    - name: run test
+      run: xcodebuild test -workspace ./Example/YMHTTP.xcworkspace -scheme 'YMHTTP-Example' -destination 'platform=iOS Simulator,name=iPhone 11'
+      shell: bash
