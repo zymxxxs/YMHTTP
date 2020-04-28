@@ -30,7 +30,7 @@
                                                             method]];
         YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
         [d runWithRequest:request];
-        [self waitForExpectationsWithTimeout:20 handler:nil];
+        [self waitForExpectationsWithTimeout:12 handler:nil];
         XCTAssertNil(d.httpError);
         XCTAssertNil(d.redirectionResponse);
         XCTAssertNotNil(d.response);
@@ -60,7 +60,7 @@
                                                      statusCode.stringValue]];
             YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
             [d runWithRequest:request];
-            [self waitForExpectationsWithTimeout:20 handler:nil];
+            [self waitForExpectationsWithTimeout:12 handler:nil];
             XCTAssertNil(d.httpError);
             XCTAssertEqual(d.response.statusCode, 200);
             XCTAssertEqual(d.redirectionResponse.statusCode, statusCode.integerValue);
@@ -110,7 +110,7 @@
                                                             method]];
         YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
         [d runWithRequest:request];
-        [self waitForExpectationsWithTimeout:20 handler:nil];
+        [self waitForExpectationsWithTimeout:12 handler:nil];
         XCTAssertNil(d.httpError);
         XCTAssertEqual(d.response.statusCode, 200);
         XCTAssertEqual(d.redirectionResponse.statusCode, 303);
@@ -140,7 +140,7 @@
                                                             method]];
         YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
         [d runWithRequest:request];
-        [self waitForExpectationsWithTimeout:20 handler:nil];
+        [self waitForExpectationsWithTimeout:12 handler:nil];
         XCTAssertNil(d.httpError);
         XCTAssertNil(d.redirectionResponse);
         XCTAssertNotNil(d.response);
@@ -171,7 +171,7 @@
                                                      statusCode.stringValue]];
             YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
             [d runWithRequest:request];
-            [self waitForExpectationsWithTimeout:40 handler:nil];
+            [self waitForExpectationsWithTimeout:20 handler:nil];
             XCTAssertNil(d.httpError);
             XCTAssertEqual(d.response.statusCode, 200);
             XCTAssertEqual(d.redirectionResponse.statusCode, statusCode.integerValue);
@@ -214,7 +214,7 @@
         [self expectationWithDescription:@"GET testHttpRedirectionWithCompleteRelativePath: with HTTP redirection"];
     YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
     [d runWithURL:url];
-    [self waitForExpectationsWithTimeout:20 handler:nil];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
     if (!d.error) {
         XCTAssertEqualObjects(d.result[@"url"],
                               @"http://httpbin.org/get",
@@ -229,7 +229,7 @@
         [self expectationWithDescription:@"GET testHttpRedirectionWithInCompleteRelativePath: with HTTP redirection"];
     YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
     [d runWithURL:url];
-    [self waitForExpectationsWithTimeout:20 handler:nil];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
     if (!d.error) {
         XCTAssertEqualObjects(d.result[@"url"],
                               @"http://httpbin.org/get",
@@ -259,7 +259,7 @@
                 [te fulfill];
             }];
     [task resume];
-    [self waitForExpectationsWithTimeout:20 handler:nil];
+    [self waitForExpectationsWithTimeout:12 handler:nil];
 }
 
 - (void)testHttpRedirectDontFollowUsingNil {
@@ -380,7 +380,7 @@
         completionHandler(request);
     };
     [d runWithRequest:request];
-    [self waitForExpectationsWithTimeout:30.f handler:nil];
+    [self waitForExpectationsWithTimeout:20.f handler:nil];
     XCTAssertNil(d.response);
     XCTAssertNotNil(d.receivedData);
     XCTAssertNotNil(d.error);
