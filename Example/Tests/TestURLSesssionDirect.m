@@ -171,7 +171,7 @@
                                                      statusCode.stringValue]];
             YMHTTPRedirectionDataTask *d = [[YMHTTPRedirectionDataTask alloc] initWithExpectation:te];
             [d runWithRequest:request];
-            [self waitForExpectationsWithTimeout:20 handler:nil];
+            [self waitForExpectationsWithTimeout:40 handler:nil];
             XCTAssertNil(d.httpError);
             XCTAssertEqual(d.response.statusCode, 200);
             XCTAssertEqual(d.redirectionResponse.statusCode, statusCode.integerValue);
