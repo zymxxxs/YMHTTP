@@ -10,6 +10,9 @@ jobs:
   test:
     runs-on: macOS-latest
     steps:
+      - name: print env
+        run: |
+          xcodebuild -version
       - uses: actions/checkout@master
       - name: install cocoapods
         run: gem install cocoapods
