@@ -7,15 +7,19 @@ on:
     branches: [master]
 
 jobs:
-  ut:
-    runs-on: macOS-latest
+  httpbin:
+    runs-on: ubuntu-latest
     steps:
+      - uses: actions-hub/docker/cli@master
 
       - name: install httpbin
         run: |
           docker pull kennethreitz/httpbin
           docker run -p 80:80 kennethreitz/httpbin
         shell: bash
+  ut:
+    runs-on: macOS-latest
+    steps:
 
       - uses: actions/checkout@master
 
