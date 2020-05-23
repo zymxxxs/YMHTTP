@@ -186,7 +186,7 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 
 连接到特定的主机和端口，其中 host 支持 IP 的形式。如果使用正常的域名+host+port的请求方式，那么对于框架内部可以自动处理 Cookie，Cache 以及 302 等问题，当然该接口也支持 SNI 的场景。
 
-备注：该接口不会影响到 DNS Cache，了解更多可以看这里 https://curl.haxx.se/libcurl/c/CURLOPT_CONNECT_TO.html。
+备注：该接口不会影响到 DNS Cache，了解更多可以看这里 https://curl.haxx.se/libcurl/c/CURLOPT_CONNECT_TO.html
 
 ## libcurl
 
@@ -202,7 +202,7 @@ YMURLSessionTask *task = [session taskWithURL:[NSURL URLWithString:@"http://http
 ### HTTP/2
 目前版本不支持 HTTP/2，你可以使用 [Build-OpenSSL-cURL](https://github.com/jasonacox/Build-OpenSSL-cURL.git) 进行构建支持 HTTP/2 功能的版本。
 
-注意 `Build-OpenSSL-cURL` 中使用的是 openSSL，而目前 macOS Catalina 中则是使用 LibreSSL，我在 `Build-OpenSSL-cURL` 的基础上修改了一个支持 `libresll` 的版本，链接地址：https://github.com/zymxxxs/libcurl-nghttp2-libressl-ios。
+注意 `Build-OpenSSL-cURL` 中使用的是 openSSL，而目前 macOS Catalina 中则是使用 LibreSSL，我在 `Build-OpenSSL-cURL` 的基础上修改了一个支持 `libresll` 的版本，链接地址：https://github.com/zymxxxs/libcurl-nghttp2-libressl-ios
 
 备注：
 * 支持 HTTP/2 需要考虑包大小的影响
