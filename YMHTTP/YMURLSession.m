@@ -53,6 +53,7 @@ NS_INLINE int nextSessionIdentifier() {
         self.taskRegistry = [[YMTaskRegistry alloc] init];
         ym_initializeLibcurl();
         self.identifier = nextSessionIdentifier();
+        self.nextTaskIdentifier = 1;
         NSString *queueLabel = [NSString stringWithFormat:@"YMURLSession %@", @(self.identifier)];
         self.workQueue = dispatch_queue_create([queueLabel UTF8String], DISPATCH_QUEUE_SERIAL);
         if (queue) {
@@ -363,11 +364,12 @@ NS_INLINE int nextSessionIdentifier() {
 }
 
 - (NSUInteger)createNextTaskIdentifier {
+    __block NSUInteger i;
     dispatch_sync(self.workQueue, ^{
-        if (self.nextTaskIdentifier == 0) self.nextTaskIdentifier = 1;
+        i = self.nextTaskIdentifier;
         self.nextTaskIdentifier += 1;
     });
-    return self.nextTaskIdentifier;
+    return i;
 }
 
 @end
