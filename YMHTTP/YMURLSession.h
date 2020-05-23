@@ -29,10 +29,14 @@ NS_ASSUME_NONNULL_BEGIN
                              delegateQueue:(nullable NSOperationQueue *)queue;
 
 @property (readonly, strong) NSOperationQueue *delegateQueue;
-@property (nullable, readonly, strong) id<YMURLSessionDelegate> delegate;
+
+@property (nullable, readonly, retain) id<YMURLSessionDelegate> delegate;
+
 @property (readonly, copy) YMURLSessionConfiguration *configuration;
+
 @property (nullable, copy) NSString *sessionDescription;
-@property (readonly, nonatomic, strong) dispatch_queue_t workQueue;
+
+@property (readonly, strong) dispatch_queue_t workQueue;
 
 - (void)finishTasksAndInvalidate;
 

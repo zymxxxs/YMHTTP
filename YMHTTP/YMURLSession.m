@@ -32,11 +32,12 @@ NS_INLINE int nextSessionIdentifier() {
 @interface YMURLSession ()
 
 @property (nonatomic, strong) YMMultiHandle *multiHandle;
-@property (nonatomic, strong) dispatch_queue_t workQueue;
-@property (nonatomic, assign) int identifier;
-@property (nonatomic, assign) BOOL invalidated;
-@property (nonatomic, assign) NSUInteger nextTaskIdentifier;
-@property (nullable, strong) id<YMURLSessionDelegate> delegate;
+@property (readwrite, strong) dispatch_queue_t workQueue;
+@property int identifier;
+@property BOOL invalidated;
+@property NSUInteger nextTaskIdentifier;
+@property (nullable, retain) id<YMURLSessionDelegate> delegate;
+@property (readwrite, copy) YMURLSessionConfiguration *configuration;
 @property (readwrite, strong) NSOperationQueue *delegateQueue;
 
 @end
@@ -57,13 +58,13 @@ NS_INLINE int nextSessionIdentifier() {
         NSString *queueLabel = [NSString stringWithFormat:@"YMURLSession %@", @(self.identifier)];
         self.workQueue = dispatch_queue_create([queueLabel UTF8String], DISPATCH_QUEUE_SERIAL);
         if (queue) {
-            _delegateQueue = queue;
+            self.delegateQueue = queue;
         } else {
-            _delegateQueue = [[NSOperationQueue alloc] init];
+            self.delegateQueue = [[NSOperationQueue alloc] init];
         }
-        _delegateQueue.maxConcurrentOperationCount = 1;
+        self.delegateQueue.maxConcurrentOperationCount = 1;
         self.delegate = delegate;
-        _configuration = configuration;
+        self.configuration = configuration;
         self.multiHandle = [[YMMultiHandle alloc] initWithConfiguration:_configuration WorkQueue:self.workQueue];
     }
     return self;
