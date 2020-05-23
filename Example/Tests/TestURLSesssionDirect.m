@@ -307,7 +307,7 @@
         NSURL *url = [NSURL URLWithString:urlString];
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
         request.HTTPMethod = method;
-        request.timeoutInterval = 2.f;
+        request.timeoutInterval = 5.f;
         XCTestExpectation *te = [self
             expectationWithDescription:
                 [NSString stringWithFormat:@"%@ testHttpRedirectDontFollowIgnoringHandler: with redirection", method]];

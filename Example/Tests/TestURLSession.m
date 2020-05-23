@@ -622,7 +622,7 @@
                                                                             urlString]];
             YMSessionDelegate *delegate = [[YMSessionDelegate alloc] initWithExpectation:e];
             [delegate runWithRequest:request];
-            [self waitForExpectationsWithTimeout:4.f handler:nil];
+            [self waitForExpectationsWithTimeout:10.f handler:nil];
 
             if ([method isEqualToString:@"GET"]) {
                 XCTAssertNotNil(delegate.error);
@@ -672,8 +672,6 @@
 
 - (void)testSimpleUploadWithDelegateProvidingInputStream {
     NSArray *httpMethods = @[ @"GET", @"PUT", @"POST", @"DELETE" ];
-    ;
-    ;
     NSData *data = [[NSData alloc] initWithBytes:"123" length:512 * 1];
     for (NSString *method in httpMethods) {
         XCTestExpectation *expect = [self
@@ -881,9 +879,6 @@
 //    [d runWithURL:url];
 //    [self waitForExpectationsWithTimeout:12 handler:nil];
 //}
-
-- (void)testBasicAuthWithUnauthorizedHeader {
-}
 
 - (void)testPostWithEmptyBody {
     XCTestExpectation *te = [self expectationWithDescription:@"POST testPostWithEmptyBody: post with empty body"];

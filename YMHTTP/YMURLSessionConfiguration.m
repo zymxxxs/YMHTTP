@@ -72,7 +72,7 @@
     session.timeoutIntervalForResource = self.timeoutIntervalForResource;
     session.HTTPShouldUsePipelining = self.HTTPShouldUsePipelining;
     session.HTTPShouldSetCookies = self.HTTPShouldSetCookies;
-    session.HTTPCookieAcceptPolicy = self.HTTPShouldSetCookies;
+    session.HTTPCookieAcceptPolicy = self.HTTPCookieAcceptPolicy;
     session.HTTPAdditionalHeaders = self.HTTPAdditionalHeaders;
     session.HTTPMaximumConnectionsPerHost = self.HTTPMaximumConnectionsPerHost;
     session.HTTPCookieStorage = self.HTTPCookieStorage;
