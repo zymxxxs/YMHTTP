@@ -254,7 +254,8 @@ typedef NS_OPTIONS(NSUInteger, YMEasyHandlePauseState) {
     NSUInteger send = pauseState & YMEasyHandlePauseStateSend;
     NSUInteger receive = pauseState & YMEasyHandlePauseStateReceive;
     int bitmask = 0 | (send ? CURLPAUSE_SEND : CURLPAUSE_SEND_CONT) | (receive ? CURLPAUSE_RECV : CURLPAUSE_RECV_CONT);
-    YM_ECODE(curl_easy_pause(self.rawHandle, bitmask));
+    int code = curl_easy_pause(self.rawHandle, bitmask);
+    YM_ECODE(code);
 
     // https://curl.haxx.se/libcurl/c/curl_easy_pause.html
     // Starting in libcurl 7.32.0, unpausing a transfer will schedule a timeout trigger for that handle 1 millisecond
@@ -417,36 +418,32 @@ NS_INLINE YMEasyHandle *from(void *userdata) {
 size_t _curl_write_function(char *data, size_t size, size_t nmemb, void *userdata) {
     YMEasyHandle *handle = from(userdata);
     if (!handle) return 0;
-
-    @YM_DEFER {
-        [handle resetTimer];
-    };
-
-    return [handle didReceiveData:data size:size nmemb:nmemb];
+    
+    size_t code = [handle didReceiveData:data size:size nmemb:nmemb];
+    [handle resetTimer];
+    
+    return code;
 }
 
 size_t _curl_read_function(char *data, size_t size, size_t nmemb, void *userdata) {
     YMEasyHandle *handle = from(userdata);
     if (!handle) return 0;
 
-    @YM_DEFER {
-        [handle resetTimer];
-    };
-
-    return [handle fillWriteBuffer:data size:size nmemb:nmemb];
+    size_t code = [handle fillWriteBuffer:data size:size nmemb:nmemb];
+    [handle resetTimer];
+    
+    return code;
 }
 
 size_t _curl_header_function(char *data, size_t size, size_t nmemb, void *userdata) {
     YMEasyHandle *handle = from(userdata);
     if (!handle) return 0;
 
-    @YM_DEFER {
-        [handle resetTimer];
-    };
-
     double length;
     YM_ECODE(curl_easy_getinfo(handle.rawHandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &length));
-    return [handle didReceiveHeaderData:data size:size nmemb:nmemb contentLength:length];
+    size_t code = [handle didReceiveHeaderData:data size:size nmemb:nmemb contentLength:length];
+    [handle resetTimer];
+    return code;
 }
 
 int _curl_seek_function(void *userdata, curl_off_t offset, int origin) {
