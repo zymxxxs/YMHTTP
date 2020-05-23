@@ -19,12 +19,13 @@
 - (void)resetURLCache {
     NSURLCache *URLCache = [[NSURLCache alloc] initWithMemoryCapacity:4 * 1024 * 1024 diskCapacity:0 diskPath:nil];
     [NSURLCache setSharedURLCache:URLCache];
+    sleep(1);
 }
 
 - (void)testCacheUseProtocolCachePolicy {
     [self resetURLCache];
 
-    NSString *urlString = @"http://httpbin.org/cache/200";
+    NSString *urlString = @"http://0.0.0.0/cache/200";
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
     XCTestExpectation *te = [self expectationWithDescription:@"GET testCacheUseProtocolCachePolicy: with a delegate"];
@@ -65,7 +66,7 @@
 - (void)testCacheUseIgnoringLocalCacheData {
     [self resetURLCache];
 
-    NSString *urlString = @"http://httpbin.org/cache/200";
+    NSString *urlString = @"http://0.0.0.0/cache/200";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     XCTestExpectation *te =
@@ -87,7 +88,7 @@
 
     NSCachedURLResponse *cachedURLResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:request];
     XCTAssertNotNil(cachedURLResponse);
-    sleep(1);
+    sleep(2);
 
     XCTestExpectation *te1 = [self expectationWithDescription:@"GET testCacheUseProtocolCachePolicy1: with a delegate"];
     YMCacheDataTask *d1 = [[YMCacheDataTask alloc] initWithExpectation:te1];
@@ -109,7 +110,7 @@
 - (void)testCacheUseReturnCacheDataElseLoad {
     [self resetURLCache];
 
-    NSString *urlString = @"http://httpbin.org/cache/200";
+    NSString *urlString = @"http://0.0.0.0/cache/200";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     XCTestExpectation *te =
@@ -149,7 +150,6 @@
 
     [self resetURLCache];
     XCTAssertNil([[NSURLCache sharedURLCache] cachedResponseForRequest:request]);
-    sleep(2);
 
     XCTestExpectation *te2 =
         [self expectationWithDescription:@"GET testCacheUseReturnCacheDataElseLoad 2: with a delegate"];
@@ -172,7 +172,7 @@
 - (void)testCacheUseReturnCacheDataDontLoad {
     [[NSURLCache sharedURLCache] removeAllCachedResponses];
 
-    NSString *urlString = @"http://httpbin.org/cache/200";
+    NSString *urlString = @"http://0.0.0.0/cache/200";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     XCTestExpectation *te =
@@ -226,7 +226,7 @@
 - (void)testCacheUsingResponseAllow {
     [self resetURLCache];
 
-    NSString *urlString = @"http://httpbin.org/get";
+    NSString *urlString = @"http://0.0.0.0/get";
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
     XCTestExpectation *te = [self expectationWithDescription:@"GET testCacheUsingResponseAllow: with a delegate"];

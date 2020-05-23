@@ -7,7 +7,15 @@ on:
     branches: [master]
 
 jobs:
-  test:
+  httpbin:
+    runs-on: macOS-latest
+    steps:
+      - name: install httpbin
+        run: |
+          docker pull kennethreitz/httpbin
+          docker run -p 80:80 kennethreitz/httpbin
+
+  ut:
     runs-on: macOS-latest
     steps:
       - name: print env
