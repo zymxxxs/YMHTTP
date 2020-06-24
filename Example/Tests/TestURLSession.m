@@ -1088,4 +1088,25 @@
     XCTAssertEqual(task.state, YMURLSessionTaskStateCompleted);
 }
 
+
+- (void)testMultipleRequestsReturnData {
+    for (int i=0; i<50; i++) {
+        NSString *expectionDescription = [NSString stringWithFormat:@"%@%@", @"GET testMultipleRequestsReturnDataInDisorde", [@(i) stringValue]];
+        XCTestExpectation *expectation = [self expectationWithDescription:expectionDescription];
+        NSString *urlString = [NSString stringWithFormat:@"%@%@", @"http://httpbin.org/bytes/", [@(i) stringValue]];
+        YMURLSessionTask *task = [[YMURLSession sharedSession]
+                  taskWithURL:[NSURL URLWithString:urlString]
+            completionHandler:^(NSData *_Nullable data, NSHTTPURLResponse *_Nullable response, NSError *_Nullable error) {
+                if (response.statusCode == 200) {
+                    [expectation fulfill];
+                    XCTAssertEqual((int)data.length, i, @"data's length is not equal to expection");
+                } else {
+                    XCTFail();
+                }
+            }];
+        [task resume];
+        [self waitForExpectationsWithTimeout:2.f handler:nil];
+    }
+}
+
 @end
