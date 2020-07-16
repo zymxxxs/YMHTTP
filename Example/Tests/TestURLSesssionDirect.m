@@ -20,7 +20,7 @@
 - (void)testHttpRedirectionWithCode300 {
     NSArray *httpMethods = @[ @"HEAD", @"GET", @"PUT", @"POST", @"DELETE" ];
     for (NSString *method in httpMethods) {
-        NSString *urlString = @"https://httpbin.org/redirect-to?url=%2Fget&status_code=300";
+        NSString *urlString = @"http://0.0.0.0/redirect-to?url=%2Fget&status_code=300";
         NSURL *url = [NSURL URLWithString:urlString];
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
         request.HTTPMethod = method;
@@ -47,9 +47,8 @@
     NSArray *httpMethods = @[ @"POST", @"HEAD", @"GET", @"PUT", @"DELETE" ];
     for (NSNumber *statusCode in @[ @(301), @(302) ]) {
         for (NSString *method in httpMethods) {
-            NSString *urlString =
-                [NSString stringWithFormat:@"https://httpbin.org/redirect-to?url=/anything&status_code=%@",
-                                           statusCode.stringValue];
+            NSString *urlString = [NSString
+                stringWithFormat:@"http://0.0.0.0/redirect-to?url=/anything&status_code=%@", statusCode.stringValue];
             NSURL *url = [NSURL URLWithString:urlString];
             NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
             request.HTTPMethod = method;
@@ -100,7 +99,7 @@
 - (void)testHttpRedirectionWithCode303 {
     NSArray *httpMethods = @[ @"POST", @"HEAD", @"GET", @"PUT", @"DELETE" ];
     for (NSString *method in httpMethods) {
-        NSString *urlString = @"https://httpbin.org/redirect-to?url=/anything&status_code=303";
+        NSString *urlString = @"http://0.0.0.0/redirect-to?url=/anything&status_code=303";
         NSURL *url = [NSURL URLWithString:urlString];
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
         request.HTTPMethod = method;
@@ -130,7 +129,7 @@
 - (void)testHttpRedirectionWithCode304 {
     NSArray *httpMethods = @[ @"HEAD", @"GET", @"PUT", @"POST", @"DELETE" ];
     for (NSString *method in httpMethods) {
-        NSString *urlString = @"https://httpbin.org/redirect-to?url=%2Fget&status_code=304";
+        NSString *urlString = @"http://0.0.0.0/redirect-to?url=%2Fget&status_code=304";
         NSURL *url = [NSURL URLWithString:urlString];
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
         request.HTTPMethod = method;
@@ -158,9 +157,8 @@
     NSArray *httpMethods = @[ @"POST", @"HEAD", @"GET", @"PUT", @"DELETE" ];
     for (NSNumber *statusCode in @[ @(305), @(306), @(307), @(308) ]) {
         for (NSString *method in httpMethods) {
-            NSString *urlString =
-                [NSString stringWithFormat:@"https://httpbin.org/redirect-to?url=/anything&status_code=%@",
-                                           statusCode.stringValue];
+            NSString *urlString = [NSString
+                stringWithFormat:@"http://0.0.0.0/redirect-to?url=/anything&status_code=%@", statusCode.stringValue];
             NSURL *url = [NSURL URLWithString:urlString];
             NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
             request.HTTPMethod = method;
@@ -208,7 +206,7 @@
 }
 
 - (void)testHttpRedirectionWithCompleteRelativePath {
-    NSString *urlString = @"https://httpbin.org/redirect-to?url=https%3A%2F%2Fhttpbin.org%2Fget";
+    NSString *urlString = @"http://0.0.0.0/redirect-to?url=http%3A%2F%2F0.0.0.0%2Fget";
     NSURL *url = [NSURL URLWithString:urlString];
     XCTestExpectation *te =
         [self expectationWithDescription:@"GET testHttpRedirectionWithCompleteRelativePath: with HTTP redirection"];
@@ -217,13 +215,13 @@
     [self waitForExpectationsWithTimeout:12 handler:nil];
     if (!d.error) {
         XCTAssertEqualObjects(d.result[@"url"],
-                              @"https://httpbin.org/get",
+                              @"http://0.0.0.0/get",
                               @"testHttpRedirectionWithCompleteRelativePath returned an unexpected result");
     }
 }
 
 - (void)testHttpRedirectionWithInCompleteRelativePath {
-    NSString *urlString = @"https://httpbin.org/redirect-to?url=%2Fget";
+    NSString *urlString = @"http://0.0.0.0/redirect-to?url=%2Fget";
     NSURL *url = [NSURL URLWithString:urlString];
     XCTestExpectation *te =
         [self expectationWithDescription:@"GET testHttpRedirectionWithInCompleteRelativePath: with HTTP redirection"];
@@ -232,7 +230,7 @@
     [self waitForExpectationsWithTimeout:12 handler:nil];
     if (!d.error) {
         XCTAssertEqualObjects(d.result[@"url"],
-                              @"https://httpbin.org/get",
+                              @"http://0.0.0.0/get",
                               @"testHttpRedirectionWithCompleteRelativePath returned an unexpected result");
     }
 }
@@ -245,7 +243,7 @@
     config.timeoutIntervalForRequest = 5;
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
 
-    NSString *urlString = @"https://httpbin.org/redirect-to?url=%2Fdelay%2F10";
+    NSString *urlString = @"http://0.0.0.0/redirect-to?url=%2Fdelay%2F10";
     NSURL *url = [NSURL URLWithString:urlString];
 
     YMURLSessionTask *task =
@@ -265,8 +263,7 @@
 - (void)testHttpRedirectDontFollowUsingNil {
     NSArray *httpMethods = @[ @"HEAD", @"GET", @"PUT", @"POST", @"DELETE" ];
     for (NSString *method in httpMethods) {
-        NSString *urlString =
-            [NSString stringWithFormat:@"https://httpbin.org/redirect-to?url=/anything&status_code=302"];
+        NSString *urlString = [NSString stringWithFormat:@"http://0.0.0.0/redirect-to?url=/anything&status_code=302"];
         NSURL *url = [NSURL URLWithString:urlString];
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
         request.HTTPMethod = method;
@@ -302,12 +299,11 @@
 - (void)testHttpRedirectDontFollowIgnoringHandler {
     NSArray *httpMethods = @[ @"HEAD", @"GET", @"PUT", @"POST", @"DELETE" ];
     for (NSString *method in httpMethods) {
-        NSString *urlString =
-            [NSString stringWithFormat:@"https://httpbin.org/redirect-to?url=/anything&status_code=302"];
+        NSString *urlString = [NSString stringWithFormat:@"http://0.0.0.0/redirect-to?url=/anything&status_code=302"];
         NSURL *url = [NSURL URLWithString:urlString];
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
         request.HTTPMethod = method;
-        request.timeoutInterval = 5.f;
+        request.timeoutInterval = 2.f;
         XCTestExpectation *te = [self
             expectationWithDescription:
                 [NSString stringWithFormat:@"%@ testHttpRedirectDontFollowIgnoringHandler: with redirection", method]];
@@ -320,7 +316,7 @@
         };
         [d runWithRequest:request];
 
-        [self waitForExpectationsWithTimeout:10.f handler:nil];
+        [self waitForExpectationsWithTimeout:3.f handler:nil];
         XCTAssertNil(d.error);
         XCTAssertNil(d.receivedData);
         XCTAssertNil(d.response);
@@ -336,8 +332,7 @@
 - (void)testHttpRedirectionChainInheritsTimeoutInterval {
     NSArray *httpMethods = @[ @"HEAD", @"GET", @"PUT", @"POST", @"DELETE" ];
     for (NSString *method in httpMethods) {
-        NSString *urlString =
-            [NSString stringWithFormat:@"https://httpbin.org/redirect-to?url=/anything&status_code=302"];
+        NSString *urlString = [NSString stringWithFormat:@"http://0.0.0.0/redirect-to?url=/anything&status_code=302"];
         NSURL *url = [NSURL URLWithString:urlString];
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
         request.HTTPMethod = method;
@@ -364,7 +359,7 @@
 }
 
 - (void)testHttpRedirectionExceededMaxRedirects {
-    NSString *urlString = [NSString stringWithFormat:@"https://httpbin.org/redirect/18"];
+    NSString *urlString = [NSString stringWithFormat:@"http://0.0.0.0/redirect/18"];
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     request.timeoutInterval = 3.f;

@@ -7,20 +7,31 @@ on:
     branches: [master]
 
 jobs:
-  test:
+  httpbin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-hub/docker/cli@master
+
+      - name: install httpbin
+        run: |
+          docker pull kennethreitz/httpbin
+          docker run -p 80:80 kennethreitz/httpbin
+        shell: bash
+  ut:
     runs-on: macOS-latest
     steps:
-      - name: print env
-        run: |
-          xcodebuild -version
+
       - uses: actions/checkout@master
+
       - name: install cocoapods
         run: gem install cocoapods
+
       - name: install dependencies
         run: |
           cd Example
           pod install
         shell: bash
+
       - name: run test
         run: xcodebuild test -workspace ./Example/YMHTTP.xcworkspace -scheme 'YMHTTP-Example' -destination 'platform=iOS Simulator,name=iPhone 11'
         shell: bash

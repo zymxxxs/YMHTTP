@@ -21,7 +21,7 @@
 @implementation TestURLSession
 
 - (void)testDataTaskWithURL {
-    NSString *urlString = @"http://httpbin.org/get?capital=testDataTaskWithURL";
+    NSString *urlString = @"http://0.0.0.0/get?capital=testDataTaskWithURL";
     NSURL *url = [NSURL URLWithString:urlString];
     XCTestExpectation *te = [self expectationWithDescription:@"GET testDataTaskWithURL: with a delegate"];
     YMDataTask *d = [[YMDataTask alloc] initWithExpectation:te];
@@ -42,7 +42,7 @@
 }
 
 - (void)dataTaskWithURLCompletionHandlerWithSession:(YMURLSession *)session {
-    NSString *urlString = @"http://httpbin.org/get?capital=China";
+    NSString *urlString = @"http://0.0.0.0/get?capital=China";
     NSURL *url = [NSURL URLWithString:urlString];
     XCTestExpectation *te =
         [self expectationWithDescription:@"GET dataTaskWithURLCompletionHandlerWithSession: with a completion handler"];
@@ -68,7 +68,7 @@
 }
 
 - (void)testDataTaskWithRequest {
-    NSString *urlString = @"http://httpbin.org/get?capital=testDataTaskWithRequest";
+    NSString *urlString = @"http://0.0.0.0/get?capital=testDataTaskWithRequest";
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
     XCTestExpectation *te = [self expectationWithDescription:@"GET testDataTaskWithRequest: with a delegate"];
@@ -83,7 +83,7 @@
 }
 
 - (void)testDataTaskWithURLRequestCompletionHandler {
-    NSString *urlString = @"http://httpbin.org/get?capital=testDataTaskWithURLRequestCompletionHandler";
+    NSString *urlString = @"http://0.0.0.0/get?capital=testDataTaskWithURLRequestCompletionHandler";
     NSURL *url = [NSURL URLWithString:urlString];
     XCTestExpectation *te =
         [self expectationWithDescription:@"GET testDataTaskWithURLRequestCompletionHandler: with a completion handler"];
@@ -123,7 +123,7 @@
         @"pretium, augue non elementum imperdiet, diam ex vestibulum tortor, non ultrices ante enim iaculis ex.";
     NSData *bodyData = [dataString dataUsingEncoding:NSUTF8StringEncoding];
     for (NSString *method in httpMethods) {
-        NSString *urlString = [NSString stringWithFormat:@"https://httpbin.org/%@", [method lowercaseString]];
+        NSString *urlString = [NSString stringWithFormat:@"http://0.0.0.0/%@", [method lowercaseString]];
         for (id contentType in @[ @"text/plain; charset=utf-8", [NSNull null] ]) {
             NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
             request.HTTPMethod = method;
@@ -189,7 +189,7 @@
 }
 
 - (void)testGzippedDataTask {
-    NSString *urlString = @"http://httpbin.org/gzip";
+    NSString *urlString = @"http://0.0.0.0/gzip";
     NSURL *url = [NSURL URLWithString:urlString];
     XCTestExpectation *te = [self expectationWithDescription:@"GET testGzippedDataTask: with a delegate"];
     YMDataTask *d = [[YMDataTask alloc] initWithExpectation:te];
@@ -201,7 +201,7 @@
 }
 
 - (void)testDownloadTaskWithURL {
-    NSString *urlString = @"http://httpbin.org/image/png";
+    NSString *urlString = @"http://0.0.0.0/image/png";
     NSURL *url = [NSURL URLWithString:urlString];
     YMDownloadTask *d =
         [[YMDownloadTask alloc] initWithTestCase:self
@@ -211,7 +211,7 @@
 }
 
 - (void)testDownloadTaskWithRequest {
-    NSString *urlString = @"http://httpbin.org/image/jepg";
+    NSString *urlString = @"http://0.0.0.0/image/jepg";
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
     YMDownloadTask *d =
@@ -233,7 +233,7 @@
     XCTestExpectation *te =
         [self expectationWithDescription:
                   @"Download GET downloadTaskWithRequestAndHandlerWithSession: with a completion handler"];
-    NSString *urlString = @"http://httpbin.org/image/svg";
+    NSString *urlString = @"http://0.0.0.0/image/svg";
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
     YMURLSessionTask *task =
@@ -254,7 +254,7 @@
 - (void)testDownloadTaskWithURLAndHandler {
     XCTestExpectation *te =
         [self expectationWithDescription:@"Download GET testDownloadTaskWithURLAndHandler: with a completion handler"];
-    NSString *urlString = @"http://httpbin.org/image/webp";
+    NSString *urlString = @"http://0.0.0.0/image/webp";
     NSURL *url = [NSURL URLWithString:urlString];
 
     YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
@@ -276,7 +276,7 @@
 }
 
 - (void)testGzippedDownloadTask {
-    NSString *urlString = @"http://httpbin.org/image/gzip";
+    NSString *urlString = @"http://0.0.0.0/image/gzip";
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
     YMDownloadTask *d =
@@ -291,7 +291,7 @@
     XCTestExpectation *completionExpectation = [self
         expectationWithDescription:@"GET testFinishTasksAndInvalidate: task completion before session invalidation"];
 
-    NSString *urlString = @"http://httpbin.org/get";
+    NSString *urlString = @"http://0.0.0.0/get";
     NSURL *url = [NSURL URLWithString:urlString];
     YMSessionDelegate *delegate = [YMSessionDelegate new];
     delegate.invalidateExpectation = invalidateExpectation;
@@ -332,7 +332,7 @@
 }
 
 - (void)testTaskCopy {
-    NSString *urlString = @"http://httpbin.org/get";
+    NSString *urlString = @"http://0.0.0.0/get";
     NSURL *url = [NSURL URLWithString:urlString];
     YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
@@ -342,7 +342,7 @@
 }
 
 - (void)testCancelTask {
-    NSString *urlString = @"http://httpbin.org/get";
+    NSString *urlString = @"http://0.0.0.0/get";
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
 
@@ -365,7 +365,7 @@
     YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
 
-    NSString *urlString = @"http://httpbin.org/post";
+    NSString *urlString = @"http://0.0.0.0/post";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     request.HTTPMethod = @"POST";
@@ -400,7 +400,7 @@
     };
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
 
-    NSString *urlString = @"http://httpbin.org/post";
+    NSString *urlString = @"http://0.0.0.0/post";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     request.HTTPMethod = @"POST";
@@ -437,7 +437,7 @@
     config.timeoutIntervalForRequest = 5;
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
 
-    NSString *urlString = @"http://httpbin.org/delay/10";
+    NSString *urlString = @"http://0.0.0.0/delay/10";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     request.timeoutInterval = 5;
@@ -459,7 +459,7 @@
     dispatch_group_t gourp = dispatch_group_create();
     for (int i = 0; i < 10; i++) {
         dispatch_group_enter(gourp);
-        NSString *urlString = [NSString stringWithFormat:@"http://httpbin.org/get?capital=testDataTaskWithURL%@", @(i)];
+        NSString *urlString = [NSString stringWithFormat:@"http://0.0.0.0/get?capital=testDataTaskWithURL%@", @(i)];
         NSURL *url = [NSURL URLWithString:urlString];
         XCTestExpectation *te = [self
             expectationWithDescription:[NSString
@@ -483,7 +483,7 @@
     config.timeoutIntervalForRequest = 8;
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
 
-    NSString *urlString = @"http://httpbin.org/status/999";
+    NSString *urlString = @"http://0.0.0.0/status/999";
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLRequest *req = [NSURLRequest requestWithURL:url];
 
@@ -508,7 +508,7 @@
     config.timeoutIntervalForRequest = 8;
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
 
-    NSString *urlString = @"https://httpbin.org/stream-bytes/10";
+    NSString *urlString = @"http://0.0.0.0/stream-bytes/10";
     NSURL *url = [NSURL URLWithString:urlString];
     NSURLRequest *req = [NSURLRequest requestWithURL:url];
 
@@ -534,7 +534,7 @@
 
     delegate.uploadCompletedExpectation = [self expectationWithDescription:@"PUT testSimpleUploadWithDelegate"];
 
-    NSString *urlString = @"https://httpbin.org/put";
+    NSString *urlString = @"http://0.0.0.0/put";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
     req.HTTPMethod = @"PUT";
@@ -549,7 +549,7 @@
 - (void)testRequestWithEmptyBody {
     NSArray *httpMethods = @[ @"GET", @"PUT", @"POST", @"DELETE" ];
     for (NSString *method in httpMethods) {
-        NSString *urlString = [NSString stringWithFormat:@"https://httpbin.org/%@", [method lowercaseString]];
+        NSString *urlString = [NSString stringWithFormat:@"http://0.0.0.0/%@", [method lowercaseString]];
         for (id body in @[ [NSNull null], [NSData data] ]) {
             for (id contentType in @[ @"text/plain; charset=utf-8", [NSNull null] ]) {
                 NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
@@ -606,7 +606,7 @@
     NSArray *httpMethods = @[ @"GET", @"PUT", @"POST", @"DELETE" ];
     for (NSString *method in httpMethods) {
         NSData *bodyData = [@"This is a request body" dataUsingEncoding:NSUTF8StringEncoding];
-        NSString *urlString = [NSString stringWithFormat:@"https://httpbin.org/%@", [method lowercaseString]];
+        NSString *urlString = [NSString stringWithFormat:@"http://0.0.0.0/%@", [method lowercaseString]];
         for (id contentType in @[ @"text/plain; charset=utf-8", [NSNull null] ]) {
             NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
             request.HTTPMethod = method;
@@ -683,7 +683,7 @@
             completionHandler([[NSInputStream alloc] initWithData:data]);
         };
 
-        NSString *urlString = [NSString stringWithFormat:@"http://httpbin.org/%@", [method lowercaseString]];
+        NSString *urlString = [NSString stringWithFormat:@"http://0.0.0.0/%@", [method lowercaseString]];
         NSURL *url = [NSURL URLWithString:urlString];
         NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
         req.HTTPMethod = method;
@@ -769,8 +769,7 @@
     XCTAssertEqual(config.HTTPCookieStorage.cookies.count, 0);
 
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
-    NSString *urlString =
-        @"https://httpbin.org/response-headers?Set-Cookie=a=bbbb&Set-Cookie=a=bbbb1&Set-Cookie=b=bbbb2";
+    NSString *urlString = @"http://0.0.0.0/response-headers?Set-Cookie=a=bbbb&Set-Cookie=a=bbbb1&Set-Cookie=b=bbbb2";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
     req.HTTPMethod = @"POST";
@@ -800,7 +799,7 @@
 
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
     NSString *urlString =
-        @"https://httpbin.org/"
+        @"http://0.0.0.0/"
         @"response-headers?Set-Cookie=a=bbbb&Set-Cookie=a=bbbb1&Set-Cookie=b=bbbb2&Set-Cookie=b=bbbb2";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
@@ -834,7 +833,7 @@
 
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
     NSString *urlString =
-        @"https://httpbin.org/"
+        @"http://0.0.0.0/"
         @"response-headers?Set-Cookie=a=bbbb&Set-Cookie=a=bbbb1&Set-Cookie=b=bbbb2&Set-Cookie=b=bbbb2";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
@@ -850,7 +849,7 @@
             XCTAssertNotNil(httpresponse.allHeaderFields[@"Set-Cookie"]);
             XCTAssertEqual([NSHTTPCookieStorage sharedHTTPCookieStorage].cookies.count, 2);
 
-            task2 = [session taskWithURL:[NSURL URLWithString:@"https://httpbin.org/cookies"]
+            task2 = [session taskWithURL:[NSURL URLWithString:@"http://0.0.0.0/cookies"]
                        completionHandler:^(
                            NSData *_Nullable data, NSURLResponse *_Nullable response, NSError *_Nullable error) {
                            XCTAssertNotNil(data);
@@ -872,7 +871,7 @@
 }
 
 //- (void)testBasicAuthRequest {
-//    NSString *urlString = @"https://httpbin.org/basic-auth/zymxxxs/zymxxxs";
+//    NSString *urlString = @"http://0.0.0.0/basic-auth/zymxxxs/zymxxxs";
 //    NSURL *url = [NSURL URLWithString:urlString];
 //    XCTestExpectation *te = [self expectationWithDescription:@"GET testBasicAuthRequest: with a delegate"];
 //    YMDataTask *d = [[YMDataTask alloc] initWithExpectation:te];
@@ -887,7 +886,7 @@
     config.timeoutIntervalForRequest = 5;
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
 
-    NSString *urlString = @"https://httpbin.org/post";
+    NSString *urlString = @"http://0.0.0.0/post";
     NSURL *url = [NSURL URLWithString:urlString];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
     req.HTTPMethod = @"POST";
@@ -909,7 +908,7 @@
     XCTestExpectation *expectation =
         [self expectationWithDescription:@"Check error code of tasks after invalidateAndCancel"];
 
-    NSString *urlString = @"http://httpbin.org/delay/5";
+    NSString *urlString = @"http://0.0.0.0/delay/5";
     NSURL *url = [NSURL URLWithString:urlString];
     YMSessionDelegate *delegate = [YMSessionDelegate new];
     YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
@@ -931,9 +930,9 @@
 
     YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
-    NSURL *url1 = [NSURL URLWithString:@"http://httpbin.org/delay/5"];
-    NSURL *url2 = [NSURL URLWithString:@"http://httpbin.org/delay/15"];
-    NSURL *url3 = [NSURL URLWithString:@"http://httpbin.org/delay/25"];
+    NSURL *url1 = [NSURL URLWithString:@"http://0.0.0.0/delay/5"];
+    NSURL *url2 = [NSURL URLWithString:@"http://0.0.0.0/delay/15"];
+    NSURL *url3 = [NSURL URLWithString:@"http://0.0.0.0/delay/25"];
 
     YMURLSessionTask *task1 = [session taskWithURL:url1];
     YMURLSessionTask *task2 = [session taskWithURL:url2];
@@ -971,9 +970,9 @@
 
     YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
     YMURLSession *session = [YMURLSession sessionWithConfiguration:config delegate:nil delegateQueue:nil];
-    NSURL *url1 = [NSURL URLWithString:@"https://httpbin.org/delay/5"];
-    NSURL *url2 = [NSURL URLWithString:@"https://httpbin.org/delay/10"];
-    NSURL *url3 = [NSURL URLWithString:@"https://httpbin.org/delay/15"];
+    NSURL *url1 = [NSURL URLWithString:@"http://0.0.0.0/delay/5"];
+    NSURL *url2 = [NSURL URLWithString:@"http://0.0.0.0/delay/10"];
+    NSURL *url3 = [NSURL URLWithString:@"http://0.0.0.0/delay/15"];
 
     YMURLSessionTask *task1 = [session taskWithURL:url1];
     YMURLSessionTask *task2 = [session taskWithURL:url2];
@@ -1040,7 +1039,7 @@
 }
 
 - (void)testCancelledTasksCannotBeResumed {
-    NSString *urlString = @"http://httpbin.org/delay/5";
+    NSString *urlString = @"http://0.0.0.0/delay/5";
     NSURL *url = [NSURL URLWithString:urlString];
     YMSessionDelegate *delegate = [YMSessionDelegate new];
     YMURLSessionConfiguration *config = [YMURLSessionConfiguration defaultSessionConfiguration];
@@ -1060,7 +1059,7 @@
 - (void)testSuspendResumeTask {
     XCTestExpectation *expectation = [self expectationWithDescription:@"GET testSuspendResumeTask: suspend task"];
     YMURLSessionTask *task = [[YMURLSession sharedSession]
-              taskWithURL:[NSURL URLWithString:@"https://httpbin.org/get"]
+              taskWithURL:[NSURL URLWithString:@"http://0.0.0.0/get"]
         completionHandler:^(NSData *_Nullable data, NSHTTPURLResponse *_Nullable response, NSError *_Nullable error) {
             if (response.statusCode == 200) {
                 [expectation fulfill];

@@ -372,27 +372,29 @@ typedef NS_ENUM(NSUInteger, YMURLSessionTaskProtocolState) {
 }
 
 - (void)setInternalState:(YMURLSessionTaskInternalState)internalState {
-    YMURLSessionTaskInternalState newValue = internalState;
-    if (![self isEasyHandlePausedForState:_internalState] && [self isEasyHandlePausedForState:newValue]) {
-        [self.easyHandle pauseReceive];
-    }
+    @synchronized(self) {
+        YMURLSessionTaskInternalState newValue = internalState;
+        if (![self isEasyHandlePausedForState:_internalState] && [self isEasyHandlePausedForState:newValue]) {
+            [self.easyHandle pauseReceive];
+        }
 
-    if ([self isEasyHandleAddedToMultiHandleForState:_internalState] &&
-        ![self isEasyHandleAddedToMultiHandleForState:newValue]) {
-        [self.session removeHandle:self.easyHandle];
-    }
+        if ([self isEasyHandleAddedToMultiHandleForState:_internalState] &&
+            ![self isEasyHandleAddedToMultiHandleForState:newValue]) {
+            [self.session removeHandle:self.easyHandle];
+        }
 
-    // set
-    YMURLSessionTaskInternalState oldValue = _internalState;
-    _internalState = internalState;
+        // set
+        YMURLSessionTaskInternalState oldValue = _internalState;
+        _internalState = internalState;
 
-    if (![self isEasyHandleAddedToMultiHandleForState:oldValue] &&
-        [self isEasyHandleAddedToMultiHandleForState:_internalState]) {
-        [self.session addHandle:self.easyHandle];
-    }
+        if (![self isEasyHandleAddedToMultiHandleForState:oldValue] &&
+            [self isEasyHandleAddedToMultiHandleForState:_internalState]) {
+            [self.session addHandle:self.easyHandle];
+        }
 
-    if ([self isEasyHandlePausedForState:oldValue] && ![self isEasyHandlePausedForState:_internalState]) {
-        [self.easyHandle unpauseReceive];
+        if ([self isEasyHandlePausedForState:oldValue] && ![self isEasyHandlePausedForState:_internalState]) {
+            [self.easyHandle unpauseReceive];
+        }
     }
 }
 
